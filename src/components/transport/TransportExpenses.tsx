@@ -33,12 +33,7 @@ const TransportExpenses = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("transport_expenses")
-        .select(`
-          *,
-          customers (
-            client_name
-          )
-        `)
+        .select("*")
         .order("expense_date", { ascending: false });
       return data || [];
     },
@@ -177,7 +172,7 @@ const TransportExpenses = () => {
           {expenses?.map((expense) => (
             <TableRow key={expense.id}>
               <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
-              <TableCell>{expense.customers?.client_name || 'N/A'}</TableCell>
+              <TableCell>{customers?.find((c) => c.id === expense.client_id)?.client_name || 'N/A'}</TableCell>
               <TableCell>{expense.branch}</TableCell>
               <TableCell>{expense.expense_group}</TableCell>
               <TableCell className="text-right font-medium">₹{expense.amount?.toLocaleString()}</TableCell>

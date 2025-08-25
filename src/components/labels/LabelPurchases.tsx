@@ -45,12 +45,7 @@ const LabelPurchases = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("label_purchases")
-        .select(`
-          *,
-          customers (
-            client_name
-          )
-        `)
+        .select("*")
         .order("purchase_date", { ascending: false });
       return data || [];
     },
@@ -247,7 +242,7 @@ const LabelPurchases = () => {
           {purchases?.map((purchase) => (
             <TableRow key={purchase.id}>
               <TableCell>{new Date(purchase.purchase_date).toLocaleDateString()}</TableCell>
-              <TableCell>{purchase.customers?.client_name || 'N/A'}</TableCell>
+              <TableCell>{customers?.find((c) => c.id === purchase.client_id)?.client_name || 'N/A'}</TableCell>
               <TableCell>{purchase.sku}</TableCell>
               <TableCell className="text-right">{purchase.quantity?.toLocaleString()}</TableCell>
               <TableCell className="text-right">₹{purchase.cost_per_label}</TableCell>
