@@ -106,9 +106,12 @@ const ConfigurationManagement = () => {
       const { error } = await supabase
         .from("factory_pricing")
         .insert({
-          ...data,
+          pricing_date: data.pricing_date,
+          sku: data.sku,
+          bottles_per_case: parseInt(data.bottles_per_case),
           price_per_bottle: parseFloat(data.price_per_bottle),
           tax: data.tax ? parseFloat(data.tax) : null
+          // cost_per_case is a generated column, so we don't insert it
         });
 
       if (error) throw error;
@@ -406,11 +409,11 @@ const ConfigurationManagement = () => {
                 <TableBody>
                   {factoryPricing?.map((pricing) => (
                     <TableRow key={pricing.id}>
-                      <TableCell>{new Date(pricing.pricing_date).toLocaleDateString()}</TableCell>
+                     <TableCell>{new Date(pricing.pricing_date).toLocaleDateString()}</TableCell>
                       <TableCell className="font-medium">{pricing.sku}</TableCell>
-                      <TableCell className="text-right">-</TableCell>
+                      <TableCell className="text-right">{pricing.bottles_per_case || '-'}</TableCell>
                       <TableCell className="text-right">₹{pricing.price_per_bottle}</TableCell>
-                      <TableCell className="text-right">-</TableCell>
+                      <TableCell className="text-right">{pricing.cost_per_case ? `₹${pricing.cost_per_case}` : '-'}</TableCell>
                       <TableCell className="text-right">{pricing.tax ? `${pricing.tax}%` : '-'}</TableCell>
                       <TableCell>{new Date(pricing.created_at).toLocaleDateString()}</TableCell>
                     </TableRow>

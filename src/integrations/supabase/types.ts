@@ -112,6 +112,8 @@ export type Database = {
       }
       factory_pricing: {
         Row: {
+          bottles_per_case: number
+          cost_per_case: number | null
           created_at: string | null
           id: string
           price_per_bottle: number
@@ -121,6 +123,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bottles_per_case?: number
+          cost_per_case?: number | null
           created_at?: string | null
           id?: string
           price_per_bottle: number
@@ -130,6 +134,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bottles_per_case?: number
+          cost_per_case?: number | null
           created_at?: string | null
           id?: string
           price_per_bottle?: number
