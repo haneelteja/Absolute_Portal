@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Trash2 } from "lucide-react";
 
 const ConfigurationManagement = () => {
   const [customerForm, setCustomerForm] = useState({
@@ -144,6 +145,30 @@ const ConfigurationManagement = () => {
       toast({ 
         title: "Error", 
         description: "Failed to add pricing: " + error.message,
+        variant: "destructive"
+      });
+    },
+  });
+
+  const deletePricingMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("factory_pricing")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Factory pricing deleted successfully!" });
+      queryClient.invalidateQueries({ queryKey: ["factory-pricing"] });
+      queryClient.invalidateQueries({ queryKey: ["available-skus"] });
+      queryClient.invalidateQueries({ queryKey: ["factory-pricing-data"] });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete pricing: " + error.message,
         variant: "destructive"
       });
     },
@@ -438,6 +463,7 @@ const ConfigurationManagement = () => {
                     <TableHead className="text-right">Cost per Case</TableHead>
                     <TableHead className="text-right">Tax (%)</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -450,6 +476,17 @@ const ConfigurationManagement = () => {
                       <TableCell className="text-right">{pricing.cost_per_case ? `₹${pricing.cost_per_case}` : '-'}</TableCell>
                       <TableCell className="text-right">{pricing.tax ? `${pricing.tax}%` : '-'}</TableCell>
                       <TableCell>{new Date(pricing.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deletePricingMutation.mutate(pricing.id)}
+                          disabled={deletePricingMutation.isPending}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
