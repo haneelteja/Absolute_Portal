@@ -444,6 +444,29 @@ const ConfigurationManagement = () => {
                         {customer.price_per_bottle ? `₹${customer.price_per_bottle}` : '-'}
                       </TableCell>
                       <TableCell>{new Date(customer.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingCustomer(customer);
+                              setIsEditCustomerOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => softDeleteCustomerMutation.mutate(customer.id)}
+                            disabled={softDeleteCustomerMutation.isPending}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
