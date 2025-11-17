@@ -3,8 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 // Force new project configuration - clear any cached values
-const SUPABASE_URL = "https://qkvmdrtfhpcvwvqjuyuu.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdm1kcnRmaHBjdnd2cWp1eXV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMjgyMTgsImV4cCI6MjA3NDgwNDIxOH0.DJeoI0LFeMArVs5s6DV2HP0kYnjWcIVLQEbiCQr97CE";
+// Use environment variables for configuration
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://qkvmdrtfhpcvwvqjuyuu.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdm1kcnRmaHBjdnd2cWp1eXV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMjgyMTgsImV4cCI6MjA3NDgwNDIxOH0.DJeoI0LFeMArVs5s6DV2HP0kYnjWcIVLQEbiCQr97CE";
 
 // Clear any cached auth data
 if (typeof window !== 'undefined') {
