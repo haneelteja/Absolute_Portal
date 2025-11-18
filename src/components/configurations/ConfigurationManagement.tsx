@@ -362,18 +362,29 @@ const ConfigurationManagement = () => {
         throw new Error("Bottles per case must be a valid positive number");
       }
 
-      const { error } = await supabase
-        .from("factory_pricing")
-        .insert({
+      const insertData = {
           pricing_date: data.pricing_date || new Date().toISOString().split('T')[0],
           sku: data.sku,
           bottles_per_case: bottlesPerCase,
           price_per_bottle: pricePerBottle,
           tax: data.tax ? parseFloat(String(data.tax)) : null
           // cost_per_case is a generated column, so we don't insert it
-        });
+        };
 
-      if (error) throw error;
+      console.log('Inserting factory pricing data:', insertData);
+      
+      const { data: insertedData, error } = await supabase
+        .from("factory_pricing")
+        .insert(insertData)
+        .select();
+
+      if (error) {
+        console.error('Supabase insert error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        throw error;
+      }
+      
+      console.log('Successfully inserted:', insertedData);
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Factory pricing added successfully!" });
@@ -698,10 +709,21 @@ const ConfigurationManagement = () => {
   };
 
   // Calculate cost per case for factory pricing
+  // Formula: (bottles_per_case * price_per_bottle) * (1 + tax/100)
   const calculateCostPerCase = () => {
     const bottles = parseFloat(pricingForm.bottles_per_case) || 0;
     const pricePerBottle = parseFloat(pricingForm.price_per_bottle) || 0;
-    return bottles * pricePerBottle;
+    const tax = parseFloat(pricingForm.tax) || 0;
+    
+    // Base cost without tax
+    const baseCost = bottles * pricePerBottle;
+    
+    // Apply tax if provided
+    if (tax > 0) {
+      return baseCost * (1 + tax / 100);
+    }
+    
+    return baseCost;
   };
 
   // Handler functions for advanced customer management
@@ -1182,6 +1204,9 @@ const ConfigurationManagement = () => {
                       disabled
                       className="bg-muted"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Calculated as: (Bottles/Case × Price per Bottle) × (1 + Tax%)
+                    </p>
                   </div>
                   
                   <div className="space-y-2">
