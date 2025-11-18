@@ -74,6 +74,26 @@ const ConfigurationManagement = () => {
     created_at: null
   });
 
+  // Filtering and sorting state for factory pricing
+  const [pricingSearchTerm, setPricingSearchTerm] = useState("");
+  const [pricingColumnFilters, setPricingColumnFilters] = useState({
+    sku: "",
+    pricing_date: "",
+    bottles_per_case: "",
+    price_per_bottle: "",
+    cost_per_case: "",
+    tax: ""
+  });
+  const [pricingColumnSorts, setPricingColumnSorts] = useState<Record<string, "asc" | "desc" | null>>({
+    pricing_date: null,
+    sku: null,
+    bottles_per_case: null,
+    price_per_bottle: null,
+    cost_per_case: null,
+    tax: null,
+    created_at: null
+  });
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -722,6 +742,153 @@ const ConfigurationManagement = () => {
     XLSX.writeFile(wb, `customers_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  // Filter and sort factory pricing
+  const filteredAndSortedFactoryPricing = factoryPricing?.filter((pricing) => {
+    const sku = pricing.sku || '';
+    const pricingDate = pricing.pricing_date ? new Date(pricing.pricing_date).toLocaleDateString() : '';
+    const bottlesPerCase = pricing.bottles_per_case?.toString() || '';
+    const pricePerBottle = pricing.price_per_bottle?.toString() || '';
+    const costPerCase = pricing.cost_per_case?.toString() || '';
+    const tax = pricing.tax?.toString() || '';
+    const createdDate = new Date(pricing.created_at).toLocaleDateString();
+    
+    // Global search filter
+    if (pricingSearchTerm) {
+      const searchLower = pricingSearchTerm.toLowerCase();
+      const matchesGlobalSearch = (
+        sku.toLowerCase().includes(searchLower) ||
+        pricingDate.includes(searchLower) ||
+        bottlesPerCase.includes(searchLower) ||
+        pricePerBottle.includes(searchLower) ||
+        costPerCase.includes(searchLower) ||
+        tax.includes(searchLower) ||
+        createdDate.includes(searchLower)
+      );
+      if (!matchesGlobalSearch) return false;
+    }
+    
+    // Column-specific filters
+    if (pricingColumnFilters.sku && !sku.toLowerCase().includes(pricingColumnFilters.sku.toLowerCase())) return false;
+    if (pricingColumnFilters.pricing_date && pricingDate !== pricingColumnFilters.pricing_date) return false;
+    if (pricingColumnFilters.bottles_per_case && !bottlesPerCase.includes(pricingColumnFilters.bottles_per_case)) return false;
+    if (pricingColumnFilters.price_per_bottle && !pricePerBottle.includes(pricingColumnFilters.price_per_bottle)) return false;
+    if (pricingColumnFilters.cost_per_case && !costPerCase.includes(pricingColumnFilters.cost_per_case)) return false;
+    if (pricingColumnFilters.tax && !tax.includes(pricingColumnFilters.tax)) return false;
+    
+    return true;
+  }).sort((a, b) => {
+    const activeSort = Object.entries(pricingColumnSorts).find(([_, direction]) => direction !== null);
+    
+    if (!activeSort) {
+      // Default: Sort by pricing_date (newest first)
+      const dateA = new Date(a.pricing_date || 0).getTime();
+      const dateB = new Date(b.pricing_date || 0).getTime();
+      return dateB - dateA;
+    }
+
+    const [columnKey, direction] = activeSort;
+    let valueA: string | number, valueB: string | number;
+
+    switch (columnKey) {
+      case 'pricing_date':
+        valueA = new Date(a.pricing_date || 0).getTime();
+        valueB = new Date(b.pricing_date || 0).getTime();
+        break;
+      case 'sku':
+        valueA = (a.sku || '').toLowerCase();
+        valueB = (b.sku || '').toLowerCase();
+        break;
+      case 'bottles_per_case':
+        valueA = a.bottles_per_case || 0;
+        valueB = b.bottles_per_case || 0;
+        break;
+      case 'price_per_bottle':
+        valueA = a.price_per_bottle || 0;
+        valueB = b.price_per_bottle || 0;
+        break;
+      case 'cost_per_case':
+        valueA = a.cost_per_case || 0;
+        valueB = b.cost_per_case || 0;
+        break;
+      case 'tax':
+        valueA = a.tax || 0;
+        valueB = b.tax || 0;
+        break;
+      case 'created_at':
+        valueA = new Date(a.created_at).getTime();
+        valueB = new Date(b.created_at).getTime();
+        break;
+      default:
+        return 0;
+    }
+
+    if (valueA < valueB) return direction === 'asc' ? -1 : 1;
+    if (valueA > valueB) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Handle factory pricing column filter changes
+  const handlePricingColumnFilterChange = (columnKey: string, value: string) => {
+    setPricingColumnFilters(prev => ({
+      ...prev,
+      [columnKey]: value
+    }));
+  };
+
+  // Handle factory pricing column sort changes
+  const handlePricingColumnSortChange = (columnKey: string, direction: "asc" | "desc" | null) => {
+    setPricingColumnSorts(prev => {
+      const newSorts = { ...prev };
+      Object.keys(newSorts).forEach(key => {
+        if (key !== columnKey) {
+          newSorts[key] = null;
+        }
+      });
+      newSorts[columnKey] = direction;
+      return newSorts;
+    });
+  };
+
+  // Clear all factory pricing filters
+  const clearAllPricingFilters = () => {
+    setPricingSearchTerm("");
+    setPricingColumnFilters({
+      sku: "",
+      pricing_date: "",
+      bottles_per_case: "",
+      price_per_bottle: "",
+      cost_per_case: "",
+      tax: ""
+    });
+    setPricingColumnSorts({
+      pricing_date: null,
+      sku: null,
+      bottles_per_case: null,
+      price_per_bottle: null,
+      cost_per_case: null,
+      tax: null,
+      created_at: null
+    });
+  };
+
+  // Export factory pricing to Excel
+  const exportFactoryPricingToExcel = () => {
+    const exportData = filteredAndSortedFactoryPricing?.map((pricing) => ({
+      'Date': pricing.pricing_date ? new Date(pricing.pricing_date).toLocaleDateString() : '',
+      'SKU': pricing.sku || '',
+      'Bottles/Case': pricing.bottles_per_case || '',
+      'Price per Bottle': pricing.price_per_bottle ? `₹${pricing.price_per_bottle}` : '',
+      'Cost per Case': pricing.cost_per_case ? `₹${pricing.cost_per_case}` : '',
+      'Tax (%)': pricing.tax ? `${pricing.tax}%` : '',
+      'Created': new Date(pricing.created_at).toLocaleDateString()
+    })) || [];
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Factory Pricing");
+    XLSX.writeFile(wb, `factory_pricing_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   // Calculate price per case based on selected SKU and price per bottle
   const calculatePricePerCase = () => {
     if (!customerForm.sku || !customerForm.price_per_bottle) return "";
@@ -858,116 +1025,78 @@ const ConfigurationManagement = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCustomerSubmit} className="space-y-4">
-                <div className="space-y-6">
-                  {/* First Row: Date, Client Name, Branch */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="pricing-date">Pricing Date *</Label>
-                      <Input
-                        id="pricing-date"
-                        type="date"
-                        value={customerForm.pricing_date}
-                        onChange={(e) => setCustomerForm({...customerForm, pricing_date: e.target.value})}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="client-name">Client Name *</Label>
-                      <Input
-                        id="client-name"
-                        value={customerForm.client_name}
-                        onChange={(e) => setCustomerForm({...customerForm, client_name: e.target.value})}
-                        placeholder="e.g., ABC Company"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="branch">Branch *</Label>
-                      <Input
-                        id="branch"
-                        value={customerForm.branch}
-                        onChange={(e) => setCustomerForm({...customerForm, branch: e.target.value})}
-                        placeholder="e.g., Mumbai"
-                      />
-                    </div>
+              <form onSubmit={handleCustomerSubmit} className="flex items-end gap-2">
+                <div className="flex-1 grid grid-cols-5 gap-2">
+                  <div>
+                    <Label htmlFor="pricing-date" className="text-xs">Date *</Label>
+                    <Input
+                      id="pricing-date"
+                      type="date"
+                      value={customerForm.pricing_date}
+                      onChange={(e) => setCustomerForm({...customerForm, pricing_date: e.target.value})}
+                      className="h-9"
+                    />
                   </div>
-                  
-                  {/* Second Row: SKU, Price per Bottle, Price per Case */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="customer-sku">SKU</Label>
-                      <Select 
-                        value={customerForm.sku} 
-                        onValueChange={(value) => setCustomerForm({...customerForm, sku: value})}
-                        disabled={availableSKUsLoading || !!availableSKUsError}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={availableSKUsLoading ? "Loading SKUs..." : availableSKUsError ? "Error loading SKUs" : "Select SKU"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableSKUs && availableSKUs.length > 0 ? (
-                            availableSKUs.map((sku) => (
-                              <SelectItem key={sku} value={sku}>
-                                {sku}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-skus" disabled>
-                              No SKUs available
+                  <div>
+                    <Label htmlFor="client-name" className="text-xs">Client Name *</Label>
+                    <Input
+                      id="client-name"
+                      value={customerForm.client_name}
+                      onChange={(e) => setCustomerForm({...customerForm, client_name: e.target.value})}
+                      placeholder="Client Name"
+                      className="h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="branch" className="text-xs">Branch *</Label>
+                    <Input
+                      id="branch"
+                      value={customerForm.branch}
+                      onChange={(e) => setCustomerForm({...customerForm, branch: e.target.value})}
+                      placeholder="Branch"
+                      className="h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customer-sku" className="text-xs">SKU</Label>
+                    <Select 
+                      value={customerForm.sku} 
+                      onValueChange={(value) => setCustomerForm({...customerForm, sku: value})}
+                      disabled={availableSKUsLoading || !!availableSKUsError}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder={availableSKUsLoading ? "Loading..." : availableSKUsError ? "Error" : "Select SKU"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSKUs && availableSKUs.length > 0 ? (
+                          availableSKUs.map((sku) => (
+                            <SelectItem key={sku} value={sku}>
+                              {sku}
                             </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {availableSKUsError && (
-                        <p className="text-sm text-destructive">
-                          Error loading SKUs. Please check your connection and try again.
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="customer-price-per-bottle">Price per Bottle (₹)</Label>
-                      <Input
-                        id="customer-price-per-bottle"
-                        type="number"
-                        step="0.01"
-                        value={customerForm.price_per_bottle}
-                        onChange={(e) => {
-                          const newPricePerBottle = e.target.value;
-                          setCustomerForm({...customerForm, price_per_bottle: newPricePerBottle});
-                        }}
-                        placeholder="12.50"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="price-per-case">Price per Case (₹)</Label>
-                      <Input
-                        id="price-per-case"
-                        type="number"
-                        step="0.01"
-                        value={calculatePricePerCase()}
-                        disabled
-                        className="bg-muted"
-                        placeholder="Auto-calculated"
-                      />
-                      {customerForm.sku && customerForm.price_per_bottle && !calculatePricePerCase() && (
-                        <p className="text-sm text-muted-foreground">
-                          Select a valid SKU and enter price per bottle to see calculation
-                        </p>
-                      )}
-                      {calculatePricePerCase() && (
-                        <p className="text-sm text-green-600">
-                          ✓ Auto-calculated based on SKU and price per bottle
-                        </p>
-                      )}
-                    </div>
+                          ))
+                        ) : (
+                          <SelectItem value="no-skus" disabled>
+                            No SKUs available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="customer-price-per-bottle" className="text-xs">Price/Bottle (₹)</Label>
+                    <Input
+                      id="customer-price-per-bottle"
+                      type="number"
+                      step="0.01"
+                      value={customerForm.price_per_bottle}
+                      onChange={(e) => setCustomerForm({...customerForm, price_per_bottle: e.target.value})}
+                      placeholder="12.50"
+                      className="h-9"
+                    />
                   </div>
                 </div>
-                
-                <Button type="submit" disabled={customerMutation.isPending}>
-                  {customerMutation.isPending ? "Adding..." : "Add Customer"}
+                <Button type="submit" disabled={customerMutation.isPending} className="h-9">
+                  {customerMutation.isPending ? "Adding..." : "Add"}
                 </Button>
               </form>
             </CardContent>
@@ -1199,41 +1328,41 @@ const ConfigurationManagement = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handlePricingSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="pricing-date">Date *</Label>
+              <form onSubmit={handlePricingSubmit} className="flex items-end gap-2">
+                <div className="flex-1 grid grid-cols-6 gap-2">
+                  <div>
+                    <Label htmlFor="pricing-date" className="text-xs">Date *</Label>
                     <Input
                       id="pricing-date"
                       type="date"
                       value={pricingForm.pricing_date}
                       onChange={(e) => setPricingForm({...pricingForm, pricing_date: e.target.value})}
+                      className="h-9"
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="pricing-sku">SKU *</Label>
+                  <div>
+                    <Label htmlFor="pricing-sku" className="text-xs">SKU *</Label>
                     <Input
                       id="pricing-sku"
                       value={pricingForm.sku}
                       onChange={(e) => setPricingForm({...pricingForm, sku: e.target.value})}
-                      placeholder="e.g., SKU001"
+                      placeholder="SKU"
+                      className="h-9"
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="bottles-per-case-pricing">No of Bottles/Case *</Label>
+                  <div>
+                    <Label htmlFor="bottles-per-case-pricing" className="text-xs">Bottles/Case *</Label>
                     <Input
                       id="bottles-per-case-pricing"
                       type="number"
                       value={pricingForm.bottles_per_case}
                       onChange={(e) => setPricingForm({...pricingForm, bottles_per_case: e.target.value})}
                       placeholder="12"
+                      className="h-9"
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="price-per-bottle">Price per Bottle (₹) *</Label>
+                  <div>
+                    <Label htmlFor="price-per-bottle" className="text-xs">Price/Bottle (₹) *</Label>
                     <Input
                       id="price-per-bottle"
                       type="number"
@@ -1241,26 +1370,11 @@ const ConfigurationManagement = () => {
                       value={pricingForm.price_per_bottle}
                       onChange={(e) => setPricingForm({...pricingForm, price_per_bottle: e.target.value})}
                       placeholder="12.50"
+                      className="h-9"
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="cost-per-case">Cost per Case (₹)</Label>
-                    <Input
-                      id="cost-per-case"
-                      type="number"
-                      step="0.01"
-                      value={calculateCostPerCase().toFixed(2)}
-                      disabled
-                      className="bg-muted"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Calculated as: (Bottles/Case × Price per Bottle) × (1 + Tax%)
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="tax">TAX (%)</Label>
+                  <div>
+                    <Label htmlFor="tax" className="text-xs">TAX (%)</Label>
                     <Input
                       id="tax"
                       type="number"
@@ -1268,12 +1382,23 @@ const ConfigurationManagement = () => {
                       value={pricingForm.tax}
                       onChange={(e) => setPricingForm({...pricingForm, tax: e.target.value})}
                       placeholder="18.00"
+                      className="h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="cost-per-case" className="text-xs">Cost/Case (₹)</Label>
+                    <Input
+                      id="cost-per-case"
+                      type="number"
+                      step="0.01"
+                      value={calculateCostPerCase().toFixed(2)}
+                      disabled
+                      className="bg-muted h-9"
                     />
                   </div>
                 </div>
-                
-                <Button type="submit" disabled={pricingMutation.isPending}>
-                  {pricingMutation.isPending ? "Adding..." : "Add Factory Pricing"}
+                <Button type="submit" disabled={pricingMutation.isPending} className="h-9">
+                  {pricingMutation.isPending ? "Adding..." : "Add"}
                 </Button>
               </form>
             </CardContent>
@@ -1281,60 +1406,160 @@ const ConfigurationManagement = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Factory Pricing History</CardTitle>
-              <CardDescription>
-                Historical pricing data from the factory
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Factory Pricing History</CardTitle>
+                  <CardDescription>
+                    Historical pricing data from the factory
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {filteredAndSortedFactoryPricing?.length || 0} of {factoryPricing?.length || 0} records
+                  </span>
+                  <Button
+                    onClick={exportFactoryPricingToExcel}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Excel
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
+              {/* Search and Filter Controls */}
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search by SKU, date, price, tax..."
+                      value={pricingSearchTerm}
+                      onChange={(e) => setPricingSearchTerm(e.target.value)}
+                      className="max-w-sm"
+                    />
+                  </div>
+                  <Button
+                    onClick={clearAllPricingFilters}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead className="text-right">Bottles/Case</TableHead>
-                    <TableHead className="text-right">Price per Bottle</TableHead>
-                    <TableHead className="text-right">Cost per Case</TableHead>
-                    <TableHead className="text-right">Tax (%)</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>
+                      <ColumnFilter
+                        columnKey="pricing_date"
+                        label="Date"
+                        value={pricingColumnFilters.pricing_date}
+                        sortDirection={pricingColumnSorts.pricing_date}
+                        onFilterChange={(value) => handlePricingColumnFilterChange('pricing_date', value)}
+                        onSortChange={(direction) => handlePricingColumnSortChange('pricing_date', direction)}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <ColumnFilter
+                        columnKey="sku"
+                        label="SKU"
+                        value={pricingColumnFilters.sku}
+                        sortDirection={pricingColumnSorts.sku}
+                        onFilterChange={(value) => handlePricingColumnFilterChange('sku', value)}
+                        onSortChange={(direction) => handlePricingColumnSortChange('sku', direction)}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <ColumnFilter
+                        columnKey="bottles_per_case"
+                        label="Bottles/Case"
+                        value={pricingColumnFilters.bottles_per_case}
+                        sortDirection={pricingColumnSorts.bottles_per_case}
+                        onFilterChange={(value) => handlePricingColumnFilterChange('bottles_per_case', value)}
+                        onSortChange={(direction) => handlePricingColumnSortChange('bottles_per_case', direction)}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <ColumnFilter
+                        columnKey="price_per_bottle"
+                        label="Price/Bottle"
+                        value={pricingColumnFilters.price_per_bottle}
+                        sortDirection={pricingColumnSorts.price_per_bottle}
+                        onFilterChange={(value) => handlePricingColumnFilterChange('price_per_bottle', value)}
+                        onSortChange={(direction) => handlePricingColumnSortChange('price_per_bottle', direction)}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <ColumnFilter
+                        columnKey="cost_per_case"
+                        label="Cost/Case"
+                        value={pricingColumnFilters.cost_per_case}
+                        sortDirection={pricingColumnSorts.cost_per_case}
+                        onFilterChange={(value) => handlePricingColumnFilterChange('cost_per_case', value)}
+                        onSortChange={(direction) => handlePricingColumnSortChange('cost_per_case', direction)}
+                      />
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <ColumnFilter
+                        columnKey="tax"
+                        label="Tax (%)"
+                        value={pricingColumnFilters.tax}
+                        sortDirection={pricingColumnSorts.tax}
+                        onFilterChange={(value) => handlePricingColumnFilterChange('tax', value)}
+                        onSortChange={(direction) => handlePricingColumnSortChange('tax', direction)}
+                      />
+                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {factoryPricing?.map((pricing) => (
-                    <TableRow key={pricing.id}>
-                     <TableCell>{new Date(pricing.pricing_date).toLocaleDateString()}</TableCell>
-                      <TableCell className="font-medium">{pricing.sku}</TableCell>
-                      <TableCell className="text-right">{pricing.bottles_per_case || '-'}</TableCell>
-                      <TableCell className="text-right">₹{pricing.price_per_bottle}</TableCell>
-                      <TableCell className="text-right">{pricing.cost_per_case ? `₹${pricing.cost_per_case}` : '-'}</TableCell>
-                      <TableCell className="text-right">{pricing.tax ? `${pricing.tax}%` : '-'}</TableCell>
-                      <TableCell>{new Date(pricing.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingPricing(pricing);
-                              setIsEditPricingOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deletePricingMutation.mutate(pricing.id)}
-                            disabled={deletePricingMutation.isPending}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                  {filteredAndSortedFactoryPricing && filteredAndSortedFactoryPricing.length > 0 ? (
+                    filteredAndSortedFactoryPricing.map((pricing) => (
+                      <TableRow key={pricing.id}>
+                        <TableCell className="text-xs">{new Date(pricing.pricing_date).toLocaleDateString()}</TableCell>
+                        <TableCell className="font-medium text-xs">{pricing.sku}</TableCell>
+                        <TableCell className="text-right text-xs">{pricing.bottles_per_case || '-'}</TableCell>
+                        <TableCell className="text-right text-xs">₹{pricing.price_per_bottle}</TableCell>
+                        <TableCell className="text-right text-xs">{pricing.cost_per_case ? `₹${pricing.cost_per_case}` : '-'}</TableCell>
+                        <TableCell className="text-right text-xs">{pricing.tax ? `${pricing.tax}%` : '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingPricing(pricing);
+                                setIsEditPricingOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deletePricingMutation.mutate(pricing.id)}
+                              disabled={deletePricingMutation.isPending}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        {factoryPricing && factoryPricing.length === 0 
+                          ? "No factory pricing data found. Start by adding factory pricing."
+                          : "No results found matching your search criteria."}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
