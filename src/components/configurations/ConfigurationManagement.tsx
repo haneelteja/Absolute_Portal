@@ -222,14 +222,36 @@ const ConfigurationManagement = () => {
   // Update customer mutation
   const updateCustomerMutation = useMutation({
     mutationFn: async (data: { id: string } & typeof customerForm) => {
-      const updateData = {
-        client_name: data.client_name,
-        branch: data.branch,
-        sku: data.sku,
-        price_per_case: data.price_per_case ? parseFloat(data.price_per_case) : null,
-        price_per_bottle: data.price_per_bottle ? parseFloat(data.price_per_bottle) : null,
-        pricing_date: data.pricing_date
-      };
+      // First, check if updating client_name or branch would create a duplicate
+      if (data.client_name && data.branch) {
+        const { data: existingCustomers, error: checkError } = await supabase
+          .from("customers")
+          .select("id")
+          .eq("client_name", data.client_name)
+          .eq("branch", data.branch)
+          .neq("id", data.id)
+          .limit(1);
+
+        if (checkError) {
+          console.error('Error checking for duplicates:', checkError);
+        } else if (existingCustomers && existingCustomers.length > 0) {
+          throw new Error(`A customer with Client Name "${data.client_name}" and Branch "${data.branch}" already exists. Please use different values.`);
+        }
+      }
+
+      const updateData: any = {};
+      
+      // Only include fields that are provided
+      if (data.client_name) updateData.client_name = data.client_name;
+      if (data.branch !== undefined) updateData.branch = data.branch;
+      if (data.sku !== undefined) updateData.sku = data.sku;
+      if (data.price_per_case !== undefined) {
+        updateData.price_per_case = data.price_per_case ? parseFloat(data.price_per_case) : null;
+      }
+      if (data.price_per_bottle !== undefined) {
+        updateData.price_per_bottle = data.price_per_bottle ? parseFloat(data.price_per_bottle) : null;
+      }
+      if (data.pricing_date) updateData.pricing_date = data.pricing_date;
 
       console.log('Updating customer:', { id: data.id, ...updateData });
 
@@ -763,8 +785,12 @@ const ConfigurationManagement = () => {
     
     updateCustomerMutation.mutate({
       id: editingCustomer.id,
-      ...editForm,
-      pricing_date: customerForm.pricing_date
+      client_name: editForm.client_name,
+      branch: editForm.branch,
+      sku: editForm.sku,
+      price_per_case: editForm.price_per_case,
+      price_per_bottle: editForm.price_per_bottle,
+      pricing_date: editingCustomer.pricing_date || customerForm.pricing_date || new Date().toISOString().split('T')[0]
     });
   };
 
