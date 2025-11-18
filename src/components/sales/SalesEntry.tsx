@@ -1077,27 +1077,26 @@ const SalesEntry = () => {
   const saleMutation = useMutation({
     mutationFn: async (data: SaleForm) => {
       // Create sale transaction for Aamodha
+      const amountValue = parseFloat(data.amount);
+      
       const saleData: any = {
         customer_id: data.customer_id,
         transaction_type: "sale",
-        amount: parseFloat(data.amount),
+        amount: amountValue,
+        total_amount: amountValue, // Set total_amount equal to amount
         quantity: data.quantity ? parseInt(data.quantity) : null,
-        sku: data.sku,
-        description: data.description,
-        transaction_date: data.transaction_date
+        sku: data.sku || null,
+        description: data.description || null,
+        transaction_date: data.transaction_date,
+        branch: data.branch || null
       };
-
-      // Add total_amount only if amount is valid (some databases may not have this column)
-      const amountValue = parseFloat(data.amount);
-      if (!isNaN(amountValue)) {
-        saleData.total_amount = amountValue;
-      }
       
       console.log('Inserting sales transaction:', saleData);
       
       const { error: saleError } = await supabase
         .from("sales_transactions")
-        .insert(saleData);
+        .insert(saleData)
+        .select();
 
       if (saleError) {
         console.error("Sales transaction error:", saleError);
