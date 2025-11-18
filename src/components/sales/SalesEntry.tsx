@@ -1100,6 +1100,13 @@ const SalesEntry = () => {
 
       if (saleError) {
         console.error("Sales transaction error:", saleError);
+        console.error("Error details:", JSON.stringify(saleError, null, 2));
+        
+        // Handle schema cache error - column exists but cache is stale
+        if (saleError.code === 'PGRST204' || saleError.message?.includes('schema cache') || saleError.message?.includes('Could not find')) {
+          throw new Error("Database schema cache issue detected. The column exists but Supabase cache needs refresh. Please try again in a few moments or contact support.");
+        }
+        
         throw saleError;
       }
 
