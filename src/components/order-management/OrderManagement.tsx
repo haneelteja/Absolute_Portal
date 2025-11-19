@@ -114,10 +114,19 @@ const OrderManagement = () => {
       
       // Always map client_name to client for compatibility with Order interface
       // This ensures the Client column displays correctly regardless of data source
-      const mappedData = ordersData.map((order: any) => ({
-        ...order,
-        client: order.client_name || order.client || ''
-      }));
+      // The RPC function returns 'client' (mapped from client_name), so prioritize that
+      const mappedData = ordersData.map((order: any) => {
+        // RPC function returns 'client' field (mapped from client_name)
+        // Fallback query returns 'client_name' field
+        const clientValue = order.client || order.client_name || '';
+        if (!clientValue) {
+          console.warn('Order missing client data:', order);
+        }
+        return {
+          ...order,
+          client: clientValue
+        };
+      });
       
       // Apply the exact sorting logic in JavaScript
       return mappedData.sort((a, b) => {
