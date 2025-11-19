@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { MoreHorizontal, Plus, Download, Edit, Trash2 } from 'lucide-react';
+import { ColumnFilter } from '@/components/ui/column-filter';
 import * as XLSX from 'xlsx';
 
 interface Order {
@@ -51,6 +52,46 @@ const OrderManagement = () => {
     sku: '',
     number_of_cases: '',
     tentative_delivery_time: ''
+  });
+
+  // Filter and sort states for Current Orders
+  const [ordersSearchTerm, setOrdersSearchTerm] = useState("");
+  const [ordersColumnFilters, setOrdersColumnFilters] = useState({
+    client: "",
+    branch: "",
+    sku: "",
+    number_of_cases: "",
+    tentative_delivery_date: "",
+    status: "",
+  });
+  const [ordersColumnSorts, setOrdersColumnSorts] = useState<{
+    [key: string]: 'asc' | 'desc' | null;
+  }>({
+    client: null,
+    branch: null,
+    sku: null,
+    number_of_cases: null,
+    tentative_delivery_date: null,
+    status: null,
+  });
+
+  // Filter and sort states for Orders Dispatch
+  const [dispatchSearchTerm, setDispatchSearchTerm] = useState("");
+  const [dispatchColumnFilters, setDispatchColumnFilters] = useState({
+    client: "",
+    branch: "",
+    sku: "",
+    cases: "",
+    delivery_date: "",
+  });
+  const [dispatchColumnSorts, setDispatchColumnSorts] = useState<{
+    [key: string]: 'asc' | 'desc' | null;
+  }>({
+    client: null,
+    branch: null,
+    sku: null,
+    cases: null,
+    delivery_date: null,
   });
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -446,17 +487,217 @@ const OrderManagement = () => {
     dispatchOrderMutation.mutate(order);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
-      deleteOrderMutation.mutate(id);
-    }
+  // Fetch Orders Dispatch
+  const { data: ordersDispatch } = useQuery({
+    queryKey: ["orders-dispatch"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders_dispatch")
+        .select("*")
+        .order("delivery_date", { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching orders dispatch:", error);
+        return [];
+      }
+      
+      return data || [];
+    },
+  });
+
+  // Filter and sort handlers for Current Orders
+  const handleOrdersColumnFilterChange = (columnKey: string, value: string) => {
+    setOrdersColumnFilters(prev => ({
+      ...prev,
+      [columnKey]: value
+    }));
   };
 
-  const exportToExcel = () => {
-    if (!orders) return;
+  const handleOrdersColumnSortChange = (columnKey: string, direction: 'asc' | 'desc' | null) => {
+    setOrdersColumnSorts(prev => {
+      const newSorts = { ...prev };
+      // Clear other sorts
+      Object.keys(newSorts).forEach(key => {
+        if (key !== columnKey) newSorts[key] = null;
+      });
+      newSorts[columnKey] = direction;
+      return newSorts;
+    });
+  };
 
-    const exportData = orders.map(order => ({
-        'Client': (order as any).client_name || order.client,
+  const clearAllOrdersFilters = () => {
+    setOrdersSearchTerm("");
+    setOrdersColumnFilters({
+      client: "",
+      branch: "",
+      sku: "",
+      number_of_cases: "",
+      tentative_delivery_date: "",
+      status: "",
+    });
+    setOrdersColumnSorts({
+      client: null,
+      branch: null,
+      sku: null,
+      number_of_cases: null,
+      tentative_delivery_date: null,
+      status: null,
+    });
+  };
+
+  // Filter and sort handlers for Orders Dispatch
+  const handleDispatchColumnFilterChange = (columnKey: string, value: string) => {
+    setDispatchColumnFilters(prev => ({
+      ...prev,
+      [columnKey]: value
+    }));
+  };
+
+  const handleDispatchColumnSortChange = (columnKey: string, direction: 'asc' | 'desc' | null) => {
+    setDispatchColumnSorts(prev => {
+      const newSorts = { ...prev };
+      // Clear other sorts
+      Object.keys(newSorts).forEach(key => {
+        if (key !== columnKey) newSorts[key] = null;
+      });
+      newSorts[columnKey] = direction;
+      return newSorts;
+    });
+  };
+
+  const clearAllDispatchFilters = () => {
+    setDispatchSearchTerm("");
+    setDispatchColumnFilters({
+      client: "",
+      branch: "",
+      sku: "",
+      cases: "",
+      delivery_date: "",
+    });
+    setDispatchColumnSorts({
+      client: null,
+      branch: null,
+      sku: null,
+      cases: null,
+      delivery_date: null,
+    });
+  };
+
+  // Filtered and sorted Current Orders
+  const filteredAndSortedOrders = useMemo(() => {
+    if (!orders) return [];
+
+    return orders.filter(order => {
+      // Global search
+      if (ordersSearchTerm) {
+        const searchLower = ordersSearchTerm.toLowerCase();
+        const matchesGlobalSearch = (
+          order.client?.toLowerCase().includes(searchLower) ||
+          order.branch?.toLowerCase().includes(searchLower) ||
+          order.sku?.toLowerCase().includes(searchLower) ||
+          order.number_of_cases?.toString().includes(searchLower) ||
+          order.tentative_delivery_date?.includes(searchLower) ||
+          order.status?.toLowerCase().includes(searchLower)
+        );
+        if (!matchesGlobalSearch) return false;
+      }
+
+      // Column filters
+      if (ordersColumnFilters.client && !order.client?.toLowerCase().includes(ordersColumnFilters.client.toLowerCase())) return false;
+      if (ordersColumnFilters.branch && !order.branch?.toLowerCase().includes(ordersColumnFilters.branch.toLowerCase())) return false;
+      if (ordersColumnFilters.sku && !order.sku?.toLowerCase().includes(ordersColumnFilters.sku.toLowerCase())) return false;
+      if (ordersColumnFilters.number_of_cases && order.number_of_cases?.toString() !== ordersColumnFilters.number_of_cases) return false;
+      if (ordersColumnFilters.tentative_delivery_date && order.tentative_delivery_date !== ordersColumnFilters.tentative_delivery_date) return false;
+      if (ordersColumnFilters.status && order.status !== ordersColumnFilters.status) return false;
+
+      return true;
+    }).sort((a, b) => {
+      const activeSort = Object.entries(ordersColumnSorts).find(([_, direction]) => direction !== null);
+      if (!activeSort) return 0;
+
+      const [columnKey, direction] = activeSort;
+      let aValue: any = a[columnKey as keyof Order];
+      let bValue: any = b[columnKey as keyof Order];
+
+      if (columnKey === 'number_of_cases') {
+        aValue = Number(aValue);
+        bValue = Number(bValue);
+      }
+
+      if (aValue === null || aValue === undefined) return 1;
+      if (bValue === null || bValue === undefined) return -1;
+
+      if (direction === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+  }, [orders, ordersSearchTerm, ordersColumnFilters, ordersColumnSorts]);
+
+  // Filtered and sorted Orders Dispatch
+  const filteredAndSortedDispatch = useMemo(() => {
+    if (!ordersDispatch) return [];
+
+    return ordersDispatch.filter((order: any) => {
+      // Global search
+      if (dispatchSearchTerm) {
+        const searchLower = dispatchSearchTerm.toLowerCase();
+        const matchesGlobalSearch = (
+          order.client?.toLowerCase().includes(searchLower) ||
+          order.branch?.toLowerCase().includes(searchLower) ||
+          order.sku?.toLowerCase().includes(searchLower) ||
+          order.cases?.toString().includes(searchLower) ||
+          order.delivery_date?.includes(searchLower)
+        );
+        if (!matchesGlobalSearch) return false;
+      }
+
+      // Column filters
+      if (dispatchColumnFilters.client && !order.client?.toLowerCase().includes(dispatchColumnFilters.client.toLowerCase())) return false;
+      if (dispatchColumnFilters.branch && !order.branch?.toLowerCase().includes(dispatchColumnFilters.branch.toLowerCase())) return false;
+      if (dispatchColumnFilters.sku && !order.sku?.toLowerCase().includes(dispatchColumnFilters.sku.toLowerCase())) return false;
+      if (dispatchColumnFilters.cases && order.cases?.toString() !== dispatchColumnFilters.cases) return false;
+      if (dispatchColumnFilters.delivery_date && order.delivery_date !== dispatchColumnFilters.delivery_date) return false;
+
+      return true;
+    }).sort((a: any, b: any) => {
+      const activeSort = Object.entries(dispatchColumnSorts).find(([_, direction]) => direction !== null);
+      if (!activeSort) return 0;
+
+      const [columnKey, direction] = activeSort;
+      let aValue: any = a[columnKey];
+      let bValue: any = b[columnKey];
+
+      if (columnKey === 'cases') {
+        aValue = Number(aValue);
+        bValue = Number(bValue);
+      }
+
+      if (aValue === null || aValue === undefined) return 1;
+      if (bValue === null || bValue === undefined) return -1;
+
+      if (direction === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+  }, [ordersDispatch, dispatchSearchTerm, dispatchColumnFilters, dispatchColumnSorts]);
+
+  // Export Current Orders to Excel
+  const exportCurrentOrdersToExcel = () => {
+    if (!filteredAndSortedOrders || filteredAndSortedOrders.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No orders to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const exportData = filteredAndSortedOrders.map(order => ({
+      'Client': order.client || (order as any).client_name || '',
       'Branch': order.branch,
       'SKU': order.sku,
       'Number of Cases': order.number_of_cases,
@@ -467,18 +708,59 @@ const OrderManagement = () => {
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Orders');
-    XLSX.writeFile(wb, `orders_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Current Orders');
+    
+    const fileName = `Current_Orders_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+    toast({
+      title: "Success",
+      description: `Exported ${exportData.length} orders to ${fileName}`,
+    });
+  };
+
+  // Export Orders Dispatch to Excel
+  const exportOrdersDispatchToExcel = () => {
+    if (!filteredAndSortedDispatch || filteredAndSortedDispatch.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No dispatch data to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const exportData = filteredAndSortedDispatch.map((order: any) => ({
+      'Client': order.client,
+      'Branch': order.branch,
+      'SKU': order.sku,
+      'Cases': order.cases,
+      'Delivery Date': order.delivery_date,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Orders Dispatch');
+    
+    const fileName = `Orders_Dispatch_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+    toast({
+      title: "Success",
+      description: `Exported ${exportData.length} dispatch records to ${fileName}`,
+    });
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this order?')) {
+      deleteOrderMutation.mutate(id);
+    }
   };
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Order Management</h1>
-        <Button onClick={exportToExcel} variant="outline" className="flex items-center gap-2">
-          <Download className="h-4 w-4" />
-          Export to Excel
-        </Button>
       </div>
 
       {/* Create Order Form */}
@@ -602,30 +884,135 @@ const OrderManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Orders Table */}
+      {/* Current Orders Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Orders ({orders?.length || 0})</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Current Orders ({filteredAndSortedOrders?.length || 0})</CardTitle>
+            <div className="flex gap-2">
+              <Button onClick={clearAllOrdersFilters} variant="outline" size="sm">
+                Clear Filters
+              </Button>
+              <Button onClick={exportCurrentOrdersToExcel} variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Export to Excel
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
+          {/* Search and Filters */}
+          <div className="mb-4 flex gap-2">
+            <Input
+              placeholder="Search orders..."
+              value={ordersSearchTerm}
+              onChange={(e) => setOrdersSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+
           {isLoading ? (
             <div className="text-center py-8">Loading orders...</div>
-          ) : orders && orders.length > 0 ? (
+          ) : filteredAndSortedOrders && filteredAndSortedOrders.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Branch</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Cases</TableHead>
-                    <TableHead>Tentative Delivery</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        Client
+                        <ColumnFilter
+                          columnKey="client"
+                          columnName="Client"
+                          filterValue={ordersColumnFilters.client}
+                          onFilterChange={(value) => handleOrdersColumnFilterChange('client', value as string)}
+                          onClearFilter={() => handleOrdersColumnFilterChange('client', '')}
+                          sortDirection={ordersColumnSorts.client}
+                          onSortChange={(direction) => handleOrdersColumnSortChange('client', direction)}
+                          dataType="text"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        Branch
+                        <ColumnFilter
+                          columnKey="branch"
+                          columnName="Branch"
+                          filterValue={ordersColumnFilters.branch}
+                          onFilterChange={(value) => handleOrdersColumnFilterChange('branch', value as string)}
+                          onClearFilter={() => handleOrdersColumnFilterChange('branch', '')}
+                          sortDirection={ordersColumnSorts.branch}
+                          onSortChange={(direction) => handleOrdersColumnSortChange('branch', direction)}
+                          dataType="text"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        SKU
+                        <ColumnFilter
+                          columnKey="sku"
+                          columnName="SKU"
+                          filterValue={ordersColumnFilters.sku}
+                          onFilterChange={(value) => handleOrdersColumnFilterChange('sku', value as string)}
+                          onClearFilter={() => handleOrdersColumnFilterChange('sku', '')}
+                          sortDirection={ordersColumnSorts.sku}
+                          onSortChange={(direction) => handleOrdersColumnSortChange('sku', direction)}
+                          dataType="text"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        Cases
+                        <ColumnFilter
+                          columnKey="number_of_cases"
+                          columnName="Cases"
+                          filterValue={ordersColumnFilters.number_of_cases}
+                          onFilterChange={(value) => handleOrdersColumnFilterChange('number_of_cases', value as string)}
+                          onClearFilter={() => handleOrdersColumnFilterChange('number_of_cases', '')}
+                          sortDirection={ordersColumnSorts.number_of_cases}
+                          onSortChange={(direction) => handleOrdersColumnSortChange('number_of_cases', direction)}
+                          dataType="number"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        Tentative Delivery
+                        <ColumnFilter
+                          columnKey="tentative_delivery_date"
+                          columnName="Tentative Delivery"
+                          filterValue={ordersColumnFilters.tentative_delivery_date}
+                          onFilterChange={(value) => handleOrdersColumnFilterChange('tentative_delivery_date', value as string)}
+                          onClearFilter={() => handleOrdersColumnFilterChange('tentative_delivery_date', '')}
+                          sortDirection={ordersColumnSorts.tentative_delivery_date}
+                          onSortChange={(direction) => handleOrdersColumnSortChange('tentative_delivery_date', direction)}
+                          dataType="date"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        Status
+                        <ColumnFilter
+                          columnKey="status"
+                          columnName="Status"
+                          filterValue={ordersColumnFilters.status}
+                          onFilterChange={(value) => handleOrdersColumnFilterChange('status', value as string)}
+                          onClearFilter={() => handleOrdersColumnFilterChange('status', '')}
+                          sortDirection={ordersColumnSorts.status}
+                          onSortChange={(direction) => handleOrdersColumnSortChange('status', direction)}
+                          dataType="text"
+                        />
+                      </div>
+                    </TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.map((order) => (
+                  {filteredAndSortedOrders.map((order) => (
                     <TableRow key={order.id}>
                       <TableCell>{order.client || (order as any).client_name || ''}</TableCell>
                       <TableCell>{order.branch}</TableCell>
@@ -692,6 +1079,136 @@ const OrderManagement = () => {
           ) : (
             <div className="text-center py-8 text-gray-500">
               No orders found. Create your first order above.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Orders Dispatch Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Orders Dispatch ({filteredAndSortedDispatch?.length || 0})</CardTitle>
+            <div className="flex gap-2">
+              <Button onClick={clearAllDispatchFilters} variant="outline" size="sm">
+                Clear Filters
+              </Button>
+              <Button onClick={exportOrdersDispatchToExcel} variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Export to Excel
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Search and Filters */}
+          <div className="mb-4 flex gap-2">
+            <Input
+              placeholder="Search dispatch orders..."
+              value={dispatchSearchTerm}
+              onChange={(e) => setDispatchSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+
+          {filteredAndSortedDispatch && filteredAndSortedDispatch.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        Client
+                        <ColumnFilter
+                          columnKey="client"
+                          columnName="Client"
+                          filterValue={dispatchColumnFilters.client}
+                          onFilterChange={(value) => handleDispatchColumnFilterChange('client', value as string)}
+                          onClearFilter={() => handleDispatchColumnFilterChange('client', '')}
+                          sortDirection={dispatchColumnSorts.client}
+                          onSortChange={(direction) => handleDispatchColumnSortChange('client', direction)}
+                          dataType="text"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        Branch
+                        <ColumnFilter
+                          columnKey="branch"
+                          columnName="Branch"
+                          filterValue={dispatchColumnFilters.branch}
+                          onFilterChange={(value) => handleDispatchColumnFilterChange('branch', value as string)}
+                          onClearFilter={() => handleDispatchColumnFilterChange('branch', '')}
+                          sortDirection={dispatchColumnSorts.branch}
+                          onSortChange={(direction) => handleDispatchColumnSortChange('branch', direction)}
+                          dataType="text"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        SKU
+                        <ColumnFilter
+                          columnKey="sku"
+                          columnName="SKU"
+                          filterValue={dispatchColumnFilters.sku}
+                          onFilterChange={(value) => handleDispatchColumnFilterChange('sku', value as string)}
+                          onClearFilter={() => handleDispatchColumnFilterChange('sku', '')}
+                          sortDirection={dispatchColumnSorts.sku}
+                          onSortChange={(direction) => handleDispatchColumnSortChange('sku', direction)}
+                          dataType="text"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <div className="flex items-center gap-2 justify-end">
+                        Cases
+                        <ColumnFilter
+                          columnKey="cases"
+                          columnName="Cases"
+                          filterValue={dispatchColumnFilters.cases}
+                          onFilterChange={(value) => handleDispatchColumnFilterChange('cases', value as string)}
+                          onClearFilter={() => handleDispatchColumnFilterChange('cases', '')}
+                          sortDirection={dispatchColumnSorts.cases}
+                          onSortChange={(direction) => handleDispatchColumnSortChange('cases', direction)}
+                          dataType="number"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        Delivery Date
+                        <ColumnFilter
+                          columnKey="delivery_date"
+                          columnName="Delivery Date"
+                          filterValue={dispatchColumnFilters.delivery_date}
+                          onFilterChange={(value) => handleDispatchColumnFilterChange('delivery_date', value as string)}
+                          onClearFilter={() => handleDispatchColumnFilterChange('delivery_date', '')}
+                          sortDirection={dispatchColumnSorts.delivery_date}
+                          onSortChange={(direction) => handleDispatchColumnSortChange('delivery_date', direction)}
+                          dataType="date"
+                        />
+                      </div>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAndSortedDispatch.map((order: any) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">{order.client}</TableCell>
+                      <TableCell>{order.branch}</TableCell>
+                      <TableCell>{order.sku}</TableCell>
+                      <TableCell className="text-right">{order.cases}</TableCell>
+                      <TableCell>{new Date(order.delivery_date).toLocaleDateString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No dispatched orders found.
             </div>
           )}
         </CardContent>
