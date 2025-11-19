@@ -357,7 +357,7 @@ const OrderManagement = () => {
     setEditingOrder(order);
     setEditForm({
       date: new Date(order.created_at).toISOString().split('T')[0],
-      client: order.client,
+      client: (order as any).client_name || order.client,
       branch: order.branch,
       sku: order.sku,
       number_of_cases: order.number_of_cases.toString(),
