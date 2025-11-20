@@ -21,7 +21,9 @@ const TransportExpenses = () => {
     description: "",
     amount: "",
     client_id: "",
-    branch: ""
+    branch: "",
+    sku: "",
+    no_of_cases: ""
   });
 
   const [editingExpense, setEditingExpense] = useState<TransportExpense | null>(null);
@@ -31,7 +33,9 @@ const TransportExpenses = () => {
     description: "",
     amount: "",
     client_id: "",
-    branch: ""
+    branch: "",
+    sku: "",
+    no_of_cases: ""
   });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,7 +45,9 @@ const TransportExpenses = () => {
     group: "",
     amount: "",
     client: "",
-    branch: ""
+    branch: "",
+    sku: "",
+    no_of_cases: ""
   });
   const [columnSorts, setColumnSorts] = useState<{[key: string]: 'asc' | 'desc' | null}>({
     date: null,
@@ -49,7 +55,9 @@ const TransportExpenses = () => {
     group: null,
     amount: null,
     client: null,
-    branch: null
+    branch: null,
+    sku: null,
+    no_of_cases: null
   });
 
   const { toast } = useToast();
@@ -72,8 +80,50 @@ const TransportExpenses = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("transport_expenses")
-        .select("*")
+        .select(`
+          *,
+          customers (
+            id,
+            client_name,
+            branch
+          )
+        `)
         .order("created_at", { ascending: false });
+      
+      // Enrich with SKU and No of cases from sales_transactions
+      if (data) {
+        const enrichedData = await Promise.all(data.map(async (expense: any) => {
+          if (expense.client_id && expense.branch) {
+            // Find the most recent sale transaction for this client_id and branch
+            const { data: saleTransaction } = await supabase
+              .from("sales_transactions")
+              .select("sku, quantity")
+              .eq("customer_id", expense.client_id)
+              .eq("branch", expense.branch)
+              .eq("transaction_type", "sale")
+              .order("transaction_date", { ascending: false })
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .single();
+            
+            if (saleTransaction) {
+              return {
+                ...expense,
+                sku: saleTransaction.sku || expense.sku || '',
+                no_of_cases: saleTransaction.quantity || expense.no_of_cases || 0
+              };
+            }
+          }
+          return {
+            ...expense,
+            sku: expense.sku || '',
+            no_of_cases: expense.no_of_cases || 0
+          };
+        }));
+        
+        return enrichedData;
+      }
+      
       return data || [];
     },
   });
@@ -89,7 +139,9 @@ const TransportExpenses = () => {
           amount: parseFloat(data.amount),
           description: data.description || "",
           client_id: data.client_id,
-          branch: data.branch
+          branch: data.branch,
+          sku: data.sku || null,
+          no_of_cases: data.no_of_cases ? parseInt(data.no_of_cases) : null
         });
 
       if (error) {
@@ -103,7 +155,11 @@ const TransportExpenses = () => {
         expense_date: new Date().toISOString().split('T')[0],
         expense_group: "",
         description: "",
-        amount: ""
+        amount: "",
+        client_id: "",
+        branch: "",
+        sku: "",
+        no_of_cases: ""
       });
       queryClient.invalidateQueries({ queryKey: ["transport-expenses"] });
     },
@@ -126,7 +182,9 @@ const TransportExpenses = () => {
           amount: data.amount ? parseFloat(data.amount) : undefined,
           description: data.description || "",
           client_id: data.client_id,
-          branch: data.branch
+          branch: data.branch,
+          sku: data.sku || null,
+          no_of_cases: data.no_of_cases ? parseInt(data.no_of_cases) : null
         })
         .eq("id", data.id);
 
@@ -192,7 +250,9 @@ const TransportExpenses = () => {
       description: expense.description || "",
       amount: expense.amount?.toString() || "",
       client_id: expense.client_id || "",
-      branch: expense.branch || ""
+      branch: expense.branch || "",
+      sku: expense.sku || "",
+      no_of_cases: expense.no_of_cases?.toString() || ""
     });
     setIsEditDialogOpen(true);
   };
@@ -247,6 +307,64 @@ const TransportExpenses = () => {
     return customers.filter(c => c.id === customerId).map(c => c.branch).filter(Boolean);
   };
 
+  // Auto-populate SKU and No of cases from sales_transactions when client_id and branch are selected
+  useEffect(() => {
+    const autoPopulateFromSales = async () => {
+      if (form.client_id && form.branch) {
+        // Find the most recent sale transaction for this client_id and branch
+        const { data: saleTransaction } = await supabase
+          .from("sales_transactions")
+          .select("sku, quantity")
+          .eq("customer_id", form.client_id)
+          .eq("branch", form.branch)
+          .eq("transaction_type", "sale")
+          .order("transaction_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (saleTransaction) {
+          setForm(prev => ({
+            ...prev,
+            sku: saleTransaction.sku || prev.sku,
+            no_of_cases: saleTransaction.quantity?.toString() || prev.no_of_cases
+          }));
+        }
+      }
+    };
+
+    autoPopulateFromSales();
+  }, [form.client_id, form.branch]);
+
+  // Auto-populate SKU and No of cases for edit form
+  useEffect(() => {
+    const autoPopulateFromSalesEdit = async () => {
+      if (editForm.client_id && editForm.branch) {
+        // Find the most recent sale transaction for this client_id and branch
+        const { data: saleTransaction } = await supabase
+          .from("sales_transactions")
+          .select("sku, quantity")
+          .eq("customer_id", editForm.client_id)
+          .eq("branch", editForm.branch)
+          .eq("transaction_type", "sale")
+          .order("transaction_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (saleTransaction) {
+          setEditForm(prev => ({
+            ...prev,
+            sku: saleTransaction.sku || prev.sku,
+            no_of_cases: saleTransaction.quantity?.toString() || prev.no_of_cases
+          }));
+        }
+      }
+    };
+
+    autoPopulateFromSalesEdit();
+  }, [editForm.client_id, editForm.branch]);
+
   // Get unique groups for filtering
   const getUniqueGroups = () => {
     if (!expenses) return [];
@@ -282,6 +400,8 @@ const TransportExpenses = () => {
     const amount = expense.amount?.toString() || '';
     const date = new Date(expense.expense_date).toLocaleDateString();
     const dateISO = expense.expense_date;
+    const sku = expense.sku || '';
+    const noOfCases = expense.no_of_cases?.toString() || '';
     const description = expense.description || '';
     
     // Get client and branch names for filtering
@@ -297,7 +417,9 @@ const TransportExpenses = () => {
         amount.includes(searchLower) ||
         date.includes(searchLower) ||
         clientName.includes(searchLower) ||
-        branchName.includes(searchLower)
+        branchName.includes(searchLower) ||
+        sku.toLowerCase().includes(searchLower) ||
+        noOfCases.includes(searchLower)
       );
       if (!matchesGlobalSearch) return false;
     }
@@ -309,6 +431,8 @@ const TransportExpenses = () => {
     if (columnFilters.amount && !amount.includes(columnFilters.amount)) return false;
     if (columnFilters.client && !clientName.includes(columnFilters.client.toLowerCase())) return false;
     if (columnFilters.branch && !branchName.includes(columnFilters.branch.toLowerCase())) return false;
+    if (columnFilters.sku && !sku.toLowerCase().includes(columnFilters.sku.toLowerCase())) return false;
+    if (columnFilters.no_of_cases && !noOfCases.includes(columnFilters.no_of_cases)) return false;
     
     return true;
   }).sort((a, b) => {
@@ -363,6 +487,8 @@ const TransportExpenses = () => {
         'Date': new Date(expense.expense_date).toLocaleDateString(),
         'Client': expense.client_name || '',
         'Branch': expense.branch || '',
+        'SKU': expense.sku || '',
+        'No of Cases': expense.no_of_cases || 0,
         'Group': expense.expense_group || '',
         'Amount (₹)': expense.amount || 0,
         'Description': expense.description || ''
@@ -458,6 +584,29 @@ const TransportExpenses = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="sku">SKU</Label>
+            <Input
+              id="sku"
+              value={form.sku}
+              onChange={(e) => setForm({...form, sku: e.target.value})}
+              placeholder="Auto-populated from client transactions"
+              readOnly
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="no_of_cases">No of Cases</Label>
+            <Input
+              id="no_of_cases"
+              type="number"
+              value={form.no_of_cases}
+              onChange={(e) => setForm({...form, no_of_cases: e.target.value})}
+              placeholder="Auto-populated from client transactions"
+              readOnly
+            />
           </div>
 
           <div className="space-y-2">
@@ -580,6 +729,36 @@ const TransportExpenses = () => {
                 />
               </div>
             </TableHead>
+            <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-left border-r border-slate-200/50">
+              <div className="flex items-center justify-between">
+                <span>SKU</span>
+                <ColumnFilter
+                  columnKey="sku"
+                  columnName="SKU"
+                  filterValue={columnFilters.sku || ""}
+                  onFilterChange={(value) => handleColumnFilterChange('sku', value)}
+                  onClearFilter={() => handleClearColumnFilter('sku')}
+                  sortDirection={columnSorts.sku || null}
+                  onSortChange={(direction) => handleColumnSortChange('sku', direction)}
+                  dataType="text"
+                />
+              </div>
+            </TableHead>
+            <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-center border-r border-slate-200/50">
+              <div className="flex items-center justify-between">
+                <span>No of Cases</span>
+                <ColumnFilter
+                  columnKey="no_of_cases"
+                  columnName="No of Cases"
+                  filterValue={columnFilters.no_of_cases || ""}
+                  onFilterChange={(value) => handleColumnFilterChange('no_of_cases', value)}
+                  onClearFilter={() => handleClearColumnFilter('no_of_cases')}
+                  sortDirection={columnSorts.no_of_cases || null}
+                  onSortChange={(direction) => handleColumnSortChange('no_of_cases', direction)}
+                  dataType="number"
+                />
+              </div>
+            </TableHead>
             <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-center border-r border-slate-200/50">
               <div className="flex items-center justify-between">
                 <span>Group</span>
@@ -638,6 +817,8 @@ const TransportExpenses = () => {
                 <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
                 <TableCell>{expense.client_name || 'N/A'}</TableCell>
                 <TableCell>{expense.branch || 'N/A'}</TableCell>
+                <TableCell>{expense.sku || 'N/A'}</TableCell>
+                <TableCell className="text-center">{expense.no_of_cases || 0}</TableCell>
                 <TableCell>{expense.expense_group || 'N/A'}</TableCell>
                 <TableCell className="text-right font-medium">₹{expense.amount?.toLocaleString()}</TableCell>
                 <TableCell>{expense.description || 'N/A'}</TableCell>
@@ -746,6 +927,29 @@ const TransportExpenses = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-sku">SKU</Label>
+                <Input
+                  id="edit-sku"
+                  value={editForm.sku}
+                  onChange={(e) => setEditForm({...editForm, sku: e.target.value})}
+                  placeholder="Auto-populated from client transactions"
+                  readOnly
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-no_of_cases">No of Cases</Label>
+                <Input
+                  id="edit-no_of_cases"
+                  type="number"
+                  value={editForm.no_of_cases}
+                  onChange={(e) => setEditForm({...editForm, no_of_cases: e.target.value})}
+                  placeholder="Auto-populated from client transactions"
+                  readOnly
+                />
               </div>
             </div>
 

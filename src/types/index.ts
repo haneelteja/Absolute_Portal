@@ -174,6 +174,8 @@ export interface TransportExpenseForm {
   amount: string;
   client_id: string;
   branch: string;
+  sku?: string;
+  no_of_cases?: string;
 }
 
 export interface LabelPurchaseForm {

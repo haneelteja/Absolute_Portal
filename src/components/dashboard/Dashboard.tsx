@@ -144,17 +144,17 @@ const Dashboard = () => {
     },
   });
 
-  // Fetch key metrics
+  // Fetch key metrics - depends on receivables being loaded
   const { data: metrics } = useQuery({
-    queryKey: ["dashboard-metrics"],
+    queryKey: ["dashboard-metrics", receivables],
     queryFn: async () => {
       // Total clients
       const { count: totalClients } = await supabase
         .from("customers")
         .select("*", { count: "exact", head: true });
 
-      // Total outstanding from receivables
-      const totalOutstanding = receivables?.reduce((sum, r) => sum + r.outstanding, 0) || 0;
+      // Total outstanding from receivables (wait for receivables to be available)
+      const totalOutstanding = receivables?.reduce((sum, r) => sum + (r.outstanding || 0), 0) || 0;
 
       // Factory outstanding
       const { data: factory } = await supabase
@@ -172,7 +172,7 @@ const Dashboard = () => {
       const factoryOutstanding = totalProduction - totalFactoryPayments;
 
       // High value customers (outstanding > 50000)
-      const highValueCustomers = receivables?.filter(r => r.outstanding > 50000).length || 0;
+      const highValueCustomers = receivables?.filter(r => (r.outstanding || 0) > 50000).length || 0;
 
       // Recent transactions count (last 7 days)
       const sevenDaysAgo = new Date();
@@ -191,6 +191,7 @@ const Dashboard = () => {
         recentTransactions: recentTransactions || 0
       };
     },
+    enabled: receivables !== undefined, // Only run when receivables is loaded
   });
 
 
