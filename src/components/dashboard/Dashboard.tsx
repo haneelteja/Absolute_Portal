@@ -436,71 +436,74 @@ const Dashboard = () => {
         </Card>
 
         {/* Client Outstanding */}
-        <Card className="bg-gradient-to-br from-red-500 to-pink-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className="bg-green-50 border border-green-200 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <DollarSign className="h-5 w-5 text-white/80" />
-                  <h3 className="text-sm font-semibold text-white">Client Outstanding</h3>
-                </div>
-                <p className="text-2xl font-bold text-white">₹{metrics?.totalOutstanding?.toLocaleString() || 0}</p>
-                <p className="text-xs text-white/80 mt-1">Pending receivables</p>
+                <h3 className="text-sm font-semibold text-green-900 mb-1">Client Outstanding - Pending receivables</h3>
+                <p className="text-2xl font-bold text-green-600">₹{metrics?.totalOutstanding?.toLocaleString() || 0}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Factory Outstanding */}
-        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className="bg-red-50 border border-red-200 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Building2 className="h-5 w-5 text-white/80" />
-                  <h3 className="text-sm font-semibold text-white">Factory Outstanding</h3>
-                </div>
-                <p className="text-2xl font-bold text-white">₹{metrics?.factoryOutstanding?.toLocaleString() || 0}</p>
-                <p className="text-xs text-white/80 mt-1">Due to Elma Industries</p>
+                <h3 className="text-sm font-semibold text-red-900 mb-1">Factory Outstanding - Due to Elma Industries</h3>
+                <p className="text-2xl font-bold text-red-600">₹{metrics?.factoryOutstanding?.toLocaleString() || 0}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Critical Alerts */}
-        <Card className="bg-gradient-to-br from-orange-500 to-amber-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className="bg-orange-50 border border-orange-200 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle className="h-5 w-5 text-white" />
-                  <h3 className="text-sm font-semibold text-white">Critical Alerts</h3>
-                </div>
-                <p className="text-2xl font-bold text-white">{receivables?.filter(r => r.outstanding > 100000).length || 0}</p>
-                <p className="text-xs text-white/80 mt-1">Outstanding &gt; ₹1L</p>
+                <h3 className="text-sm font-semibold text-orange-900 mb-1">Critical Alerts - Outstanding &gt; ₹1L</h3>
+                <p className="text-2xl font-bold text-orange-600">{receivables?.filter(r => r.outstanding > 100000).length || 0}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Collection Rate */}
-        <Card className={`border-0 shadow-lg hover:shadow-xl transition-all duration-300 ${
+        <Card className={`border shadow-lg hover:shadow-xl transition-all duration-300 ${
           (() => {
-            if (!receivables || receivables.length === 0 || !metrics) return 'bg-gradient-to-br from-blue-500 to-blue-600';
+            if (!receivables || receivables.length === 0 || !metrics) return 'bg-blue-50 border-blue-200';
             const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
             const totalOutstanding = metrics.totalOutstanding || 0;
             const collectionRate = totalSales > 0 ? ((totalSales - totalOutstanding) / totalSales) * 100 : 0;
-            return collectionRate >= 70 ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-red-500 to-red-600';
+            return collectionRate >= 70 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200';
           })()
         }`}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp className="h-5 w-5 text-white" />
-                  <h3 className="text-sm font-semibold text-white">Collection Rate</h3>
-                </div>
-                <p className="text-2xl font-bold text-white">
+                <h3 className={`text-sm font-semibold mb-1 ${
+                  (() => {
+                    if (!receivables || receivables.length === 0 || !metrics) return 'text-blue-900';
+                    const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
+                    const totalOutstanding = metrics.totalOutstanding || 0;
+                    const collectionRate = totalSales > 0 ? ((totalSales - totalOutstanding) / totalSales) * 100 : 0;
+                    return collectionRate >= 70 ? 'text-blue-900' : 'text-red-900';
+                  })()
+                }`}>
+                  Collection Rate - Payment efficiency
+                </h3>
+                <p className={`text-2xl font-bold ${
+                  (() => {
+                    if (!receivables || receivables.length === 0 || !metrics) return 'text-blue-600';
+                    const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
+                    const totalOutstanding = metrics.totalOutstanding || 0;
+                    const collectionRate = totalSales > 0 ? ((totalSales - totalOutstanding) / totalSales) * 100 : 0;
+                    return collectionRate >= 70 ? 'text-blue-600' : 'text-red-600';
+                  })()
+                }`}>
                   {receivables && receivables.length > 0 && metrics ? 
                     (() => {
                       const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
@@ -508,7 +511,6 @@ const Dashboard = () => {
                       return totalSales > 0 ? Math.round(((totalSales - totalOutstanding) / totalSales) * 100) : 0;
                     })() : 0}%
                 </p>
-                <p className="text-xs text-white/80 mt-1">Payment efficiency</p>
               </div>
             </div>
           </CardContent>
