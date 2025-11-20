@@ -269,7 +269,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Factory Outstanding */}
-        <Card className="bg-gradient-to-br from-orange-500 to-amber-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -285,7 +285,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Critical Alerts */}
-        <Card className="bg-gradient-to-br from-purple-500 to-indigo-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className="bg-gradient-to-br from-orange-500 to-amber-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -301,7 +301,15 @@ const Dashboard = () => {
         </Card>
 
         {/* Collection Rate */}
-        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+        <Card className={`border-0 shadow-lg hover:shadow-xl transition-all duration-300 ${
+          (() => {
+            if (!receivables || receivables.length === 0 || !metrics) return 'bg-gradient-to-br from-blue-500 to-blue-600';
+            const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
+            const totalOutstanding = metrics.totalOutstanding || 0;
+            const collectionRate = totalSales > 0 ? ((totalSales - totalOutstanding) / totalSales) * 100 : 0;
+            return collectionRate >= 70 ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-red-500 to-red-600';
+          })()
+        }`}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
