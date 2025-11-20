@@ -289,8 +289,12 @@ const Dashboard = () => {
               <div>
                 <p className="text-white/80 text-sm">Collection Rate</p>
                 <p className="text-2xl font-bold text-white">
-                  {metrics?.totalOutstanding > 0 ? 
-                    Math.round(((receivables?.reduce((sum, r) => sum + r.totalSales, 0) || 0) - metrics.totalOutstanding) / (receivables?.reduce((sum, r) => sum + r.totalSales, 0) || 1) * 100) : 0}%
+                  {receivables && receivables.length > 0 && metrics ? 
+                    (() => {
+                      const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
+                      const totalOutstanding = metrics.totalOutstanding || 0;
+                      return totalSales > 0 ? Math.round(((totalSales - totalOutstanding) / totalSales) * 100) : 0;
+                    })() : 0}%
                 </p>
                 <p className="text-white/60 text-xs">Payment efficiency</p>
               </div>
