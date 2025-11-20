@@ -48,13 +48,12 @@ const Dashboard = () => {
       
       const labelExpenses = labelPurchases?.reduce((sum, p) => sum + (p.total_amount || 0), 0) || 0;
       
-      const profit = totalSales - (factoryPayables + transportTotal + labelExpenses);
+      const profit = totalSales - (factoryPayables + transportTotal);
       
       return {
         totalSales,
         factoryPayables,
         transportExpenses: transportTotal,
-        labelExpenses,
         profit
       };
     },
@@ -197,97 +196,119 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6 p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
-      {/* Profitability Summary - Moved from Reports */}
-      <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-        <CardHeader className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 text-blue-800 rounded-t-lg border-b-2 border-blue-200">
-          <CardTitle className="text-xl font-bold">Profitability Summary</CardTitle>
-          <CardDescription className="text-blue-600">
-            Overall profit calculation for Aamodha Enterprises
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <h3 className="font-semibold text-green-900">Total Sales</h3>
-              <p className="text-xl font-bold text-green-600">₹{profitData?.totalSales.toLocaleString() || 0}</p>
-            </div>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <h3 className="font-semibold text-red-900">Factory Costs</h3>
-              <p className="text-xl font-bold text-red-600">₹{profitData?.factoryPayables.toLocaleString() || 0}</p>
-            </div>
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <h3 className="font-semibold text-orange-900">Transport</h3>
-              <p className="text-xl font-bold text-orange-600">₹{profitData?.transportExpenses.toLocaleString() || 0}</p>
-            </div>
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <h3 className="font-semibold text-purple-900">Labels</h3>
-              <p className="text-xl font-bold text-purple-600">₹{profitData?.labelExpenses.toLocaleString() || 0}</p>
-            </div>
-            <div className={`border rounded-lg p-4 ${
-              (profitData?.profit || 0) >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'
-            }`}>
-              <h3 className={`font-semibold ${(profitData?.profit || 0) >= 0 ? 'text-blue-900' : 'text-red-900'}`}>
-                Net Profit
-              </h3>
-              <p className={`text-xl font-bold ${(profitData?.profit || 0) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                ₹{profitData?.profit.toLocaleString() || 0}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Key Metrics Cards */}
-      <div className="grid gap-6 md:grid-cols-2 mb-8">
-
-        {/* Client Outstanding */}
-        <Card className="bg-gradient-to-br from-red-500 to-pink-600 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white">Client Outstanding</CardTitle>
-            <DollarSign className="h-6 w-6 text-white/80" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">₹{metrics?.totalOutstanding?.toLocaleString() || 0}</div>
-            <p className="text-xs text-white/80 mt-1">Pending receivables</p>
-          </CardContent>
-        </Card>
-
-        {/* Factory Outstanding */}
-        <Card className="bg-gradient-to-br from-orange-500 to-amber-600 border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-white">Factory Outstanding</CardTitle>
-            <Building2 className="h-6 w-6 text-white/80" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">₹{metrics?.factoryOutstanding?.toLocaleString() || 0}</div>
-            <p className="text-xs text-white/80 mt-1">Due to Elma Industries</p>
-          </CardContent>
-        </Card>
-
-      </div>
-
-      {/* Additional Insights Row */}
-      <div className="grid gap-6 md:grid-cols-2 mb-8">
-
-        <Card className="bg-gradient-to-br from-purple-500 to-indigo-600 border-0 shadow-lg">
+      {/* All Metrics Cards - 8 tiles in a grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Sales */}
+        <Card className="bg-green-50 border border-green-200 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <AlertTriangle className="h-8 w-8 text-white" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-white/80 text-sm">Critical Alerts</p>
-                <p className="text-2xl font-bold text-white">{receivables?.filter(r => r.outstanding > 100000).length || 0}</p>
-                <p className="text-white/60 text-xs">Outstanding &gt; ₹1L</p>
+                <h3 className="text-sm font-semibold text-green-900 mb-1">Total Sales</h3>
+                <p className="text-2xl font-bold text-green-600">₹{profitData?.totalSales.toLocaleString() || 0}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 border-0 shadow-lg">
+        {/* Factory Costs */}
+        <Card className="bg-red-50 border border-red-200 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <TrendingUp className="h-8 w-8 text-white" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-white/80 text-sm">Collection Rate</p>
+                <h3 className="text-sm font-semibold text-red-900 mb-1">Factory Costs</h3>
+                <p className="text-2xl font-bold text-red-600">₹{profitData?.factoryPayables.toLocaleString() || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Transport */}
+        <Card className="bg-orange-50 border border-orange-200 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-orange-900 mb-1">Transport</h3>
+                <p className="text-2xl font-bold text-orange-600">₹{profitData?.transportExpenses.toLocaleString() || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Net Profit */}
+        <Card className={`border shadow-lg hover:shadow-xl transition-all duration-300 ${
+          (profitData?.profit || 0) >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'
+        }`}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className={`text-sm font-semibold mb-1 ${(profitData?.profit || 0) >= 0 ? 'text-blue-900' : 'text-red-900'}`}>
+                  Net Profit
+                </h3>
+                <p className={`text-2xl font-bold ${(profitData?.profit || 0) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                  ₹{profitData?.profit.toLocaleString() || 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Client Outstanding */}
+        <Card className="bg-gradient-to-br from-red-500 to-pink-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="h-5 w-5 text-white/80" />
+                  <h3 className="text-sm font-semibold text-white">Client Outstanding</h3>
+                </div>
+                <p className="text-2xl font-bold text-white">₹{metrics?.totalOutstanding?.toLocaleString() || 0}</p>
+                <p className="text-xs text-white/80 mt-1">Pending receivables</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Factory Outstanding */}
+        <Card className="bg-gradient-to-br from-orange-500 to-amber-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Building2 className="h-5 w-5 text-white/80" />
+                  <h3 className="text-sm font-semibold text-white">Factory Outstanding</h3>
+                </div>
+                <p className="text-2xl font-bold text-white">₹{metrics?.factoryOutstanding?.toLocaleString() || 0}</p>
+                <p className="text-xs text-white/80 mt-1">Due to Elma Industries</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Critical Alerts */}
+        <Card className="bg-gradient-to-br from-purple-500 to-indigo-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="h-5 w-5 text-white" />
+                  <h3 className="text-sm font-semibold text-white">Critical Alerts</h3>
+                </div>
+                <p className="text-2xl font-bold text-white">{receivables?.filter(r => r.outstanding > 100000).length || 0}</p>
+                <p className="text-xs text-white/80 mt-1">Outstanding &gt; ₹1L</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Collection Rate */}
+        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                  <h3 className="text-sm font-semibold text-white">Collection Rate</h3>
+                </div>
                 <p className="text-2xl font-bold text-white">
                   {receivables && receivables.length > 0 && metrics ? 
                     (() => {
@@ -296,7 +317,7 @@ const Dashboard = () => {
                       return totalSales > 0 ? Math.round(((totalSales - totalOutstanding) / totalSales) * 100) : 0;
                     })() : 0}%
                 </p>
-                <p className="text-white/60 text-xs">Payment efficiency</p>
+                <p className="text-xs text-white/80 mt-1">Payment efficiency</p>
               </div>
             </div>
           </CardContent>
