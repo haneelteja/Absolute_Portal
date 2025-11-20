@@ -49,3 +49,55 @@ Thumbs.db
 *.temp
 *.bak
 *.backup
+
+# Temporary scripts (prevent committing)
+**/temp_*.js
+**/temp_*.sh
+**/temp_*.sql
+**/*_temp.*
+**/*_backup.*
+**/*_old.*
+**/bypass_*.js
+**/bypass_*.cjs
+**/cleanup_*.js
+**/fix_and_*.sh
+**/quick_fix.sh
+**/startup_fix.sh
+**/test_*.html
+**/debug_*.sql
+**/TEST_*.sql
+**/DEBUG_*.sql
+
+# Database reset scripts (dangerous)
+**/reset_*.sql
+**/drop_*.sql
+**/delete_all_*.sql
+
+# Backup directories
+**/backup/
+**/backups/
+**/old/
+**/temp/
+**/*_backup/
+**/*_old/
+
+# IDE and editor files
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Package manager locks (keep package-lock.json, ignore others)
+yarn.lock
+pnpm-lock.yaml
+
+# Coverage and test files
+coverage/
+.nyc_output/
+*.lcov
+
+# Local development files
+.local/
+.localhost/
