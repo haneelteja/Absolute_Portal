@@ -771,7 +771,7 @@ const OrderManagement = () => {
               Create new order
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl w-[95vw] max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5" />
@@ -779,7 +779,7 @@ const OrderManagement = () => {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Date *</Label>
                   <Input
@@ -883,7 +883,7 @@ const OrderManagement = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
@@ -900,10 +900,11 @@ const OrderManagement = () => {
                     });
                   }}
                   disabled={isSubmitting}
+                  className="w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                   {isSubmitting ? 'Creating...' : 'Create Order'}
                 </Button>
               </div>
