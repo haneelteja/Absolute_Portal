@@ -618,6 +618,9 @@ const OrderManagement = () => {
 
       return true;
     }).sort((a, b) => {
+      // Safety check: handle null/undefined values
+      if (!a || !b) return 0;
+      
       const activeSort = Object.entries(ordersColumnSorts).find(([_, direction]) => direction !== null);
       if (!activeSort) return 0;
 
@@ -625,13 +628,20 @@ const OrderManagement = () => {
       let aValue: any = a[columnKey as keyof Order];
       let bValue: any = b[columnKey as keyof Order];
 
-      if (columnKey === 'number_of_cases') {
-        aValue = Number(aValue);
-        bValue = Number(bValue);
-      }
-
+      // Handle null/undefined values
       if (aValue === null || aValue === undefined) return 1;
       if (bValue === null || bValue === undefined) return -1;
+
+      // Handle number columns
+      if (columnKey === 'number_of_cases') {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+      } 
+      // Handle string columns (case-insensitive comparison)
+      else if (typeof aValue === 'string' || typeof bValue === 'string') {
+        aValue = String(aValue || '').toLowerCase();
+        bValue = String(bValue || '').toLowerCase();
+      }
 
       if (direction === 'asc') {
         return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
@@ -671,6 +681,9 @@ const OrderManagement = () => {
 
       return true;
     }).sort((a: any, b: any) => {
+      // Safety check: handle null/undefined values
+      if (!a || !b) return 0;
+      
       const activeSort = Object.entries(dispatchColumnSorts).find(([_, direction]) => direction !== null);
       if (!activeSort) return 0;
 
@@ -678,13 +691,20 @@ const OrderManagement = () => {
       let aValue: any = a[columnKey];
       let bValue: any = b[columnKey];
 
-      if (columnKey === 'cases') {
-        aValue = Number(aValue);
-        bValue = Number(bValue);
-      }
-
+      // Handle null/undefined values
       if (aValue === null || aValue === undefined) return 1;
       if (bValue === null || bValue === undefined) return -1;
+
+      // Handle number columns
+      if (columnKey === 'cases') {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+      }
+      // Handle string columns (case-insensitive comparison)
+      else if (typeof aValue === 'string' || typeof bValue === 'string') {
+        aValue = String(aValue || '').toLowerCase();
+        bValue = String(bValue || '').toLowerCase();
+      }
 
       if (direction === 'asc') {
         return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
