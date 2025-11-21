@@ -917,7 +917,7 @@ const OrderManagement = () => {
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Current Orders ({filteredAndSortedOrders?.length || 0})</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">Current order Requirement ({filteredAndSortedOrders?.length || 0})</CardTitle>
             <div className="flex gap-2">
               <Button onClick={clearAllOrdersFilters} variant="outline" size="sm">
                 Clear Filters
