@@ -90,7 +90,7 @@ export const ColumnFilter: React.FC<ColumnFilterProps> = ({
           <Input
             id={`${columnKey}-filter`}
             type="number"
-            value={filterValue}
+            value={Array.isArray(filterValue) ? '' : (filterValue || '')}
             onChange={(e) => handleFilterChange(e.target.value)}
             placeholder="Enter amount"
             className="w-full"
@@ -130,8 +130,8 @@ export const ColumnFilter: React.FC<ColumnFilterProps> = ({
         <div className="space-y-2">
           <select
             id={`${columnKey}-filter`}
-            value={Array.isArray(filterValue) ? '' : filterValue}
-            onChange={(e) => handleFilterChange(e.target.value)}
+          value={Array.isArray(filterValue) ? '' : (filterValue || '')}
+          onChange={(e) => handleFilterChange(e.target.value)}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <option value="">All {columnName}</option>
@@ -150,9 +150,9 @@ export const ColumnFilter: React.FC<ColumnFilterProps> = ({
         <Input
           id={`${columnKey}-filter`}
           type="text"
-          value={filterValue}
+          value={Array.isArray(filterValue) ? '' : (filterValue || '')}
           onChange={(e) => handleFilterChange(e.target.value)}
-          placeholder={`Search ${columnName.toLowerCase()}...`}
+          placeholder={`Search ${(columnName || '').toLowerCase()}...`}
           className="w-full"
         />
       </div>

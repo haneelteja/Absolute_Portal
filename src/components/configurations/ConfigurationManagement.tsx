@@ -1325,6 +1325,29 @@ const ConfigurationManagement = () => {
         </TabsContent>
 
         <TabsContent value="factory-pricing" className="space-y-6">
+          {factoryPricingError && (
+            <Card className="border-destructive">
+              <CardContent className="pt-6">
+                <div className="text-center text-destructive">
+                  <p className="font-semibold">Error loading factory pricing</p>
+                  <p className="text-sm mt-2">
+                    {factoryPricingError instanceof Error ? factoryPricingError.message : "An unexpected error occurred. Please try refreshing the page."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {factoryPricingLoading && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center text-muted-foreground">
+                  <p>Loading factory pricing data...</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {!factoryPricingLoading && (
+            <>
           <Card>
             <CardHeader>
               <CardTitle>Add Factory Pricing</CardTitle>
@@ -1569,6 +1592,8 @@ const ConfigurationManagement = () => {
               </Table>
             </CardContent>
           </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
 
