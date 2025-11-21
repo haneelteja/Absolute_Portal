@@ -46,18 +46,22 @@ const FactoryPayables = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [columnFilters, setColumnFilters] = useState({
     date: "",
-    type: "",
-    sku: "",
-    description: "",
+    client: "",
     branch: "",
+    sku: "",
+    quantity: "",
+    price_per_case: "",
+    type: "",
     amount: ""
   });
   const [columnSorts, setColumnSorts] = useState<{[key: string]: 'asc' | 'desc' | null}>({
     date: null,
-    type: null,
-    sku: null,
-    description: null,
+    client: null,
     branch: null,
+    sku: null,
+    quantity: null,
+    price_per_case: null,
+    type: null,
     amount: null
   });
 
@@ -115,25 +119,37 @@ const FactoryPayables = () => {
     },
   });
 
+  // Helper function to get price per case for a SKU
+  const getPricePerCase = (sku: string | null): number | null => {
+    if (!sku) return null;
+    const pricing = factoryPricing?.find(p => p.sku === sku);
+    return pricing?.cost_per_case || null;
+  };
+
   // Filter and sort transactions
   const filteredAndSortedTransactions = transactions?.filter((transaction) => {
     const sku = transaction.sku || '';
-    const description = transaction.description || '';
     const amount = transaction.amount?.toString() || '';
     const date = new Date(transaction.transaction_date).toLocaleDateString();
     const dateISO = transaction.transaction_date;
     const type = transaction.transaction_type || '';
-    const clientName = transaction.customers?.client_name || '';
+    const clientName = transaction.transaction_type === 'payment' 
+      ? (transaction.description || 'Elma Payment')
+      : (transaction.customers?.client_name || '');
     const branch = transaction.customers?.branch || '';
+    const quantity = transaction.quantity?.toString() || '';
+    const pricePerCase = getPricePerCase(transaction.sku);
+    const pricePerCaseStr = pricePerCase?.toString() || '';
     
     // Global search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       const matchesGlobalSearch = (
         sku.toLowerCase().includes(searchLower) ||
-        description.toLowerCase().includes(searchLower) ||
         clientName.toLowerCase().includes(searchLower) ||
         branch.toLowerCase().includes(searchLower) ||
+        quantity.includes(searchLower) ||
+        pricePerCaseStr.includes(searchLower) ||
         amount.includes(searchLower) ||
         date.includes(searchLower) ||
         type.toLowerCase().includes(searchLower)
@@ -143,10 +159,12 @@ const FactoryPayables = () => {
     
     // Column-specific filters
     if (columnFilters.date && dateISO !== columnFilters.date) return false;
-    if (columnFilters.type && !type.toLowerCase().includes(columnFilters.type.toLowerCase())) return false;
-    if (columnFilters.sku && !sku.toLowerCase().includes(columnFilters.sku.toLowerCase())) return false;
-    if (columnFilters.description && !description.toLowerCase().includes(columnFilters.description.toLowerCase()) && !clientName.toLowerCase().includes(columnFilters.description.toLowerCase())) return false;
+    if (columnFilters.client && !clientName.toLowerCase().includes(columnFilters.client.toLowerCase())) return false;
     if (columnFilters.branch && !branch.toLowerCase().includes(columnFilters.branch.toLowerCase())) return false;
+    if (columnFilters.sku && !sku.toLowerCase().includes(columnFilters.sku.toLowerCase())) return false;
+    if (columnFilters.quantity && quantity !== columnFilters.quantity) return false;
+    if (columnFilters.price_per_case && pricePerCaseStr !== columnFilters.price_per_case) return false;
+    if (columnFilters.type && !type.toLowerCase().includes(columnFilters.type.toLowerCase())) return false;
     if (columnFilters.amount && !amount.includes(columnFilters.amount)) return false;
     
     return true;
@@ -164,21 +182,33 @@ const FactoryPayables = () => {
         valueA = new Date(a.transaction_date).getTime();
         valueB = new Date(b.transaction_date).getTime();
         break;
-      case 'type':
-        valueA = a.transaction_type || '';
-        valueB = b.transaction_type || '';
+      case 'client':
+        valueA = a.transaction_type === 'payment' 
+          ? (a.description || 'Elma Payment')
+          : (a.customers?.client_name || '');
+        valueB = b.transaction_type === 'payment' 
+          ? (b.description || 'Elma Payment')
+          : (b.customers?.client_name || '');
+        break;
+      case 'branch':
+        valueA = a.customers?.branch || '';
+        valueB = b.customers?.branch || '';
         break;
       case 'sku':
         valueA = a.sku || '';
         valueB = b.sku || '';
         break;
-      case 'description':
-        valueA = a.description || '';
-        valueB = b.description || '';
+      case 'quantity':
+        valueA = a.quantity || 0;
+        valueB = b.quantity || 0;
         break;
-      case 'branch':
-        valueA = a.customers?.branch || '';
-        valueB = b.customers?.branch || '';
+      case 'price_per_case':
+        valueA = getPricePerCase(a.sku) || 0;
+        valueB = getPricePerCase(b.sku) || 0;
+        break;
+      case 'type':
+        valueA = a.transaction_type || '';
+        valueB = b.transaction_type || '';
         break;
       case 'amount':
         valueA = a.amount || 0;
@@ -229,12 +259,19 @@ const FactoryPayables = () => {
   // Export filtered transactions to Excel
   const exportToExcel = () => {
     const exportData = filteredAndSortedTransactions.map((transaction) => {
+      const clientName = transaction.transaction_type === 'payment' 
+        ? (transaction.description || 'Elma Payment')
+        : (transaction.customers?.client_name || '');
+      const pricePerCase = getPricePerCase(transaction.sku);
+      
       return {
         'Date': new Date(transaction.transaction_date).toLocaleDateString(),
-        'Type': transaction.transaction_type === 'production' ? 'Production' : 'Payment',
+        'Client': clientName,
+        'Branch': transaction.customers?.branch || '',
         'SKU': transaction.sku || '',
-        'Quantity (cases)': transaction.quantity || 0,
-        'Description': transaction.description || '',
+        'Quantity': transaction.quantity || 0,
+        'Price per case': pricePerCase || '',
+        'Type': transaction.transaction_type === 'production' ? 'Production' : 'Payment',
         'Amount (₹)': transaction.amount || 0
       };
     });
@@ -666,18 +703,22 @@ const FactoryPayables = () => {
                   setSearchTerm("");
                   setColumnFilters({
                     date: "",
-                    type: "",
-                    sku: "",
-                    description: "",
+                    client: "",
                     branch: "",
+                    sku: "",
+                    quantity: "",
+                    price_per_case: "",
+                    type: "",
                     amount: ""
                   });
                   setColumnSorts({
                     date: null,
-                    type: null,
-                    sku: null,
-                    description: null,
+                    client: null,
                     branch: null,
+                    sku: null,
+                    quantity: null,
+                    price_per_case: null,
+                    type: null,
                     amount: null
                   });
                 }}
@@ -707,15 +748,15 @@ const FactoryPayables = () => {
               </TableHead>
               <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-left border-r border-slate-200/50">
                 <div className="flex items-center justify-between">
-                  <span>Client / Description</span>
+                  <span>Client</span>
                   <ColumnFilter
-                    columnKey="description"
-                    columnName="Client / Description"
-                    filterValue={columnFilters.description}
-                    onFilterChange={(value) => handleColumnFilterChange('description', value)}
-                    onClearFilter={() => handleClearColumnFilter('description')}
-                    sortDirection={columnSorts.description}
-                    onSortChange={(direction) => handleColumnSortChange('description', direction)}
+                    columnKey="client"
+                    columnName="Client"
+                    filterValue={columnFilters.client}
+                    onFilterChange={(value) => handleColumnFilterChange('client', value)}
+                    onClearFilter={() => handleClearColumnFilter('client')}
+                    sortDirection={columnSorts.client}
+                    onSortChange={(direction) => handleColumnSortChange('client', direction)}
                     dataType="text"
                   />
                 </div>
@@ -752,7 +793,34 @@ const FactoryPayables = () => {
                 </div>
               </TableHead>
               <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-center border-r border-slate-200/50">
-                Quantity (cases)
+                <div className="flex items-center justify-between">
+                  <span>Quantity</span>
+                  <ColumnFilter
+                    columnKey="quantity"
+                    columnName="Quantity"
+                    filterValue={columnFilters.quantity}
+                    onFilterChange={(value) => handleColumnFilterChange('quantity', value)}
+                    onClearFilter={() => handleClearColumnFilter('quantity')}
+                    sortDirection={columnSorts.quantity}
+                    onSortChange={(direction) => handleColumnSortChange('quantity', direction)}
+                    dataType="number"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-center border-r border-slate-200/50">
+                <div className="flex items-center justify-between">
+                  <span>Price per case</span>
+                  <ColumnFilter
+                    columnKey="price_per_case"
+                    columnName="Price per case"
+                    filterValue={columnFilters.price_per_case}
+                    onFilterChange={(value) => handleColumnFilterChange('price_per_case', value)}
+                    onClearFilter={() => handleClearColumnFilter('price_per_case')}
+                    sortDirection={columnSorts.price_per_case}
+                    onSortChange={(direction) => handleColumnSortChange('price_per_case', direction)}
+                    dataType="number"
+                  />
+                </div>
               </TableHead>
               <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-center border-r border-slate-200/50">
                 <div className="flex items-center justify-between">
@@ -793,26 +861,30 @@ const FactoryPayables = () => {
           <TableBody>
             {transactionsLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={9} className="text-center py-8">
                   Loading factory transactions...
                 </TableCell>
               </TableRow>
             ) : transactionsError ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-red-600">
+                <TableCell colSpan={9} className="text-center py-8 text-red-600">
                   Error loading factory transactions: {transactionsError.message}
                 </TableCell>
               </TableRow>
             ) : filteredAndSortedTransactions.length > 0 ? (
-              filteredAndSortedTransactions.map((transaction) => (
+              filteredAndSortedTransactions.map((transaction) => {
+                const clientName = transaction.transaction_type === 'payment' 
+                  ? (transaction.description || 'Elma Payment')
+                  : (transaction.customers?.client_name || '-');
+                const pricePerCase = getPricePerCase(transaction.sku);
+                
+                return (
               <TableRow key={transaction.id}>
                 <TableCell>
                   {new Date(transaction.transaction_date).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="max-w-xs truncate">
-                  {transaction.transaction_type === 'payment' 
-                    ? (transaction.description || 'Elma Payment')
-                    : (transaction.description || transaction.customers?.client_name || '-')}
+                  {clientName}
                 </TableCell>
                 <TableCell>
                   {transaction.customers?.branch || '-'}
@@ -820,10 +892,13 @@ const FactoryPayables = () => {
                 <TableCell>
                   {transaction.sku || '-'}
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-center">
                   {transaction.quantity || '-'}
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-center">
+                  {pricePerCase ? `₹${pricePerCase.toLocaleString()}` : '-'}
+                </TableCell>
+                <TableCell className="text-center">
                   <Badge variant={transaction.transaction_type === 'production' ? 'default' : 'secondary'}>
                     {transaction.transaction_type === 'production' ? 'Production' : 'Payment'}
                   </Badge>
@@ -846,6 +921,10 @@ const FactoryPayables = () => {
                   })()}
                 </TableCell>
                 <TableCell className="text-right">
+                </TableCell>
+              </TableRow>
+                );
+              })
                   <div className="flex justify-end gap-2">
                     <Dialog>
                       <DialogTrigger asChild>
@@ -952,7 +1031,7 @@ const FactoryPayables = () => {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   {searchTerm ? "No transactions found matching your search" : `No factory transactions found. Total: ${transactions?.length || 0}, Filtered: ${filteredAndSortedTransactions?.length || 0}`}
                 </TableCell>
               </TableRow>
