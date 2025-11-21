@@ -878,6 +878,7 @@ const OrderManagement = () => {
                     type="date"
                     value={orderForm.tentative_delivery_time}
                     onChange={(e) => setOrderForm({ ...orderForm, tentative_delivery_time: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
                     required
                   />
                 </div>
@@ -1117,7 +1118,7 @@ const OrderManagement = () => {
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Orders Dispatch ({filteredAndSortedDispatch?.length || 0})</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">Orders Dispatched ({filteredAndSortedDispatch?.length || 0})</CardTitle>
             <div className="flex gap-2">
               <Button onClick={clearAllDispatchFilters} variant="outline" size="sm">
                 Clear Filters
@@ -1268,6 +1269,7 @@ const OrderManagement = () => {
                   type="date"
                   value={editForm.tentative_delivery_time}
                   onChange={(e) => setEditForm({ ...editForm, tentative_delivery_time: e.target.value })}
+                  min={new Date().toISOString().split('T')[0]}
                   required
                 />
               </div>
