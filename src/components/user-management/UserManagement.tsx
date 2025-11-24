@@ -628,10 +628,20 @@ const UserManagement = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userForm.username || !userForm.email || userForm.associated_client_branches.length === 0) {
+    // Validate required fields
+    if (!userForm.username || !userForm.email) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields.",
+        description: "Please fill in username and email.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // For client role, require at least one client-branch combination
+    if (userForm.role === 'client' && userForm.associated_client_branches.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one client-branch combination for client users.",
         variant: "destructive",
       });
       return;
