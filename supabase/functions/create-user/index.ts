@@ -130,13 +130,16 @@ serve(async (req) => {
     }
 
     // Create user in auth.users using admin API
+    // Mark user as requiring password reset on first login
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: email,
       password: password,
       email_confirm: true,
       user_metadata: {
         full_name: username,
-        temp_password: password
+        temp_password: password,
+        requires_password_reset: true, // Flag to force password reset on first login
+        password_changed_at: null // Will be set when user changes password
       }
     })
 
@@ -218,13 +221,17 @@ serve(async (req) => {
 
     // Send welcome email with username and password
     try {
-      const { error: emailError } = await supabase.functions.invoke('send-welcome-email-direct', {
+      console.log('Attempting to send welcome email to:', email)
+      const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-welcome-email-resend', {
         body: {
           email: email,
           username: username,
-          tempPassword: password
+          tempPassword: password,
+          appUrl: Deno.env.get('APP_URL') || 'https://sales-operations-portal.vercel.app'
         }
       })
+      
+      console.log('Email function response:', emailResponse)
 
       if (emailError) {
         console.warn('Failed to send welcome email:', emailError)

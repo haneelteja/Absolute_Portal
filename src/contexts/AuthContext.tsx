@@ -23,12 +23,14 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  requiresPasswordReset: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; requiresPasswordReset?: boolean }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
+  clearPasswordResetRequirement: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [requiresPasswordReset, setRequiresPasswordReset] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -151,7 +154,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    // For production: Use real Supabase auth
+    if (process.env.NODE_ENV === 'production' || !process.env.VITE_USE_MOCK_AUTH) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error: error as Error };
+      }
+
+      if (data.user) {
+        // Check if user requires password reset
+        const requiresReset = data.user.user_metadata?.requires_password_reset === true;
+        setRequiresPasswordReset(requiresReset);
+        
+        return { 
+          error: null, 
+          requiresPasswordReset: requiresReset 
+        };
+      }
+
+      return { error: new Error('Sign in failed') };
+    }
+    
+    // Development: Mock authentication
     console.log('🔐 Bypassing authentication for development...');
+    
+    // Check if this is a new user (check user_management for temp password flag)
+    try {
+      const { data: userData } = await supabase
+        .from('user_management')
+        .select('*')
+        .eq('email', email)
+        .single();
+      
+      // If user exists and was recently created (within last hour), require password reset
+      if (userData) {
+        const createdAt = new Date(userData.created_at);
+        const now = new Date();
+        const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        
+        // Require password reset if user was created in last hour (new user)
+        const requiresReset = hoursSinceCreation < 1;
+        setRequiresPasswordReset(requiresReset);
+        
+        if (requiresReset) {
+          console.log('⚠️ New user detected - password reset required');
+        }
+      }
+    } catch (error) {
+      console.warn('Could not check user creation date:', error);
+    }
     
     // Create a mock user
     const mockUser = {
@@ -187,7 +242,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile(mockProfile);
     
     console.log('✅ Mock authentication successful!');
-    return { data: { user: mockUser, session: mockSession }, error: null };
+    return { 
+      error: null,
+      requiresPasswordReset: requiresPasswordReset 
+    };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -242,9 +300,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updatePassword = async (newPassword: string) => {
     const { error } = await supabase.auth.updateUser({
-      password: newPassword
+      password: newPassword,
+      data: {
+        requires_password_reset: false,
+        password_changed_at: new Date().toISOString()
+      }
     });
+    
+    if (!error) {
+      // Clear password reset requirement
+      setRequiresPasswordReset(false);
+    }
+    
     return { error };
+  };
+
+  const clearPasswordResetRequirement = async () => {
+    if (user) {
+      await supabase.auth.updateUser({
+        data: {
+          requires_password_reset: false,
+          password_changed_at: new Date().toISOString()
+        }
+      });
+      setRequiresPasswordReset(false);
+    }
   };
 
   const value = {
@@ -252,12 +332,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     profile,
     loading,
+    requiresPasswordReset,
     signIn,
     signUp,
     signOut,
     changePassword,
     resetPassword,
     updatePassword,
+    clearPasswordResetRequirement,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

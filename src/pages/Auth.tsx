@@ -11,7 +11,7 @@ import { Loader2, Lock, Eye, EyeOff, Key, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
-  const { user, signIn, resetPassword, changePassword, loading } = useAuth();
+  const { user, signIn, resetPassword, changePassword, updatePassword, requiresPasswordReset, clearPasswordResetRequirement, loading } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +20,11 @@ const Auth = () => {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showForcedPasswordReset, setShowForcedPasswordReset] = useState(false);
+  const [forcedPasswordResetForm, setForcedPasswordResetForm] = useState({
+    newPassword: '',
+    confirmPassword: '',
+  });
 
   // Sign in form state
   const [signInForm, setSignInForm] = useState({
@@ -56,16 +61,26 @@ const Auth = () => {
     setError('');
     setSuccess('');
 
-    const { data, error } = await signIn(signInForm.email, signInForm.password);
+    const { error, requiresPasswordReset } = await signIn(signInForm.email, signInForm.password);
     
     if (error) {
       console.error('Login failed:', error);
-      const errorMessage = `Login failed: ${error.message} (Status: ${error.status})`;
+      const errorMessage = `Login failed: ${error.message}`;
       setError(errorMessage);
       toast({
         title: "Sign In Failed",
         description: errorMessage,
         variant: "destructive",
+      });
+      setIsLoading(false);
+    } else if (requiresPasswordReset) {
+      // Show forced password reset dialog
+      setShowForcedPasswordReset(true);
+      setIsLoading(false);
+      toast({
+        title: "Password Reset Required",
+        description: "Please set a new password to continue.",
+        variant: "default",
       });
     } else {
       setSuccess('Successfully signed in!');
@@ -73,9 +88,8 @@ const Auth = () => {
         title: "Welcome Back!",
         description: "You have been successfully signed in.",
       });
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
 
@@ -114,6 +128,47 @@ const Auth = () => {
       });
       setShowChangePassword(false);
       setChangePasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    }
+    
+    setIsLoading(false);
+  };
+
+  const handleForcedPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    if (forcedPasswordResetForm.newPassword !== forcedPasswordResetForm.confirmPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    if (forcedPasswordResetForm.newPassword.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await updatePassword(forcedPasswordResetForm.newPassword);
+    
+    if (error) {
+      setError(error.message);
+      toast({
+        title: "Password Reset Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setSuccess('Password reset successfully!');
+      await clearPasswordResetRequirement();
+      setShowForcedPasswordReset(false);
+      setForcedPasswordResetForm({ newPassword: '', confirmPassword: '' });
+      toast({
+        title: "Password Reset Success",
+        description: "Your password has been reset successfully. You can now access the portal.",
+      });
     }
     
     setIsLoading(false);
@@ -383,6 +438,72 @@ const Auth = () => {
                       </>
                     ) : (
                       'Send Reset Email'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Forced Password Reset Dialog - Shows after first login */}
+          <Dialog open={showForcedPasswordReset} onOpenChange={() => {}}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center text-orange-600">
+                  <Key className="mr-2 h-5 w-5" />
+                  Password Reset Required
+                </DialogTitle>
+                <DialogDescription>
+                  This is your first login. For security purposes, you must change your temporary password before continuing.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleForcedPasswordReset} className="space-y-4">
+                <Alert>
+                  <AlertDescription>
+                    Please create a new secure password. Your temporary password cannot be used to access the portal.
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  <Label htmlFor="forced-new-password">New Password</Label>
+                  <Input
+                    id="forced-new-password"
+                    type="password"
+                    placeholder="Enter new password (min 6 characters)"
+                    value={forcedPasswordResetForm.newPassword}
+                    onChange={(e) => setForcedPasswordResetForm({ ...forcedPasswordResetForm, newPassword: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="forced-confirm-password">Confirm New Password</Label>
+                  <Input
+                    id="forced-confirm-password"
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={forcedPasswordResetForm.confirmPassword}
+                    onChange={(e) => setForcedPasswordResetForm({ ...forcedPasswordResetForm, confirmPassword: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={isLoading} className="w-full">
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Resetting Password...
+                      </>
+                    ) : (
+                      <>
+                        <Key className="mr-2 h-4 w-4" />
+                        Set New Password
+                      </>
                     )}
                   </Button>
                 </div>
