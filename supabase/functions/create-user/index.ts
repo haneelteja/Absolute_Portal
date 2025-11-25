@@ -226,6 +226,7 @@ serve(async (req) => {
       const appUrl = Deno.env.get('APP_URL') || 'https://sales-operations-portal.vercel.app'
       
       // Try sending via Resend Edge Function
+      console.log('Invoking send-welcome-email-resend function...')
       const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-welcome-email-resend', {
         body: {
           email: email,
@@ -235,10 +236,12 @@ serve(async (req) => {
         }
       })
       
-      console.log('Email function response:', emailResponse)
+      console.log('Email function response:', JSON.stringify(emailResponse, null, 2))
+      console.log('Email function error:', emailError)
 
       if (emailError) {
-        console.error('Failed to send welcome email via Resend:', emailError)
+        console.error('❌ Failed to invoke email function:', emailError)
+        console.error('Error details:', JSON.stringify(emailError, null, 2))
         // Log email details for manual sending
         console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
         console.log('To:', email)
@@ -247,10 +250,27 @@ serve(async (req) => {
         console.log('Temporary Password:', password)
         console.log('App URL:', appUrl)
         console.log('=== END EMAIL DETAILS ===')
-      } else if (emailResponse?.success) {
-        console.log('Welcome email sent successfully via Resend to:', email)
+      } else if (emailResponse) {
+        // Check if response indicates success
+        if (emailResponse.success === true || emailResponse.message?.includes('successfully')) {
+          console.log('✅ Welcome email sent successfully via Resend to:', email)
+          if (emailResponse.data?.resendId) {
+            console.log('Resend Email ID:', emailResponse.data.resendId)
+          }
+        } else {
+          console.warn('⚠️ Email function returned but may not have sent:', emailResponse)
+          // Log email details for manual sending
+          console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
+          console.log('To:', email)
+          console.log('Subject: Welcome to Elma Operations Portal - Your Login Credentials')
+          console.log('Username:', username)
+          console.log('Temporary Password:', password)
+          console.log('App URL:', appUrl)
+          console.log('Response:', JSON.stringify(emailResponse, null, 2))
+          console.log('=== END EMAIL DETAILS ===')
+        }
       } else {
-        console.warn('Email function returned but may not have sent:', emailResponse)
+        console.warn('⚠️ No response from email function')
         // Log email details for manual sending
         console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
         console.log('To:', email)
@@ -261,7 +281,8 @@ serve(async (req) => {
         console.log('=== END EMAIL DETAILS ===')
       }
     } catch (emailError) {
-      console.error('Exception sending welcome email:', emailError)
+      console.error('❌ Exception sending welcome email:', emailError)
+      console.error('Exception details:', emailError instanceof Error ? emailError.message : JSON.stringify(emailError))
       // Log email details for manual sending
       console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
       console.log('To:', email)
