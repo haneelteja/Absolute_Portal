@@ -292,7 +292,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      // Use custom Edge Function with Resend for beautiful email design
       // Determine production URL - use environment variable or detect from current origin
       const productionUrl = import.meta.env.VITE_APP_URL || 
                           (window.location.hostname === 'localhost' 
@@ -301,23 +300,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const resetUrl = `${productionUrl}/reset-password`;
 
+      // Skip Edge Function if Resend domain is not verified (to avoid unnecessary 500 errors)
+      // Set VITE_USE_RESEND_EMAIL=true in environment to enable Resend Edge Function
+      const useResendEmail = import.meta.env.VITE_USE_RESEND_EMAIL === 'true';
+      
       let functionData, functionError;
-      try {
-        const result = await supabase.functions.invoke(
-          'send-password-reset-email-resend',
-          {
-            body: { 
-              email,
-              resetUrl: resetUrl
+      
+      if (useResendEmail) {
+        // Try custom Edge Function with Resend for beautiful email design
+        try {
+          const result = await supabase.functions.invoke(
+            'send-password-reset-email-resend',
+            {
+              body: { 
+                email,
+                resetUrl: resetUrl
+              }
             }
-          }
-        );
-        functionData = result.data;
-        functionError = result.error;
-      } catch (err) {
-        console.error('Exception calling Edge Function:', err);
-        // Don't return error here - fall through to Supabase Auth email fallback
-        functionError = err as Error;
+          );
+          functionData = result.data;
+          functionError = result.error;
+        } catch (err) {
+          console.error('Exception calling Edge Function:', err);
+          functionError = err as Error;
+          functionData = null;
+        }
+      } else {
+        // Skip Edge Function - go straight to Supabase Auth email
+        console.info('ℹ️ Resend email disabled. Using Supabase Auth email directly.');
+        functionError = new Error('Resend email disabled');
         functionData = null;
       }
 
@@ -380,8 +391,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: null };
       }
 
-      // Fallback to Supabase Auth email (works without domain verification)
-      console.log('🔄 Falling back to Supabase Auth email service for password reset');
+      // Use Supabase Auth email (works without domain verification)
+      console.log('📧 Using Supabase Auth email service for password reset');
       console.log('Email:', email);
       console.log('Reset URL:', resetUrl);
       
