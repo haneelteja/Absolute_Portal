@@ -35,7 +35,14 @@ interface AppSidebarProps {
   setActiveView: (view: string) => void;
 }
 
-const menuItems = [
+interface MenuItem {
+  id: string;
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles?: string[]; // Optional: restrict to specific roles
+}
+
+const menuItems: MenuItem[] = [
   { id: "dashboard", title: "Dashboard", icon: BarChart3 },
   { id: "order-management", title: "Orders Management", icon: ShoppingCart },
   { id: "client-transactions", title: "Client Transactions", icon: DollarSign },
@@ -44,8 +51,8 @@ const menuItems = [
   { id: "labels", title: "Labels", icon: Tag },
   { id: "configurations", title: "Configurations", icon: Cog },
   { id: "reports", title: "Reports", icon: FileText },
-  { id: "adjustments", title: "Adjustments", icon: Settings },
-  { id: "user-management", title: "User Management", icon: Shield },
+  { id: "adjustments", title: "Adjustments", icon: Settings, roles: ['manager'] }, // Only visible to managers
+  { id: "user-management", title: "User Management", icon: Shield, roles: ['manager'] }, // Only visible to managers
 ];
 
 export function AppSidebar({ activeView, setActiveView }: AppSidebarProps) {
@@ -69,17 +76,26 @@ export function AppSidebar({ activeView, setActiveView }: AppSidebarProps) {
           <SidebarGroupLabel>Main Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton 
-                    onClick={() => setActiveView(item.id)}
-                    className={isActive(item.id) ? "bg-accent text-accent-foreground" : ""}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems
+                .filter((item) => {
+                  // If item has roles restriction, check if user has required role
+                  if (item.roles && profile?.role) {
+                    return item.roles.includes(profile.role);
+                  }
+                  // If no role restriction, show to all
+                  return true;
+                })
+                .map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton 
+                      onClick={() => setActiveView(item.id)}
+                      className={isActive(item.id) ? "bg-accent text-accent-foreground" : ""}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -96,13 +112,13 @@ export function AppSidebar({ activeView, setActiveView }: AppSidebarProps) {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
-                  {profile?.full_name || profile?.email}
+                  {profile?.username || profile?.email || 'User'}
                 </p>
                 <Badge 
                   variant="secondary" 
                   className={`text-xs ${getRoleColor(profile?.role || 'viewer')} text-white`}
                 >
-                  {profile?.role}
+                  {profile?.role || 'viewer'}
                 </Badge>
               </div>
             </div>

@@ -78,6 +78,7 @@ const OrderManagement = () => {
     sku: null,
     number_of_cases: null,
     tentative_delivery_date: null,
+    created_at: null,
     status: null,
   });
 
@@ -98,6 +99,7 @@ const OrderManagement = () => {
     sku: null,
     cases: null,
     delivery_date: null,
+    created_at: null,
   });
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -226,13 +228,33 @@ const OrderManagement = () => {
 
   // Get SKUs for selected client and branch
   const getSKUsForClientBranch = (clientName: string, branch: string) => {
-    if (!customers || !clientName || !branch) return [];
-    return [...new Set(
-      customers
-        .filter(c => c.client_name === clientName && c.branch === branch)
+    if (!customers || !clientName || !branch) {
+      console.log('getSKUsForClientBranch: Missing data', { customers: !!customers, clientName, branch });
+      return [];
+    }
+    
+    const filtered = customers.filter(c => {
+      const clientMatch = c.client_name?.trim() === clientName.trim();
+      const branchMatch = c.branch?.trim() === branch.trim();
+      return clientMatch && branchMatch;
+    });
+    
+    console.log('getSKUsForClientBranch: Filtered customers', { 
+      clientName, 
+      branch, 
+      filteredCount: filtered.length,
+      filtered: filtered.map(c => ({ client_name: c.client_name, branch: c.branch, sku: c.sku }))
+    });
+    
+    const skus = [...new Set(
+      filtered
         .map(c => c.sku)
-        .filter(Boolean)
+        .filter(sku => sku && sku.trim() !== '')
     )].sort();
+    
+    console.log('getSKUsForClientBranch: Result SKUs', skus);
+    
+    return skus;
   };
 
   // Create order mutation
@@ -1057,6 +1079,21 @@ const OrderManagement = () => {
                     </TableHead>
                     <TableHead>
                       <div className="flex items-center gap-2">
+                        Order Placed Date
+                        <ColumnFilter
+                          columnKey="created_at"
+                          columnName="Order Placed Date"
+                          filterValue={ordersColumnFilters.created_at || ''}
+                          onFilterChange={(value) => handleOrdersColumnFilterChange('created_at', value as string)}
+                          onClearFilter={() => handleOrdersColumnFilterChange('created_at', '')}
+                          sortDirection={ordersColumnSorts.created_at || null}
+                          onSortChange={(direction) => handleOrdersColumnSortChange('created_at', direction)}
+                          dataType="date"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
                         Status
                         <ColumnFilter
                           columnKey="status"
@@ -1084,6 +1121,9 @@ const OrderManagement = () => {
                         <span className={`px-2 py-1 rounded ${getTentativeDateHighlight(order.tentative_delivery_date)}`}>
                           {order.tentative_delivery_date}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {order.created_at ? new Date(order.created_at).toLocaleDateString() : '-'}
                       </TableCell>
                       <TableCell>
                         <Badge 
@@ -1253,6 +1293,21 @@ const OrderManagement = () => {
                         />
                       </div>
                     </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        Order Placed Date
+                        <ColumnFilter
+                          columnKey="created_at"
+                          columnName="Order Placed Date"
+                          filterValue={dispatchColumnFilters.created_at || ''}
+                          onFilterChange={(value) => handleDispatchColumnFilterChange('created_at', value as string)}
+                          onClearFilter={() => handleDispatchColumnFilterChange('created_at', '')}
+                          sortDirection={dispatchColumnSorts.created_at || null}
+                          onSortChange={(direction) => handleDispatchColumnSortChange('created_at', direction)}
+                          dataType="date"
+                        />
+                      </div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1263,6 +1318,7 @@ const OrderManagement = () => {
                       <TableCell>{order.sku}</TableCell>
                       <TableCell className="text-right">{order.cases}</TableCell>
                       <TableCell>{new Date(order.delivery_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{order.created_at ? new Date(order.created_at).toLocaleDateString() : '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

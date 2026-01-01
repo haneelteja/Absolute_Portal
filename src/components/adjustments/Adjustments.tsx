@@ -8,8 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Shield } from "lucide-react";
 
 const Adjustments = () => {
+  const { profile } = useAuth();
   const [form, setForm] = useState({
     adjustment_type: "",
     amount: "",
@@ -75,6 +79,19 @@ const Adjustments = () => {
   };
 
   const totalAdjustments = adjustments?.reduce((sum, adj) => sum + (adj.amount || 0), 0) || 0;
+
+  // Role-based access control - only managers can access
+  if (profile?.role !== 'manager') {
+    return (
+      <Alert className="m-6" variant="destructive">
+        <Shield className="h-4 w-4" />
+        <AlertDescription>
+          Access denied. This page is only available to users with Manager role.
+          Your current role: {profile?.role || 'Unknown'}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -11,9 +11,13 @@ import Reports from "@/components/reports/Reports";
 import Adjustments from "@/components/adjustments/Adjustments";
 import UserManagement from "@/components/user-management/UserManagement";
 import OrderManagement from "@/components/order-management/OrderManagement";
+import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Shield } from "lucide-react";
 
 const Index = () => {
   const [activeView, setActiveView] = useState("dashboard");
+  const { profile } = useAuth();
 
   const renderContent = () => {
     switch (activeView) {
@@ -34,8 +38,32 @@ const Index = () => {
       case "reports":
         return <Reports />;
       case "adjustments":
+        // Only allow managers to access adjustments
+        if (profile?.role !== 'manager') {
+          return (
+            <Alert className="m-6">
+              <Shield className="h-4 w-4" />
+              <AlertDescription>
+                Access denied. The Adjustments tab is only available to users with Manager role.
+                Your current role: {profile?.role || 'Unknown'}
+              </AlertDescription>
+            </Alert>
+          );
+        }
         return <Adjustments />;
       case "user-management":
+        // Only allow managers to access user management
+        if (profile?.role !== 'manager') {
+          return (
+            <Alert className="m-6">
+              <Shield className="h-4 w-4" />
+              <AlertDescription>
+                Access denied. The User Management tab is only available to users with Manager role.
+                Your current role: {profile?.role || 'Unknown'}
+              </AlertDescription>
+            </Alert>
+          );
+        }
         return <UserManagement />;
       default:
         return <Dashboard />;

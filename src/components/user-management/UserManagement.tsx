@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Mail, User, Building2, MapPin, Trash2, Edit, Search, X } from "lucide-react";
+import { Plus, Mail, User, Building2, MapPin, Trash2, Edit, Search, X, Shield } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as XLSX from 'xlsx';
 
 interface UserManagementRecord {
@@ -36,7 +37,7 @@ interface UserForm {
 }
 
 const UserManagement = () => {
-  const { user: authUser } = useAuth();
+  const { user: authUser, profile } = useAuth();
   const [userForm, setUserForm] = useState<UserForm>({
     username: '',
     email: '',
@@ -796,6 +797,19 @@ const UserManagement = () => {
       </div>
     );
   };
+
+  // Role-based access control - only managers can access
+  if (profile?.role !== 'manager') {
+    return (
+      <Alert className="m-6" variant="destructive">
+        <Shield className="h-4 w-4" />
+        <AlertDescription>
+          Access denied. This page is only available to users with Manager role.
+          Your current role: {profile?.role || 'Unknown'}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">

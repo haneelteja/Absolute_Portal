@@ -194,7 +194,8 @@ const Auth = () => {
       setSuccess('Password reset email sent! Please check your email for instructions.');
       toast({
         title: "Reset Email Sent",
-        description: "Please check your email for password reset instructions.",
+        description: "If you don't receive an email within a few minutes, please check your spam folder and verify your email is registered.",
+        duration: 8000,
       });
       setShowForgotPassword(false);
       setForgotPasswordForm({ email: '' });

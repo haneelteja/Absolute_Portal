@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           setTimeout(async () => {
             try {
-              // Try user_management first, fall back to profiles
+              // Try user_management first by user_id
               const { data: userData, error: userError } = await supabase
                 .from('user_management')
                 .select('*')
@@ -91,17 +91,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .single();
               
               if (userError) {
-                const { data: profileData, error: profileError } = await supabase
-                  .from('profiles')
+                // If not found by user_id, try by email
+                const { data: userDataByEmail, error: emailError } = await supabase
+                  .from('user_management')
                   .select('*')
-                  .eq('id', session.user.id)
+                  .eq('email', session.user.email || '')
                   .single();
                 
-                if (profileError) {
-                  logger.error('Error fetching profile:', profileError);
-                  setProfile(null);
+                if (emailError) {
+                  // Fall back to profiles table
+                  const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                  
+                  if (profileError) {
+                    logger.error('Error fetching profile:', profileError);
+                    setProfile(null);
+                  } else {
+                    setProfile(profileData);
+                  }
                 } else {
-                  setProfile(profileData);
+                  setProfile(userDataByEmail);
                 }
               } else {
                 setProfile(userData);
@@ -127,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Try user_management first, fall back to profiles
+          // Try user_management first by user_id
           const { data: userData, error: userError } = await supabase
             .from('user_management')
             .select('*')
@@ -135,17 +147,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
           
           if (userError) {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
+            // If not found by user_id, try by email
+            const { data: userDataByEmail, error: emailError } = await supabase
+              .from('user_management')
               .select('*')
-              .eq('id', session.user.id)
+              .eq('email', session.user.email || '')
               .single();
             
-            if (profileError) {
-              console.error('Error fetching profile:', profileError);
-              setProfile(null);
+            if (emailError) {
+              // Fall back to profiles table
+              const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+              
+              if (profileError) {
+                console.error('Error fetching profile:', profileError);
+                setProfile(null);
+              } else {
+                setProfile(profileData);
+              }
             } else {
-              setProfile(profileData);
+              setProfile(userDataByEmail);
             }
           } else {
             setProfile(userData);
@@ -441,11 +465,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Supabase returns null/undefined on success for resetPasswordForEmail
         // This doesn't guarantee email was sent - Supabase silently succeeds even if user doesn't exist
         console.log('✅ Supabase Auth accepted password reset request');
-        console.log('⚠️ Note: If email is not received, check:');
-        console.log('   1. User exists in Supabase (Dashboard → Auth → Users)');
-        console.log('   2. Email confirmation is not required');
-        console.log('   3. Check spam folder');
-        console.log('   4. Supabase email logs (Dashboard → Auth → Logs)');
+        console.log('⚠️ IMPORTANT: Supabase returns success even if user does not exist (security feature)');
+        console.log('⚠️ If email is not received, verify:');
+        console.log('   1. User exists in Supabase Auth (Dashboard → Auth → Users)');
+        console.log('   2. Site URL is configured: https://sales-operations-portal.vercel.app');
+        console.log('   3. Redirect URL is added: /reset-password');
+        console.log('   4. Email confirmation is not required (or email is confirmed)');
+        console.log('   5. Check spam folder');
+        console.log('   6. Check Supabase Auth logs (Dashboard → Auth → Logs)');
 
         // Clear password reset requirement if user is logged in
         if (user) {

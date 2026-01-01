@@ -27,6 +27,7 @@ interface NavigationItem {
   icon: React.ComponentType<{ className?: string }>;
   badge?: string | number;
   disabled?: boolean;
+  roles?: string[]; // Optional: restrict to specific roles
 }
 
 interface MobileNavigationProps {
@@ -50,8 +51,8 @@ const navigationItems: NavigationItem[] = [
   { id: 'labels', title: 'Labels', icon: Tag },
   { id: 'configurations', title: 'Settings', icon: Cog },
   { id: 'reports', title: 'Reports', icon: FileText },
-  { id: 'adjustments', title: 'Adjustments', icon: Settings },
-  { id: 'user-management', title: 'Users', icon: Shield },
+  { id: 'adjustments', title: 'Adjustments', icon: Settings, roles: ['manager'] }, // Only visible to managers
+  { id: 'user-management', title: 'Users', icon: Shield, roles: ['manager'] }, // Only visible to managers
 ];
 
 export const MobileNavigation: React.FC<MobileNavigationProps> = ({
@@ -161,34 +162,43 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
               {/* Navigation items */}
               <div className="flex-1 overflow-y-auto">
                 <nav className="p-4 space-y-1">
-                  {navigationItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeView === item.id;
-                    
-                    return (
-                      <Button
-                        key={item.id}
-                        variant={isActive ? 'default' : 'ghost'}
-                        className={cn(
-                          'w-full justify-start h-12 px-3',
-                          isActive && 'bg-blue-600 text-white hover:bg-blue-700'
-                        )}
-                        onClick={() => handleItemClick(item.id)}
-                        disabled={item.disabled}
-                      >
-                        <Icon className="h-5 w-5 mr-3" />
-                        <span className="flex-1 text-left">{item.title}</span>
-                        {item.badge && (
-                          <Badge 
-                            variant={isActive ? 'secondary' : 'default'}
-                            className="ml-2"
-                          >
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </Button>
-                    );
-                  })}
+                  {navigationItems
+                    .filter((item) => {
+                      // If item has roles restriction, check if user has required role
+                      if (item.roles && user?.role) {
+                        return item.roles.includes(user.role);
+                      }
+                      // If no role restriction, show to all
+                      return true;
+                    })
+                    .map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeView === item.id;
+                      
+                      return (
+                        <Button
+                          key={item.id}
+                          variant={isActive ? 'default' : 'ghost'}
+                          className={cn(
+                            'w-full justify-start h-12 px-3',
+                            isActive && 'bg-blue-600 text-white hover:bg-blue-700'
+                          )}
+                          onClick={() => handleItemClick(item.id)}
+                          disabled={item.disabled}
+                        >
+                          <Icon className="h-5 w-5 mr-3" />
+                          <span className="flex-1 text-left">{item.title}</span>
+                          {item.badge && (
+                            <Badge 
+                              variant={isActive ? 'secondary' : 'default'}
+                              className="ml-2"
+                            >
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </Button>
+                      );
+                    })}
                 </nav>
               </div>
 
