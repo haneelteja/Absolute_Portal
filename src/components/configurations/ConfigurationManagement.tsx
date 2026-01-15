@@ -1492,64 +1492,87 @@ const ConfigurationManagement = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>
-                      <ColumnFilter
-                        columnKey="pricing_date"
-                        label="Date"
-                        value={pricingColumnFilters.pricing_date}
-                        sortDirection={pricingColumnSorts.pricing_date}
-                        onFilterChange={(value) => handlePricingColumnFilterChange('pricing_date', value)}
-                        onSortChange={(direction) => handlePricingColumnSortChange('pricing_date', direction)}
-                      />
+                      <div className="flex items-center justify-between">
+                        <span>Date</span>
+                        <ColumnFilter
+                          columnKey="pricing_date"
+                          label="Date"
+                          value={pricingColumnFilters.pricing_date}
+                          sortDirection={pricingColumnSorts.pricing_date}
+                          onFilterChange={(value) => handlePricingColumnFilterChange('pricing_date', value)}
+                          onSortChange={(direction) => handlePricingColumnSortChange('pricing_date', direction)}
+                          dataType="date"
+                        />
+                      </div>
                     </TableHead>
                     <TableHead>
-                      <ColumnFilter
-                        columnKey="sku"
-                        label="SKU"
-                        value={pricingColumnFilters.sku}
-                        sortDirection={pricingColumnSorts.sku}
-                        onFilterChange={(value) => handlePricingColumnFilterChange('sku', value)}
-                        onSortChange={(direction) => handlePricingColumnSortChange('sku', direction)}
-                      />
+                      <div className="flex items-center justify-between">
+                        <span>SKU</span>
+                        <ColumnFilter
+                          columnKey="sku"
+                          label="SKU"
+                          value={pricingColumnFilters.sku}
+                          sortDirection={pricingColumnSorts.sku}
+                          onFilterChange={(value) => handlePricingColumnFilterChange('sku', value)}
+                          onSortChange={(direction) => handlePricingColumnSortChange('sku', direction)}
+                        />
+                      </div>
                     </TableHead>
                     <TableHead className="text-right">
-                      <ColumnFilter
-                        columnKey="bottles_per_case"
-                        label="Bottles/Case"
-                        value={pricingColumnFilters.bottles_per_case}
-                        sortDirection={pricingColumnSorts.bottles_per_case}
-                        onFilterChange={(value) => handlePricingColumnFilterChange('bottles_per_case', value)}
-                        onSortChange={(direction) => handlePricingColumnSortChange('bottles_per_case', direction)}
-                      />
+                      <div className="flex items-center justify-end">
+                        <span>Bottles/Case</span>
+                        <ColumnFilter
+                          columnKey="bottles_per_case"
+                          label="Bottles/Case"
+                          value={pricingColumnFilters.bottles_per_case}
+                          sortDirection={pricingColumnSorts.bottles_per_case}
+                          onFilterChange={(value) => handlePricingColumnFilterChange('bottles_per_case', value)}
+                          onSortChange={(direction) => handlePricingColumnSortChange('bottles_per_case', direction)}
+                          dataType="number"
+                        />
+                      </div>
                     </TableHead>
                     <TableHead className="text-right">
-                      <ColumnFilter
-                        columnKey="price_per_bottle"
-                        label="Price/Bottle"
-                        value={pricingColumnFilters.price_per_bottle}
-                        sortDirection={pricingColumnSorts.price_per_bottle}
-                        onFilterChange={(value) => handlePricingColumnFilterChange('price_per_bottle', value)}
-                        onSortChange={(direction) => handlePricingColumnSortChange('price_per_bottle', direction)}
-                      />
+                      <div className="flex items-center justify-end">
+                        <span>Price/Bottle</span>
+                        <ColumnFilter
+                          columnKey="price_per_bottle"
+                          label="Price/Bottle"
+                          value={pricingColumnFilters.price_per_bottle}
+                          sortDirection={pricingColumnSorts.price_per_bottle}
+                          onFilterChange={(value) => handlePricingColumnFilterChange('price_per_bottle', value)}
+                          onSortChange={(direction) => handlePricingColumnSortChange('price_per_bottle', direction)}
+                          dataType="number"
+                        />
+                      </div>
                     </TableHead>
                     <TableHead className="text-right">
-                      <ColumnFilter
-                        columnKey="cost_per_case"
-                        label="Cost/Case"
-                        value={pricingColumnFilters.cost_per_case}
-                        sortDirection={pricingColumnSorts.cost_per_case}
-                        onFilterChange={(value) => handlePricingColumnFilterChange('cost_per_case', value)}
-                        onSortChange={(direction) => handlePricingColumnSortChange('cost_per_case', direction)}
-                      />
+                      <div className="flex items-center justify-end">
+                        <span>Cost/Case</span>
+                        <ColumnFilter
+                          columnKey="cost_per_case"
+                          label="Cost/Case"
+                          value={pricingColumnFilters.cost_per_case}
+                          sortDirection={pricingColumnSorts.cost_per_case}
+                          onFilterChange={(value) => handlePricingColumnFilterChange('cost_per_case', value)}
+                          onSortChange={(direction) => handlePricingColumnSortChange('cost_per_case', direction)}
+                          dataType="number"
+                        />
+                      </div>
                     </TableHead>
                     <TableHead className="text-right">
-                      <ColumnFilter
-                        columnKey="tax"
-                        label="Tax (%)"
-                        value={pricingColumnFilters.tax}
-                        sortDirection={pricingColumnSorts.tax}
-                        onFilterChange={(value) => handlePricingColumnFilterChange('tax', value)}
-                        onSortChange={(direction) => handlePricingColumnSortChange('tax', direction)}
-                      />
+                      <div className="flex items-center justify-end">
+                        <span>Tax (%)</span>
+                        <ColumnFilter
+                          columnKey="tax"
+                          label="Tax (%)"
+                          value={pricingColumnFilters.tax}
+                          sortDirection={pricingColumnSorts.tax}
+                          onFilterChange={(value) => handlePricingColumnFilterChange('tax', value)}
+                          onSortChange={(direction) => handlePricingColumnSortChange('tax', direction)}
+                          dataType="number"
+                        />
+                      </div>
                     </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>

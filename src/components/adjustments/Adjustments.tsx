@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Adjustment, MutationFunction } from "@/types";
@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield } from "lucide-react";
+import { useAutoSave } from "@/hooks/useAutoSave";
 
 const Adjustments = () => {
   const { profile } = useAuth();
@@ -23,6 +24,31 @@ const Adjustments = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Auto-save form data to prevent data loss
+  const { loadData, clearSavedData } = useAutoSave({
+    storageKey: 'adjustments_form_autosave',
+    data: form,
+    enabled: true,
+    debounceDelay: 2000,
+    onLoad: (savedData) => {
+      if (savedData) {
+        setForm(savedData);
+        toast({
+          title: "Form data restored",
+          description: "Your previous form data has been restored.",
+        });
+      }
+    },
+  });
+
+  // Load saved data on mount
+  useEffect(() => {
+    const saved = loadData();
+    if (saved) {
+      setForm(saved);
+    }
+  }, [loadData]);
 
   const { data: adjustments } = useQuery({
     queryKey: ["adjustments"],
@@ -54,6 +80,7 @@ const Adjustments = () => {
         description: "",
         adjustment_date: new Date().toISOString().split('T')[0]
       });
+      clearSavedData(); // Clear auto-saved data after successful submission
       queryClient.invalidateQueries({ queryKey: ["adjustments"] });
     },
     onError: (error) => {

@@ -408,6 +408,88 @@ export interface Database {
           updated_at?: string;
         };
       };
+      saved_filters: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          module: string;
+          filter: Record<string, unknown>;
+          is_shared: boolean;
+          is_default: boolean;
+          created_by: string;
+          tags: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          module: string;
+          filter: Record<string, unknown>;
+          is_shared?: boolean;
+          is_default?: boolean;
+          created_by: string;
+          tags?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          module?: string;
+          filter?: Record<string, unknown>;
+          is_shared?: boolean;
+          is_default?: boolean;
+          created_by?: string;
+          tags?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      bulk_operations: {
+        Row: {
+          id: string;
+          type: string;
+          module: string;
+          record_ids: string[];
+          payload: Record<string, unknown> | null;
+          status: string;
+          progress: number;
+          errors: Array<{ recordId: string; error: string }>;
+          created_by: string;
+          created_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          type: string;
+          module: string;
+          record_ids: string[];
+          payload?: Record<string, unknown> | null;
+          status?: string;
+          progress?: number;
+          errors?: Array<{ recordId: string; error: string }>;
+          created_by: string;
+          created_at?: string;
+          completed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          type?: string;
+          module?: string;
+          record_ids?: string[];
+          payload?: Record<string, unknown> | null;
+          status?: string;
+          progress?: number;
+          errors?: Array<{ recordId: string; error: string }>;
+          created_by?: string;
+          created_at?: string;
+          completed_at?: string | null;
+        };
+      };
     };
   };
 }
