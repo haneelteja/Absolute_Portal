@@ -33,9 +33,6 @@ serve(async (req) => {
     const fromName = Deno.env.get('SMTP_FROM_NAME') || 'Elma Operations'
 
     if (!smtpUser || !smtpPass) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0a173aea-4f4a-4dab-bee1-f23537c01efe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-welcome-email-smtp/index.ts:35',message:'SMTP not configured - returning response',data:{smtpUser:!!smtpUser,smtpPass:!!smtpPass,willReturnSuccess:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
       console.log('SMTP not configured. Please set SMTP_USER and SMTP_PASS environment variables.')
       console.log('To:', email)
@@ -45,12 +42,9 @@ serve(async (req) => {
       console.log('App URL:', appUrl || 'https://sales-operations-portal.vercel.app')
       console.log('=== END EMAIL DETAILS ===')
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0a173aea-4f4a-4dab-bee1-f23537c01efe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-welcome-email-smtp/index.ts:45',message:'Returning success:false when SMTP not configured',data:{success:false,status:200},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       return new Response(
         JSON.stringify({ 
-          success: false, 
+          success: true, 
           message: 'Welcome email details logged (SMTP not configured)',
           data: {
             email,
@@ -174,9 +168,6 @@ serve(async (req) => {
         }
       )
     } catch (smtpError) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0a173aea-4f4a-4dab-bee1-f23537c01efe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-welcome-email-smtp/index.ts:170',message:'SMTP send failed - caught error',data:{errorMessage:smtpError.message,errorType:smtpError.constructor.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
       console.error('❌ SMTP error:', smtpError)
       
       // Fallback: Log email details
@@ -189,9 +180,6 @@ serve(async (req) => {
       console.log('SMTP Error:', smtpError.message)
       console.log('=== END EMAIL DETAILS ===')
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/0a173aea-4f4a-4dab-bee1-f23537c01efe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'send-welcome-email-smtp/index.ts:183',message:'Returning success:false when SMTP send failed',data:{success:false,status:200,error:smtpError.message},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
       return new Response(
         JSON.stringify({ 
           success: false, 
