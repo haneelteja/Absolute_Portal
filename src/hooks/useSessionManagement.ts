@@ -98,7 +98,8 @@ export const useSessionManagement = (
       // No warning needed
       setWarning({ show: false, timeRemaining, message: '' });
     }
-  }, [session, warningThreshold, criticalThreshold, getTimeUntilExpiry, onSessionExpiring, onSessionExpired]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, warningThreshold, criticalThreshold]);
 
   // Refresh session token (keep-alive)
   const refreshSession = useCallback(async () => {
@@ -151,7 +152,8 @@ export const useSessionManagement = (
       }
     }
     return false;
-  }, [session, isRefreshing, refreshInterval, getTimeUntilExpiry, onSessionExpired]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, isRefreshing, refreshInterval]);
 
   // Set up interval to check session status
   useEffect(() => {
@@ -195,7 +197,8 @@ export const useSessionManagement = (
         refreshIntervalRef.current = null;
       }
     };
-  }, [session, checkInterval, refreshInterval, enableKeepAlive, checkSessionStatus, refreshSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, checkInterval, refreshInterval, enableKeepAlive]);
 
   // Manual refresh function
   const manualRefresh = useCallback(async () => {

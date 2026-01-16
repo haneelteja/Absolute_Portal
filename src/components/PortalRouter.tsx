@@ -66,7 +66,6 @@ const PortalRouter: React.FC = () => {
   }
 
   // Show the main application interface
-  console.log('Rendering Index component');
   return (
     <>
       <SessionWarning />

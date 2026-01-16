@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
@@ -189,7 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     // For production: Use real Supabase auth
     if (process.env.NODE_ENV === 'production' || !process.env.VITE_USE_MOCK_AUTH) {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -271,9 +271,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       error: null,
       requiresPasswordReset: requiresPasswordReset 
     };
-  };
+  }, [requiresPasswordReset]);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -287,14 +287,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
     });
     return { error };
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);
     setProfile(null);
-  };
+  }, []);
+
+  // Create stable callback for session expiration
+  const handleSessionExpired = useCallback(async () => {
+    logger.warn('Session expired, signing out...');
+    await signOut();
+  }, [signOut]);
 
   // Session management with keep-alive (defined after signOut)
   const { refreshSession: refreshSessionToken } = useSessionManagement(session, {
@@ -302,13 +308,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshInterval: 300000, // 5 minutes
     warningThreshold: 300, // 5 minutes
     criticalThreshold: 60, // 1 minute
-    onSessionExpired: async () => {
-      logger.warn('Session expired, signing out...');
-      await signOut();
-    },
+    onSessionExpired: handleSessionExpired,
   });
 
-  const changePassword = async (currentPassword: string, newPassword: string) => {
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     try {
       // First, verify the current password by attempting to sign in
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -329,9 +332,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, [user?.email]);
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = useCallback(async (email: string) => {
     try {
       // Determine production URL - use environment variable or detect from current origin
       const productionUrl = import.meta.env.VITE_APP_URL || 
@@ -511,9 +514,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Password reset error:', errorObj);
       return { error: errorObj };
     }
-  };
+  }, [user]);
 
-  const updatePassword = async (newPassword: string) => {
+  const updatePassword = useCallback(async (newPassword: string) => {
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
       data: {
@@ -528,9 +531,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     return { error };
-  };
+  }, []);
 
-  const clearPasswordResetRequirement = async () => {
+  const clearPasswordResetRequirement = useCallback(async () => {
     if (user) {
       await supabase.auth.updateUser({
         data: {
@@ -540,14 +543,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       setRequiresPasswordReset(false);
     }
-  };
+  }, [user]);
 
-  const refreshSession = async (): Promise<boolean> => {
+  const refreshSession = useCallback(async (): Promise<boolean> => {
     if (!session) return false;
     return await refreshSessionToken();
-  };
+  }, [session, refreshSessionToken]);
 
-  const value = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     session,
     profile,
@@ -561,7 +565,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updatePassword,
     clearPasswordResetRequirement,
     refreshSession,
-  };
+  }), [user, session, profile, loading, requiresPasswordReset, signIn, signUp, signOut, changePassword, resetPassword, updatePassword, clearPasswordResetRequirement, refreshSession]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

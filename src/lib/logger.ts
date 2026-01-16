@@ -49,10 +49,16 @@ class Logger {
 }
 
 // Create logger instance
-export const logger = new Logger(
-  process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.INFO
+const loggerInstance = new Logger(
+  import.meta.env.DEV ? LogLevel.DEBUG : LogLevel.INFO
 );
 
-// Export individual methods for convenience
-export const { error, warn, info, debug } = logger;
+// Export logger instance
+export const logger = loggerInstance;
+
+// Export individual methods for convenience (avoid destructuring to prevent initialization issues)
+export const error = loggerInstance.error.bind(loggerInstance);
+export const warn = loggerInstance.warn.bind(loggerInstance);
+export const info = loggerInstance.info.bind(loggerInstance);
+export const debug = loggerInstance.debug.bind(loggerInstance);
 
