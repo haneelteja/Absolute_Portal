@@ -376,7 +376,10 @@ serve(async (req) => {
       }
       
       console.log('Email function response:', JSON.stringify(emailResponse, null, 2))
-      console.log('Email function error:', emailError) else {
+      console.log('Email function error:', emailError)
+      
+      // If no response and no error, log details for manual sending
+      if (!emailResponse && !emailError) {
         console.warn('⚠️ No response from email function')
         // Log email details for manual sending
         console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
