@@ -972,7 +972,15 @@ const UserManagement = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form id="create-user-form" onSubmit={handleSubmit} className="space-y-6">
+          <form 
+            id="create-user-form" 
+            onSubmit={(e) => {
+              console.log('Form onSubmit triggered');
+              handleSubmit(e);
+            }} 
+            className="space-y-6"
+            noValidate
+          >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="username">Username *</Label>
@@ -1147,6 +1155,24 @@ const UserManagement = () => {
                 type="submit" 
                 disabled={isSubmitting}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
+                onClick={(e) => {
+                  console.log('Submit button clicked');
+                  console.log('Current form state:', userForm);
+                  console.log('Is submitting:', isSubmitting);
+                  console.log('Editing user ID:', editingUserId);
+                  
+                  // If form submission doesn't work, try direct submission
+                  const form = document.getElementById('create-user-form') as HTMLFormElement;
+                  if (form) {
+                    console.log('Form element found, checking validity');
+                    if (!form.checkValidity()) {
+                      console.error('Form validation failed');
+                      form.reportValidity();
+                      e.preventDefault();
+                      return;
+                    }
+                  }
+                }}
               >
                 {isSubmitting 
                   ? (editingUserId ? "Updating User..." : "Creating User...") 
