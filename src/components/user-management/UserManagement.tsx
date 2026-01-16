@@ -1152,26 +1152,25 @@ const UserManagement = () => {
 
             <div className="flex space-x-2">
               <Button 
-                type="submit" 
+                type="button"
                 disabled={isSubmitting}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
-                onClick={(e) => {
+                onClick={async (e) => {
+                  e.preventDefault();
                   console.log('Submit button clicked');
                   console.log('Current form state:', userForm);
                   console.log('Is submitting:', isSubmitting);
                   console.log('Editing user ID:', editingUserId);
                   
-                  // If form submission doesn't work, try direct submission
-                  const form = document.getElementById('create-user-form') as HTMLFormElement;
-                  if (form) {
-                    console.log('Form element found, checking validity');
-                    if (!form.checkValidity()) {
-                      console.error('Form validation failed');
-                      form.reportValidity();
-                      e.preventDefault();
-                      return;
-                    }
-                  }
+                  // Create a synthetic form event and call handleSubmit directly
+                  const syntheticEvent = {
+                    preventDefault: () => {},
+                    stopPropagation: () => {},
+                    currentTarget: document.getElementById('create-user-form'),
+                    target: document.getElementById('create-user-form'),
+                  } as React.FormEvent;
+                  
+                  await handleSubmit(syntheticEvent);
                 }}
               >
                 {isSubmitting 
