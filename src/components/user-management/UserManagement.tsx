@@ -55,10 +55,11 @@ const UserManagement = () => {
   const { loadData, clearSavedData } = useAutoSave({
     storageKey: 'user_management_form_autosave',
     data: userForm,
-    enabled: true,
+    enabled: !editingUserId, // Disable auto-save when editing
     debounceDelay: 2000,
     onLoad: (savedData) => {
-      if (savedData && !editingUserId) {
+      // Only restore if we're not currently editing and form is empty
+      if (savedData && !editingUserId && !userForm.username && !userForm.email) {
         setUserForm(savedData);
         toast({
           title: "Form data restored",
@@ -68,15 +69,16 @@ const UserManagement = () => {
     },
   });
 
-  // Load saved data on mount (only if not editing)
+  // Load saved data on mount (only if not editing and form is empty)
   useEffect(() => {
-    if (!editingUserId) {
+    if (!editingUserId && !userForm.username && !userForm.email) {
       const saved = loadData();
-      if (saved) {
+      if (saved && saved.username && saved.email) {
+        // Only restore if there's actual saved data
         setUserForm(saved);
       }
     }
-  }, [loadData, editingUserId]);
+  }, []); // Only run on mount
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<keyof UserManagementRecord | null>(null);
@@ -1000,16 +1002,26 @@ const UserManagement = () => {
             }} 
             className="space-y-6"
             noValidate
+            style={{ pointerEvents: 'auto' }}
+            onFocus={(e) => {
+              console.log('Form focused:', e.target);
+            }}
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="username">Username *</Label>
                 <Input
                   id="username"
-                  value={userForm.username}
-                  onChange={(e) => setUserForm(prev => ({ ...prev, username: e.target.value }))}
+                  value={userForm.username || ''}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    console.log('Username input changed:', newValue);
+                    setUserForm(prev => ({ ...prev, username: newValue }));
+                  }}
                   placeholder="Enter username"
                   required
+                  disabled={isSubmitting}
+                  autoComplete="username"
                 />
               </div>
               <div className="space-y-2">
@@ -1017,21 +1029,34 @@ const UserManagement = () => {
                 <Input
                   id="email"
                   type="email"
-                  value={userForm.email}
-                  onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
+                  value={userForm.email || ''}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    console.log('Email input changed:', newValue);
+                    setUserForm(prev => {
+                      const updated = { ...prev, email: newValue };
+                      console.log('Updated userForm with email:', updated);
+                      return updated;
+                    });
+                  }}
+                  onInput={(e) => {
+                    console.log('Email input event:', e.currentTarget.value);
+                  }}
                   placeholder="Enter email address"
                   required
+                  disabled={isSubmitting}
+                  autoComplete="email"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Role *</Label>
                 <Select
-                  value={userForm.role}
+                  value={userForm.role || 'client'}
                   onValueChange={(value: 'admin' | 'manager' | 'client') => {
                     console.log('Role changed to:', value);
                     setUserForm(prev => {
                       const updated = { ...prev, role: value };
-                      console.log('Updated userForm:', updated);
+                      console.log('Updated userForm with role:', updated);
                       // Clear client-branch selections when switching to admin/manager
                       if (value === 'admin' || value === 'manager') {
                         updated.associated_client_branches = [];
@@ -1039,11 +1064,13 @@ const UserManagement = () => {
                       return updated;
                     });
                   }}
+                  disabled={isSubmitting}
                 >
                   <SelectTrigger 
                     id="role-select" 
                     aria-label="Select user role"
                     className="w-full"
+                    disabled={isSubmitting}
                   >
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
