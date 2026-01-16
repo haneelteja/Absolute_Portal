@@ -30,7 +30,7 @@ serve(async (req) => {
       // Fallback: Log email details for manual sending
       console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
       console.log('To:', email)
-      console.log('Subject: Welcome to Elma Operations Portal - Your Login Credentials')
+      console.log('Subject: Your Access to Elma Operations Portal')
       console.log('Username:', username)
       console.log('Password:', tempPassword)
       console.log('App URL:', appUrl || 'http://localhost:8080')
@@ -133,7 +133,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: fromEmail, // Configurable via RESEND_FROM_EMAIL environment variable
         to: [email],
-        subject: 'Welcome to Elma Operations Portal - Your Login Credentials',
+        subject: 'Your Access to Elma Operations Portal',
         html: emailHtml,
       }),
     })
@@ -146,7 +146,7 @@ serve(async (req) => {
       // Fallback: Log email details
       console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
       console.log('To:', email)
-      console.log('Subject: Welcome to Elma Operations Portal - Your Login Credentials')
+      console.log('Subject: Your Access to Elma Operations Portal')
       console.log('Username:', username)
       console.log('Password:', tempPassword)
       console.log('App URL:', appUrl || 'http://localhost:8080')

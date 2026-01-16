@@ -33,7 +33,7 @@ serve(async (req) => {
       console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
       console.log('Mailgun not configured. Please set MAILGUN_API_KEY and MAILGUN_DOMAIN environment variables.')
       console.log('To:', email)
-      console.log('Subject: Welcome to Elma Operations Portal - Your Login Credentials')
+      console.log('Subject: Your Access to Elma Operations Portal')
       console.log('Username:', username)
       console.log('Password:', tempPassword)
       console.log('App URL:', appUrl || 'https://sales-operations-portal.vercel.app')
@@ -63,56 +63,58 @@ serve(async (req) => {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Elma Operations Portal</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
-        .container { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #2c5aa0 0%, #1e3a8a 100%); color: white; padding: 40px 30px; text-align: center; }
-        .content { padding: 40px 30px; }
-        .credentials { background: #f8f9fa; border: 2px solid #e53e3e; border-radius: 8px; padding: 25px; margin: 25px 0; }
-        .password { font-size: 20px; font-weight: bold; color: #e53e3e; background: #fed7d7; padding: 15px; border-radius: 6px; text-align: center; margin: 10px 0; }
-        .login-btn { background: linear-gradient(135deg, #2c5aa0 0%, #1e3a8a 100%); color: white; padding: 15px 35px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 25px 0; font-weight: 600; }
-        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-        .warning { background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 15px; margin: 20px 0; color: #856404; }
-    </style>
+<meta charset="UTF-8">
+<title>Welcome to Elma Operations Portal</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:20px;color:#333;}
+.container{max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);}
+.header{background:#1e3a8a;color:#ffffff;padding:30px;text-align:center;}
+.content{padding:30px;}
+.credentials{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:20px;margin:20px 0;}
+.password{font-size:18px;font-weight:bold;color:#b91c1c;background:#fee2e2;padding:10px;border-radius:4px;text-align:center;}
+.btn{display:inline-block;margin-top:20px;padding:12px 30px;background:#1e3a8a;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;}
+.warning{background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:12px;margin-top:20px;color:#7c2d12;font-size:14px;}
+.footer{text-align:center;font-size:13px;color:#6b7280;padding:20px;}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Welcome to Elma Operations Portal</h1>
-            <p>Your Access Details</p>
-        </div>
-        
-        <div class="content">
-            <p>Dear <strong>${username}</strong>,</p>
-            
-            <p>Your account has been successfully created in the Elma Operations Portal. Below are your login credentials:</p>
-            
-            <div class="credentials">
-                <p><strong>Username:</strong> ${username}</p>
-                <p><strong>Password:</strong></p>
-                <div class="password">${tempPassword}</div>
-            </div>
-            
-            <div class="warning">
-                <strong>⚠️ Important:</strong> Please change your password after your first login for security purposes.
-            </div>
-            
-            <p>Please log in at: <a href="${appUrl || 'https://sales-operations-portal.vercel.app'}">${appUrl || 'https://sales-operations-portal.vercel.app'}</a></p>
-            
-            <div style="text-align: center;">
-                <a href="${appUrl || 'https://sales-operations-portal.vercel.app'}" class="login-btn">🚀 Access Elma Operations Portal</a>
-            </div>
-            
-            <p>If you have any issues logging in, please contact support at <a href="mailto:nalluruhaneel@gmail.com">nalluruhaneel@gmail.com</a></p>
-        </div>
-        
-        <div class="footer">
-            <p><strong>Best regards,</strong><br>Elma Manufacturing Pvt. Ltd.</p>
-        </div>
+<div class="container">
+  <div class="header">
+    <h2>Welcome to Elma Operations Portal</h2>
+  </div>
+  <div class="content">
+    <p>Dear <strong>${username}</strong>,</p>
+    <p>Your user account has been successfully created. Please find your login credentials below:</p>
+    <div class="credentials">
+      <p><strong>Username:</strong> ${username}</p>
+      <p><strong>Temporary Password:</strong></p>
+      <div class="password">${tempPassword}</div>
     </div>
+    <div class="warning">
+      For security reasons, please change your password immediately after your first login.
+    </div>
+    <p>
+      Access the portal using the link below:
+      <br>
+      <a href="${appUrl || 'https://sales-operations-portal.vercel.app'}">
+        ${appUrl || 'https://sales-operations-portal.vercel.app'}
+      </a>
+    </p>
+    <div style="text-align:center;">
+      <a class="btn" href="${appUrl || 'https://sales-operations-portal.vercel.app'}">
+        Login to Portal
+      </a>
+    </div>
+    <p style="margin-top:25px;">
+      If you require any assistance, please contact support at
+      <a href="mailto:nalluruhaneel@gmail.com">nalluruhaneel@gmail.com</a>.
+    </p>
+  </div>
+  <div class="footer">
+    Regards,<br>
+    <strong>Elma Manufacturing Pvt. Ltd.</strong>
+  </div>
+</div>
 </body>
 </html>
     `.trim()
@@ -124,7 +126,7 @@ serve(async (req) => {
     const formData = new FormData()
     formData.append('from', `${fromName} <${fromEmail}>`)
     formData.append('to', email)
-    formData.append('subject', 'Welcome to Elma Operations Portal - Your Login Credentials')
+    formData.append('subject', 'Your Access to Elma Operations Portal')
     formData.append('html', emailHtml)
     formData.append('text', `Welcome to Elma Operations Portal\n\nUsername: ${username}\nPassword: ${tempPassword}\n\nPlease log in at: ${appUrl || 'https://sales-operations-portal.vercel.app'}\n\nPlease change your password after your first login.`)
 
@@ -175,7 +177,7 @@ serve(async (req) => {
       // Fallback: Log email details
       console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
       console.log('To:', email)
-      console.log('Subject: Welcome to Elma Operations Portal - Your Login Credentials')
+      console.log('Subject: Your Access to Elma Operations Portal')
       console.log('Username:', username)
       console.log('Password:', tempPassword)
       console.log('App URL:', appUrl || 'https://sales-operations-portal.vercel.app')

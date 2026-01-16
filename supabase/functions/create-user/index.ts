@@ -407,7 +407,7 @@ serve(async (req) => {
           // Log email details for manual sending
           console.log('=== WELCOME EMAIL DETAILS (MANUAL SEND REQUIRED) ===')
           console.log('To:', email)
-          console.log('Subject: Welcome to Elma Operations Portal - Your Login Credentials')
+          console.log('Subject: Your Access to Elma Operations Portal')
           console.log('Username:', username)
           console.log('Temporary Password:', password)
           console.log('App URL:', appUrl)
