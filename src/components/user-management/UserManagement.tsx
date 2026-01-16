@@ -350,8 +350,15 @@ const UserManagement = () => {
 
       console.log('Current user record in user_management:', currentUserRecord);
       console.log('Creating user with role:', formData.role);
+      console.log('Role type:', typeof formData.role);
+      console.log('Role value:', JSON.stringify(formData.role));
       console.log('Associated clients:', associatedClients);
       console.log('Associated branches:', associatedBranches);
+
+      // Validate role before sending
+      if (!formData.role || !['admin', 'manager', 'client'].includes(formData.role)) {
+        throw new Error(`Invalid role: ${formData.role}. Role must be one of: admin, manager, client`);
+      }
 
       // Create user using server-side function to skip email confirmation
       const requestBody = {
@@ -364,7 +371,12 @@ const UserManagement = () => {
         createdBy: currentUserRecord?.id || null
       };
       
-      console.log('Sending request to create-user function:', { ...requestBody, password: '***' });
+      console.log('Sending request to create-user function:', { 
+        ...requestBody, 
+        password: '***',
+        roleType: typeof requestBody.role,
+        roleValue: requestBody.role
+      });
       
       const { data: createUserResponse, error: createUserError } = await supabase.functions.invoke('create-user', {
         body: requestBody
@@ -710,6 +722,10 @@ const UserManagement = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('Form submission started');
+    console.log('Form data:', userForm);
+    
     // Validate required fields
     if (!userForm.username || !userForm.email) {
       toast({
@@ -719,6 +735,18 @@ const UserManagement = () => {
       });
       return;
     }
+    
+    // Validate role is set
+    if (!userForm.role || !['admin', 'manager', 'client'].includes(userForm.role)) {
+      toast({
+        title: "Error",
+        description: "Please select a valid role (Admin, Manager, or Client).",
+        variant: "destructive",
+      });
+      console.error('Invalid role:', userForm.role);
+      return;
+    }
+    
     // For client role, require at least one client-branch combination
     if (userForm.role === 'client' && userForm.associated_client_branches.length === 0) {
       toast({
@@ -729,10 +757,12 @@ const UserManagement = () => {
       return;
     }
 
+    console.log('Validation passed, submitting form with role:', userForm.role);
     setIsSubmitting(true);
     try {
       if (editingUserId) {
         // Update existing user
+        console.log('Updating user:', editingUserId);
         await updateUserMutation.mutateAsync({
           userId: editingUserId,
           username: userForm.username,
@@ -743,6 +773,7 @@ const UserManagement = () => {
         setEditingUserId(null);
       } else {
         // Create new user
+        console.log('Creating new user with role:', userForm.role);
         await createUserMutation.mutateAsync(userForm);
       }
       
@@ -753,6 +784,9 @@ const UserManagement = () => {
         associated_client_branches: [],
         role: 'client'
       });
+    } catch (error) {
+      console.error('Form submission error:', error);
+      // Error handling is done in the mutation onError callbacks
     } finally {
       setIsSubmitting(false);
     }
@@ -965,17 +999,37 @@ const UserManagement = () => {
                 <Label htmlFor="role">Role *</Label>
                 <Select
                   value={userForm.role}
-                  onValueChange={(value: 'admin' | 'manager' | 'client') => setUserForm(prev => ({ ...prev, role: value }))}
+                  onValueChange={(value: 'admin' | 'manager' | 'client') => {
+                    console.log('Role changed to:', value);
+                    setUserForm(prev => {
+                      const updated = { ...prev, role: value };
+                      console.log('Updated userForm:', updated);
+                      // Clear client-branch selections when switching to admin/manager
+                      if (value === 'admin' || value === 'manager') {
+                        updated.associated_client_branches = [];
+                      }
+                      return updated;
+                    });
+                  }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger 
+                    id="role-select" 
+                    aria-label="Select user role"
+                    className="w-full"
+                  >
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="client">Client</SelectItem>
+                    <SelectItem value="admin" key="admin">Admin</SelectItem>
+                    <SelectItem value="manager" key="manager">Manager</SelectItem>
+                    <SelectItem value="client" key="client">Client</SelectItem>
                   </SelectContent>
                 </Select>
+                {userForm.role && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Selected role: <span className="font-semibold">{userForm.role}</span>
+                  </p>
+                )}
               </div>
             </div>
 
