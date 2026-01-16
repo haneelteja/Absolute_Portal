@@ -483,9 +483,13 @@ serve(async (req) => {
 </html>
     `.trim()
 
-    // Check if email is the account owner (for Resend free tier limitation)
-    const accountOwnerEmail = Deno.env.get('RESEND_ACCOUNT_OWNER_EMAIL') || 'nalluruhaneel@gmail.com'
-    const isAccountOwner = email.toLowerCase() === accountOwnerEmail.toLowerCase()
+    // Get the from address - use environment variable if set, otherwise use Resend's test domain
+    // To send to any email (including Gmail), you need to verify YOUR OWN domain in Resend
+    // Then set RESEND_FROM_EMAIL environment variable to: "Elma Operations <noreply@yourdomain.com>"
+    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'Elma Operations <onboarding@resend.dev>'
+    
+    console.log('Sending password reset email from:', fromEmail)
+    console.log('Sending email to:', email)
 
     // Send email using Resend
     const emailResponse = await fetch('https://api.resend.com/emails', {
@@ -495,7 +499,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Elma Operations <onboarding@resend.dev>', // Using Resend's verified domain
+        from: fromEmail, // Configurable via RESEND_FROM_EMAIL environment variable
         to: [email],
         subject: '🔐 Reset Your Password - Elma Operations Portal',
         html: emailHtml,
