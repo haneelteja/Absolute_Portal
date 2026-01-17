@@ -577,7 +577,7 @@ const OrderManagement = () => {
       tentative_delivery_date: null,
       status: null,
     });
-  };
+  }, []);
 
   // Filter and sort handlers for Orders Dispatch
   const handleDispatchColumnFilterChange = useCallback((columnKey: string, value: string) => {
@@ -585,7 +585,7 @@ const OrderManagement = () => {
       ...prev,
       [columnKey]: value
     }));
-  };
+  }, []);
 
   const handleDispatchColumnSortChange = useCallback((columnKey: string, direction: 'asc' | 'desc' | null) => {
     setDispatchColumnSorts(prev => {
@@ -615,7 +615,7 @@ const OrderManagement = () => {
       cases: null,
       delivery_date: null,
     });
-  };
+  }, []);
 
   // Filtered and sorted Current Orders
   const filteredAndSortedOrders = useMemo(() => {
@@ -815,7 +815,7 @@ const OrderManagement = () => {
     if (window.confirm('Are you sure you want to delete this order?')) {
       deleteOrderMutation.mutate(id);
     }
-  };
+  }, [deleteOrderMutation]);
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
