@@ -1,4 +1,3 @@
-// ...existing code...
 -  const clearAllOrdersFilters = useCallback(() => {
 +  const clearAllOrdersFilters = useCallback(() => {
      setOrdersSearchTerm("");
