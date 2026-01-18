@@ -579,7 +579,7 @@ const LabelPurchases = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Label Purchases');
     XLSX.writeFile(wb, `label-purchases-${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
+  }
 
   return (
     <div className="space-y-6">
