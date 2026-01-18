@@ -125,11 +125,14 @@ const Index = () => {
     }
   };
 
+  if (activeView === "order-management") {
+    // Do not wrap EmbeddedOrderManagement in SidebarProvider or other app providers
+    return <EmbeddedOrderManagement />;
+  }
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar activeView={activeView} setActiveView={setActiveView} />
-        
         <div className="flex-1 flex flex-col">
           <header className="h-12 flex items-center border-b bg-card px-4">
             <SidebarTrigger className="mr-4" />
@@ -139,7 +142,6 @@ const Index = () => {
               </h1>
             </div>
           </header>
-
           <main className="flex-1 p-6 bg-background">
             {renderContent()}
           </main>
