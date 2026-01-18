@@ -2117,7 +2117,7 @@ const SalesEntry = () => {
                         <SelectValue placeholder="Select customer" />
                       </SelectTrigger>
                       <SelectContent>
-                        {getUniqueCustomers().map((customerName) => (
+                        {getUniqueCustomers.map((customerName) => (
                           <SelectItem key={customerName} value={customerName}>
                             {customerName}
                           </SelectItem>
@@ -2479,7 +2479,7 @@ const SalesEntry = () => {
                                       <SelectValue placeholder="Select customer" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {getUniqueCustomers().map((customerName) => (
+                                      {getUniqueCustomers.map((customerName) => (
                                         <SelectItem key={customerName} value={customerName}>
                                           {customerName}
                                         </SelectItem>
