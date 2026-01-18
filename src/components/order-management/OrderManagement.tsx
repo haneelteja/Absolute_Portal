@@ -745,6 +745,10 @@ const OrderManagement = () => {
     });
   }, [ordersDispatch, debouncedDispatchSearchTerm, dispatchColumnFilters, dispatchColumnSorts]);
 
+
+const OrderManagement: React.FC = () => {
+  // ...existing code...
+
   // Export Current Orders to Excel (memoized)
   const exportCurrentOrdersToExcel = useCallback(() => {
     if (!filteredAndSortedOrders || filteredAndSortedOrders.length === 0) {
@@ -817,8 +821,6 @@ const OrderManagement = () => {
     }
   }, [deleteOrderMutation]);
 
-
-const OrderManagement: React.FC = () => {
   return (
     <div>
       <h2>Order Management</h2>
