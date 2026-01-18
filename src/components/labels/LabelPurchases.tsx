@@ -96,8 +96,7 @@ const LabelPurchases = () => {
       sku: customer.sku,
       client_name: customer.client_name,
       branch: customer.branch
-    }, [filteredAndSortedPurchases, customers]);
-  
+    }));
     return uniqueSKUs;
   };
 
