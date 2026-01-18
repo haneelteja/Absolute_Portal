@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from "react";
+import EmbeddedOrderManagement from "@/components/order-management/EmbeddedOrderManagement";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,7 +16,7 @@ const ConfigurationManagement = lazy(() => import("@/components/configurations/C
 const Reports = lazy(() => import("@/components/reports/Reports"));
 const Adjustments = lazy(() => import("@/components/adjustments/Adjustments"));
 const UserManagement = lazy(() => import("@/components/user-management/UserManagement"));
-const OrderManagement = lazy(() => import("@/components/order-management/OrderManagement"));
+// const OrderManagement = lazy(() => import("@/components/order-management/OrderManagement"));
 
 // Loading component for route transitions
 const RouteLoader = () => (
@@ -41,9 +42,7 @@ const Index = () => {
         );
       case "order-management":
         return (
-          <Suspense fallback={<RouteLoader />}>
-            <OrderManagement />
-          </Suspense>
+          <EmbeddedOrderManagement />
         );
       case "client-transactions":
         return (
