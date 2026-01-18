@@ -1,6 +1,4 @@
-*** Begin Patch
-*** Update File: src/components/order-management/OrderManagement.tsx
-@@
+// ...existing code...
 -  const clearAllOrdersFilters = useCallback(() => {
 +  const clearAllOrdersFilters = useCallback(() => {
      setOrdersSearchTerm("");
