@@ -816,7 +816,7 @@ const OrderManagement = () => {
       deleteOrderMutation.mutate(id);
     }
   }, [deleteOrderMutation]);
->>>>>>> origin/copilot/fix-vercel-revert-2026-01-17
+
 
 const OrderManagement: React.FC = () => {
   return (
