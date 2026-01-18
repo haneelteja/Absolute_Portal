@@ -128,7 +128,7 @@ const OrderManagement = () => {
     
     // Normal - no highlight
     return '';
-  }, [filteredAndSortedPurchases, customers]);
+  };
   
   // Fetch orders with SQL-level sorting
   const { data: orders, isLoading } = useQuery({
