@@ -245,159 +245,158 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">AE</span>
-            </div>
-          </div>
-          <CardTitle className="text-2xl font-bold">Aamodha Enterprises</CardTitle>
-          <CardDescription>Sign in to your account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert className="mb-4" variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {success && (
-            <Alert className="mb-4" variant="default">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-          
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="signin-email">Email</Label>
-              <Input
-                id="signin-email"
-                type="email"
-                placeholder="Enter your email"
-                value={signInForm.email}
-                onChange={(e) => setSignInForm({ ...signInForm, email: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="signin-password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="signin-password"
-                  type={showSignInPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={signInForm.password}
-                  onChange={(e) => setSignInForm({ ...signInForm, password: e.target.value })}
-                  required
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowSignInPassword(!showSignInPassword)}
-                >
-                  {showSignInPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-100 to-blue-50">
+      <div className="flex items-center justify-center w-full">
+        <Card className="w-full max-w-md shadow-xl rounded-2xl p-8 bg-white/90">
+          <CardHeader className="text-center pb-2">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow">
+                <span className="text-white font-bold text-2xl">AE</span>
               </div>
             </div>
-            
-            <div className="flex items-center justify-between">
-              <Button
-                type="button"
-                variant="link"
-                className="p-0 h-auto text-sm"
-                onClick={() => setShowForgotPassword(true)}
-              >
-                Forgot Password?
-              </Button>
-            </div>
-            
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing In...
-                </>
-              ) : (
-                'Sign In'
-              )}
-            </Button>
-          </form>
-
-          {/* Change Password Dialog */}
-          <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle className="flex items-center">
-                  <Key className="mr-2 h-5 w-5" />
-                  Change Password
-                </DialogTitle>
-                <DialogDescription>
-                  Enter your current password and choose a new password.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Current Password</Label>
+            <CardTitle className="text-2xl font-bold mb-1">Aamodha Enterprises</CardTitle>
+            <CardDescription className="text-base">Sign in to your account</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2">
+            {error && (
+              <Alert className="mb-4" variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert className="mb-4" variant="default">
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+            <form onSubmit={handleSignIn} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="signin-email">Email</Label>
+                <Input
+                  id="signin-email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={signInForm.email}
+                  onChange={(e) => setSignInForm({ ...signInForm, email: e.target.value })}
+                  required
+                  className="h-11 text-base"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signin-password">Password</Label>
+                <div className="relative">
                   <Input
-                    id="current-password"
-                    type="password"
-                    placeholder="Enter current password"
-                    value={changePasswordForm.currentPassword}
-                    onChange={(e) => setChangePasswordForm({ ...changePasswordForm, currentPassword: e.target.value })}
+                    id="signin-password"
+                    type={showSignInPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={signInForm.password}
+                    onChange={(e) => setSignInForm({ ...signInForm, password: e.target.value })}
                     required
+                    className="pr-10 h-11 text-base"
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
-                  <Input
-                    id="new-password"
-                    type="password"
-                    placeholder="Enter new password (min 6 characters)"
-                    value={changePasswordForm.newPassword}
-                    onChange={(e) => setChangePasswordForm({ ...changePasswordForm, newPassword: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-new-password">Confirm New Password</Label>
-                  <Input
-                    id="confirm-new-password"
-                    type="password"
-                    placeholder="Confirm new password"
-                    value={changePasswordForm.confirmPassword}
-                    onChange={(e) => setChangePasswordForm({ ...changePasswordForm, confirmPassword: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={() => setShowChangePassword(false)}
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowSignInPassword(!showSignInPassword)}
                   >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Changing...
-                      </>
+                    {showSignInPassword ? (
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      'Change Password'
+                      <Eye className="h-4 w-4" />
                     )}
                   </Button>
                 </div>
-              </form>
-            </DialogContent>
+              </div>
+              <div className="flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="p-0 h-auto text-sm"
+                  onClick={() => setShowForgotPassword(true)}
+                >
+                  Forgot Password?
+                </Button>
+              </div>
+              <Button type="submit" className="w-full h-11 text-base font-semibold rounded-lg" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+
+            {/* Change Password Dialog */}
+            <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center">
+                    <Key className="mr-2 h-5 w-5" />
+                    Change Password
+                  </DialogTitle>
+                  <DialogDescription>
+                    Enter your current password and choose a new password.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="current-password">Current Password</Label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      placeholder="Enter current password"
+                      value={changePasswordForm.currentPassword}
+                      onChange={(e) => setChangePasswordForm({ ...changePasswordForm, currentPassword: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      placeholder="Enter new password (min 6 characters)"
+                      value={changePasswordForm.newPassword}
+                      onChange={(e) => setChangePasswordForm({ ...changePasswordForm, newPassword: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                    <Input
+                      id="confirm-new-password"
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={changePasswordForm.confirmPassword}
+                      onChange={(e) => setChangePasswordForm({ ...changePasswordForm, confirmPassword: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowChangePassword(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Changing...
+                        </>
+                      ) : (
+                        'Change Password'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
           </Dialog>
 
           {/* Forgot Password Dialog */}
