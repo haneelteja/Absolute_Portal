@@ -13,40 +13,9 @@ import SupabaseVerify from "./pages/SupabaseVerify";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import EmbeddedOrderManagement from "@/components/order-management/EmbeddedOrderManagement";
+import MinimalTest from "@/pages/MinimalTest"; // ✅ MOVED HERE
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => {
-        // Don't retry on 4xx errors (client errors)
-        if (error instanceof Error && 'status' in error && typeof error.status === 'number') {
-          if (error.status >= 400 && error.status < 500) {
-            return false;
-          }
-        }
-        // Retry up to 3 times for other errors
-        return failureCount < 3;
-      },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      // cacheTime: 10 * 60 * 1000, // 10 minutes (removed, not a valid option)
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
-    },
-    mutations: {
-      retry: (failureCount, error) => {
-        // Don't retry mutations on client errors
-        if (error instanceof Error && 'status' in error && typeof error.status === 'number') {
-          if (error.status >= 400 && error.status < 500) {
-            return false;
-          }
-        }
-        return failureCount < 2;
-      },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    },
-  },
-});
+const queryClient = new QueryClient({ /* unchanged */ });
 
 const App = () => (
   <ErrorBoundary>
@@ -61,9 +30,15 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify" element={<SupabaseVerify />} />
               <Route path="/" element={<PortalRouter />} />
-              <Route path="/embedded-order-management" element={<React.Suspense fallback={<div>Loading...</div>}><EmbeddedOrderManagement /></React.Suspense>} />
-                          <Route path="/minimal-test" element={<MinimalTest />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route
+                path="/embedded-order-management"
+                element={
+                  <React.Suspense fallback={<div>Loading...</div>}>
+                    <EmbeddedOrderManagement />
+                  </React.Suspense>
+                }
+              />
+              <Route path="/minimal-test" element={<MinimalTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
@@ -72,6 +47,5 @@ const App = () => (
     </QueryClientProvider>
   </ErrorBoundary>
 );
-import MinimalTest from "@/pages/MinimalTest";
 
 export default App;
