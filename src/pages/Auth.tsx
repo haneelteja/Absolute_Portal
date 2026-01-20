@@ -397,9 +397,9 @@ const Auth = () => {
                   </div>
                 </form>
               </DialogContent>
-          </Dialog>
+            </Dialog>
 
-          {/* Forgot Password Dialog */}
+            {/* Forgot Password Dialog */}
           <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
             <DialogContent>
               <DialogHeader>
@@ -569,8 +569,9 @@ const Auth = () => {
               </form>
             </DialogContent>
           </Dialog>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
