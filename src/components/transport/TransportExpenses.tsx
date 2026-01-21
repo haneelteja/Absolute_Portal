@@ -419,8 +419,8 @@ const TransportExpenses = () => {
     autoPopulateFromSalesEdit();
   }, [editForm.client_id, editForm.branch]);
 
-  // Get unique groups for filtering (memoized)
-  const getUniqueGroups = useMemo(() => {
+  // Memoized unique groups list for dropdown options
+  const uniqueGroups = useMemo(() => {
     if (!expenses) return [];
     return [...new Set(expenses.map(e => e.expense_group).filter(Boolean))].sort();
   }, [expenses]);
@@ -831,7 +831,7 @@ const TransportExpenses = () => {
                   sortDirection={columnSorts.group}
                   onSortChange={(direction) => handleColumnSortChange('group', direction)}
                   dataType="text"
-                  options={getUniqueGroups()}
+                  options={uniqueGroups}
                 />
               </div>
             </TableHead>

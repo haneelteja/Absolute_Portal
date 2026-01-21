@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
 import Auth from '@/pages/Auth';
 import Index from '@/pages/Index';
 import ResetPassword from '@/pages/ResetPassword';
@@ -36,6 +37,17 @@ const PortalRouter: React.FC = () => {
     });
   }, [user, authLoading, requiresPasswordReset, isPasswordReset, isCheckingReset]);
 
+  // Ensure state updates are logged for debugging
+  useEffect(() => {
+    console.log('PortalRouter state updated:', {
+      user: !!user,
+      authLoading,
+      requiresPasswordReset,
+      isPasswordReset,
+      isCheckingReset
+    });
+  }, [user, authLoading, requiresPasswordReset, isPasswordReset, isCheckingReset]);
+
   // Show loading spinner while authentication is being determined
   if (authLoading || isCheckingReset) {
     return (
@@ -58,11 +70,9 @@ const PortalRouter: React.FC = () => {
     return <Auth />;
   }
 
-  // If user requires password reset (first login with temporary password), show Auth page
-  // The Auth page will show the forced password reset dialog
+  // If user requires password reset (first login with temporary password), redirect to Auth page
   if (requiresPasswordReset) {
-    console.log('Password reset required, showing Auth page');
-    return <Auth />;
+    return <Navigate to="/auth" replace />;
   }
 
   // Show the main application interface

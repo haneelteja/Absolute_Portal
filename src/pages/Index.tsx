@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from "react";
-import EmbeddedOrderManagement from "@/components/order-management/EmbeddedOrderManagement";
+import OrderManagement from "@/components/order-management/OrderManagement";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,7 +42,9 @@ const Index = () => {
         );
       case "order-management":
         return (
-          <EmbeddedOrderManagement />
+          <Suspense fallback={<RouteLoader />}>
+            <OrderManagement />
+          </Suspense>
         );
       case "client-transactions":
         return (
@@ -125,10 +127,6 @@ const Index = () => {
     }
   };
 
-  if (activeView === "order-management") {
-    // Do not wrap EmbeddedOrderManagement in SidebarProvider or other app providers
-    return <EmbeddedOrderManagement />;
-  }
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
