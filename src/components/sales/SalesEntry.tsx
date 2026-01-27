@@ -24,9 +24,13 @@ import { Pencil, Trash2, Edit, Download, ChevronLeft, ChevronRight } from "lucid
 import * as XLSX from 'xlsx';
 import { ColumnFilter } from '@/components/ui/column-filter';
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { saleFormSchema, paymentFormSchema, salesItemSchema } from "@/lib/validation/schemas";
+import { safeValidate } from "@/lib/validation/utils";
+import { logger } from "@/lib/logger";
 
 const SalesEntry = () => {
   const { isMobileDevice } = useMobileDetection();
+  const [activeTab, setActiveTab] = useState<string>("sale");
   const [saleForm, setSaleForm] = useState({
     customer_id: "",
     amount: "",
@@ -175,12 +179,53 @@ const SalesEntry = () => {
     onLoad: handleSalesItemsLoad,
   });
 
-  // Load saved data on mount
-  useEffect(() => {
-    loadSaleFormData();
-    loadPaymentFormData();
-    loadSalesItemsData();
-  }, [loadSaleFormData, loadPaymentFormData, loadSalesItemsData]);
+  // Function to reset sale form to default state
+  const resetSaleForm = useCallback(() => {
+    setSaleForm({
+      customer_id: "",
+      amount: "",
+      quantity: "",
+      sku: "",
+      description: "",
+      transaction_date: new Date().toISOString().split('T')[0],
+      branch: ""
+    });
+    setCurrentItem({
+      sku: "",
+      quantity: "",
+      price_per_case: "",
+      amount: "",
+      description: ""
+    });
+    setSalesItems([]);
+    setIsSingleSKUMode(false);
+    setSingleSKUData(null);
+    clearSaleFormData();
+    clearSalesItemsData();
+  }, [clearSaleFormData, clearSalesItemsData]);
+
+  // Function to reset payment form to default state
+  const resetPaymentForm = useCallback(() => {
+    setPaymentForm({
+      customer_id: "",
+      branch: "",
+      amount: "",
+      description: "",
+      transaction_date: new Date().toISOString().split('T')[0]
+    });
+    clearPaymentFormData();
+  }, [clearPaymentFormData]);
+
+  // Handle tab change - reset forms when switching tabs
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    // Reset forms when switching tabs
+    if (value === "sale") {
+      resetSaleForm();
+    } else if (value === "payment") {
+      resetPaymentForm();
+    }
+  }, [resetSaleForm, resetPaymentForm]);
 
   // Fetch customers for dropdown (must be before functions that use it)
   const { data: customers, isLoading: customersLoading, error: customersError } = useQuery({
@@ -235,10 +280,13 @@ const SalesEntry = () => {
 
   // Function to add item to sales list
   const addItemToSales = () => {
-    if (!currentItem.sku || !currentItem.quantity || !currentItem.amount) {
+    // Validate current item using Zod schema
+    const validationResult = safeValidate(salesItemSchema, currentItem);
+    if (!validationResult.success) {
+      logger.error('Sales item validation failed:', validationResult.error);
       toast({
-        title: "Error",
-        description: "Please fill in SKU, Quantity (cases), and Amount",
+        title: "Validation Error",
+        description: validationResult.error,
         variant: "destructive"
       });
       return;
@@ -1665,27 +1713,37 @@ const SalesEntry = () => {
 
   const handleSaleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!saleForm.customer_id || !saleForm.amount || !saleForm.sku) {
+    
+    // Validate form data using Zod schema
+    const validationResult = safeValidate(saleFormSchema, saleForm);
+    if (!validationResult.success) {
+      logger.error('Sale form validation failed:', validationResult.error);
       toast({ 
-        title: "Error", 
-        description: "Please fill in all required fields",
+        title: "Validation Error", 
+        description: validationResult.error,
         variant: "destructive"
       });
       return;
     }
+    
     saleMutation.mutate(saleForm);
   };
 
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paymentForm.customer_id || !paymentForm.branch || !paymentForm.amount) {
+    
+    // Validate form data using Zod schema
+    const validationResult = safeValidate(paymentFormSchema, paymentForm);
+    if (!validationResult.success) {
+      logger.error('Payment form validation failed:', validationResult.error);
       toast({ 
-        title: "Error", 
-        description: "Please fill in all required fields (Customer, Branch, and Amount)",
+        title: "Validation Error", 
+        description: validationResult.error,
         variant: "destructive"
       });
       return;
     }
+    
     paymentMutation.mutate(paymentForm);
   };
 
@@ -1750,7 +1808,7 @@ const SalesEntry = () => {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="sale" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sale">Record Sale</TabsTrigger>
           <TabsTrigger value="payment">Record Customer Payment</TabsTrigger>
@@ -1781,7 +1839,7 @@ const SalesEntry = () => {
                   <div className="space-y-2">
                     <Label htmlFor="sale-customer">Customer *</Label>
                     <Select 
-                      value={customers?.find(c => c.id === saleForm.customer_id)?.client_name || ""} 
+                      value={saleForm.customer_id ? (customers?.find(c => c.id === saleForm.customer_id)?.client_name || undefined) : undefined}
                       onValueChange={handleCustomerChange}
                       disabled={customersLoading}
                     >
@@ -1805,7 +1863,7 @@ const SalesEntry = () => {
                   <div className="space-y-2">
                     <Label htmlFor="sale-branch">Branch *</Label>
                     <Select 
-                      value={saleForm.branch} 
+                      value={saleForm.branch || undefined}
                       onValueChange={(value) => setSaleForm({...saleForm, branch: value})}
                       disabled={!saleForm.customer_id}
                     >
@@ -2116,7 +2174,7 @@ const SalesEntry = () => {
                   <div className="space-y-2">
                     <Label htmlFor="payment-customer">Customer *</Label>
                     <Select 
-                      value={customers?.find(c => c.id === paymentForm.customer_id)?.client_name || ""} 
+                      value={paymentForm.customer_id ? (customers?.find(c => c.id === paymentForm.customer_id)?.client_name || undefined) : undefined}
                       onValueChange={(customerName) => {
                         const selectedCustomer = customers?.find(c => c.client_name === customerName);
                         setPaymentForm({...paymentForm, customer_id: selectedCustomer?.id || "", branch: ""});
@@ -2138,12 +2196,12 @@ const SalesEntry = () => {
                   <div className="space-y-2">
                     <Label htmlFor="payment-branch">Branch *</Label>
                     <Select 
-                      value={paymentForm.branch} 
+                      value={paymentForm.branch || undefined}
                       onValueChange={(branch) => setPaymentForm({...paymentForm, branch})}
                       disabled={!paymentForm.customer_id}
                     >
                       <SelectTrigger id="payment-branch">
-                        <SelectValue placeholder="Select branch" />
+                        <SelectValue placeholder={paymentForm.customer_id ? "Select branch" : "Select customer first"} />
                       </SelectTrigger>
                       <SelectContent>
                         {paymentForm.customer_id && getBranchesForCustomer(paymentForm.customer_id).map((branch) => (

@@ -4,8 +4,21 @@ import type { Database } from './types';
 
 // Force new project configuration - clear any cached values
 // Use environment variables for configuration
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://qkvmdrtfhpcvwvqjuyuu.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdm1kcnRmaHBjdnd2cWp1eXV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMjgyMTgsImV4cCI6MjA3NDgwNDIxOH0.DJeoI0LFeMArVs5s6DV2HP0kYnjWcIVLQEbiCQr97CE";
+// SECURITY: Never hardcode credentials - always use environment variables
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Validate required environment variables
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  const missingVars = [];
+  if (!SUPABASE_URL) missingVars.push('VITE_SUPABASE_URL');
+  if (!SUPABASE_PUBLISHABLE_KEY) missingVars.push('VITE_SUPABASE_ANON_KEY');
+  
+  throw new Error(
+    `Missing required Supabase environment variables: ${missingVars.join(', ')}\n` +
+    `Please set these variables in your .env file or environment configuration.`
+  );
+}
 
 // Clear any cached auth data
 if (typeof window !== 'undefined') {
