@@ -692,10 +692,24 @@ const SalesEntry = () => {
 
   // Function to handle SKU selection
   const handleSKUChange = (sku: string) => {
+    // Auto-populate price per case when SKU is selected
+    const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
+    let pricePerCase = "";
+    
+    if (selectedCustomer && saleForm.branch) {
+      const customerSKURecord = customers?.find(c => 
+        c.client_name === selectedCustomer.client_name && 
+        c.branch === saleForm.branch &&
+        c.sku === sku
+      );
+      pricePerCase = customerSKURecord?.price_per_case?.toString() || "";
+    }
+    
     setSaleForm({
       ...saleForm,
       sku,
-      amount: "" // Reset amount when SKU changes
+      amount: "", // Reset amount when SKU changes
+      price_per_case: pricePerCase // Auto-populate price per case
     });
   };
 
@@ -862,6 +876,7 @@ const SalesEntry = () => {
             customers (client_name, branch)
           `, { count: 'exact' })
           .gte("created_at", ninetyDaysAgo.toISOString())
+          .order("transaction_date", { ascending: false })
           .order("created_at", { ascending: false })
           .limit(2000); // Safety limit
         
@@ -1101,7 +1116,14 @@ const SalesEntry = () => {
         try {
           // Apply sorting
           const activeSort = Object.entries(columnSorts).find(([_, direction]) => direction !== null);
-          if (!activeSort) return 0;
+          // Default to reverse chronological order (latest first) if no sort is active
+          if (!activeSort) {
+            const dateA = new Date(a.transaction_date).getTime();
+            const dateB = new Date(b.transaction_date).getTime();
+            if (isNaN(dateA) || isNaN(dateB)) return 0;
+            // Latest first (descending)
+            return dateB - dateA;
+          }
 
           const [columnKey, direction] = activeSort;
 
@@ -1463,16 +1485,8 @@ const SalesEntry = () => {
         // This will be handled in the mutation function, but we can add additional validation here
       }
       
-      setSaleForm({
-        customer_id: "",
-        amount: "",
-        quantity: "",
-        sku: "",
-        description: "",
-        transaction_date: new Date().toISOString().split('T')[0],
-        branch: "",
-        price_per_case: ""
-      });
+      // Reset form completely, including customer_id
+      resetSaleForm();
       // Clear auto-saved data after successful submission
       clearSaleFormData();
       clearSalesItemsData();
@@ -1831,8 +1845,21 @@ const SalesEntry = () => {
                     <Input
                       id="sale-date"
                       type="date"
+                      max={new Date().toISOString().split('T')[0]}
                       value={saleForm.transaction_date}
-                      onChange={(e) => setSaleForm({...saleForm, transaction_date: e.target.value})}
+                      onChange={(e) => {
+                        const selectedDate = e.target.value;
+                        const today = new Date().toISOString().split('T')[0];
+                        if (selectedDate > today) {
+                          toast({
+                            title: "Validation Error",
+                            description: "Cannot select a future date",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        setSaleForm({...saleForm, transaction_date: selectedDate});
+                      }}
                     />
                   </div>
                   
@@ -2265,75 +2292,72 @@ const SalesEntry = () => {
       {/* Recent Transactions Section */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-2 md:gap-4">
             <CardTitle className="mb-0">Client Transactions</CardTitle>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">
               Showing {paginatedTransactions.length} of {totalFilteredTransactions} filtered transactions
               {totalTransactions !== totalFilteredTransactions && ` (${totalTransactions} total)`}
               {totalPages > 1 && ` - Page ${currentPage} of ${totalPages}`}
             </span>
+            <div className="flex-1"></div>
+            <Button
+              onClick={exportRecentTransactionsToExcel}
+              variant="outline"
+              size="sm"
+              className="flex items-center space-x-2 whitespace-nowrap"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export Excel</span>
+            </Button>
           </div>
-        </CardHeader>
-        <CardContent>
-          {/* Search Filter */}
-          <div className="mb-6 space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search transactions by customer, branch, SKU, description, amount, date, or type..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // Reset to first page when search changes
+              }}
+              className="flex-1 min-w-[200px]"
+            />
+            {(searchTerm || Object.values(columnFilters).some(filter => {
+              if (Array.isArray(filter)) return filter.length > 0;
+              return filter && filter !== "";
+            }) || Object.values(columnSorts).some(sort => sort !== null)) && (
               <Button
-                onClick={exportRecentTransactionsToExcel}
                 variant="outline"
                 size="sm"
-                className="flex items-center space-x-2"
-              >
-                <Download className="h-4 w-4" />
-                <span>Export Excel</span>
-              </Button>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Input
-                placeholder="Search transactions by customer, branch, SKU, description, amount, date, or type..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1); // Reset to first page when search changes
+                onClick={() => {
+                  setSearchTerm("");
+                  setColumnFilters({
+                    date: "",
+                    customer: "",
+                    branch: "",
+                    type: "",
+                    sku: "",
+                    amount: ""
+                  });
+                  setColumnSorts({
+                    date: null,
+                    customer: null,
+                    branch: null,
+                    type: null,
+                    sku: null,
+                    amount: null
+                  });
+                  setCurrentPage(1); // Reset to first page when clearing filters
                 }}
-                className="max-w-md"
-              />
-              {(searchTerm || Object.values(columnFilters).some(filter => {
-                if (Array.isArray(filter)) return filter.length > 0;
-                return filter && filter !== "";
-              }) || Object.values(columnSorts).some(sort => sort !== null)) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setColumnFilters({
-                      date: "",
-                      customer: "",
-                      branch: "",
-                      type: "",
-                      sku: "",
-                      amount: ""
-                    });
-                    setColumnSorts({
-                      date: null,
-                      customer: null,
-                      branch: null,
-                      type: null,
-                      sku: null,
-                      amount: null
-                    });
-                    setCurrentPage(1); // Reset to first page when clearing filters
-                  }}
-                >
-                  Clear All Filters
-                </Button>
-              )}
-            </div>
+                className="whitespace-nowrap"
+              >
+                Clear All Filters
+              </Button>
+            )}
           </div>
-          <Table>
-            <TableHeader>
+        </CardHeader>
+        <CardContent className="p-0 sm:p-6">
+          <div className="w-full overflow-x-auto">
+            <Table className="min-w-full">
+              <TableHeader>
               <TableRow className="bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 border-b-2 border-emerald-200 hover:bg-gradient-to-r hover:from-emerald-100 hover:via-green-100 hover:to-emerald-100 transition-all duration-200">
                 <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
                   <div className="flex items-center justify-between">
@@ -2664,7 +2688,8 @@ const SalesEntry = () => {
               </TableRow>
             )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
           
           {/* Pagination Controls */}
           {totalPages > 1 && (
