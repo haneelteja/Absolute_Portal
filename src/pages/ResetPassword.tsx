@@ -39,6 +39,8 @@ const ResetPassword = () => {
     });
   }, [location]);
 
+  const sessionSetRef = useRef(false); // Track if session has been set to prevent re-processing
+
   useEffect(() => {
     let retryTimeout: NodeJS.Timeout | null = null;
     let isMounted = true;
@@ -55,20 +57,22 @@ const ResetPassword = () => {
     };
 
     const processPasswordReset = async (retryCount: number = 0): Promise<void> => {
-      if (!isMounted) return;
+      if (!isMounted || sessionSetRef.current) return; // Don't process if session already set
       
       const { accessToken, refreshToken, type } = checkForTokens();
       
-      // Log for debugging
-      console.log('ResetPassword: Checking for tokens', {
-        retryCount,
-        hash: window.location.hash,
-        search: window.location.search,
-        fullUrl: window.location.href,
-        hasAccessToken: !!accessToken,
-        hasType: !!type,
-        type: type
-      });
+      // Log for debugging (only first few times to avoid spam)
+      if (retryCount < 3 || (type === 'recovery' && accessToken)) {
+        console.log('ResetPassword: Checking for tokens', {
+          retryCount,
+          hash: window.location.hash.substring(0, 50) + '...', // Truncate for readability
+          search: window.location.search,
+          hasAccessToken: !!accessToken,
+          hasType: !!type,
+          type: type,
+          sessionAlreadySet: sessionSetRef.current
+        });
+      }
 
       if (type === 'recovery' && accessToken) {
         try {
@@ -98,8 +102,17 @@ const ResetPassword = () => {
             }, 5000);
             setIsProcessing(false);
           } else {
-            // Session set successfully - DON'T clear hash yet, wait until password is reset
-            console.log('ResetPassword: Session set successfully');
+            // Session set successfully - mark as set and stop retrying
+            sessionSetRef.current = true;
+            console.log('ResetPassword: Session set successfully, stopping retry loop');
+            
+            // Clear hash after a short delay to allow session to be established
+            setTimeout(() => {
+              if (isMounted) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }
+            }, 500);
+            
             toast({
               title: "Password Reset Ready",
               description: "You can now set your new password.",
@@ -120,23 +133,22 @@ const ResetPassword = () => {
           }, 3000);
           setIsProcessing(false);
         }
-      } else if (retryCount < 20) {
+      } else if (retryCount < 20 && !sessionSetRef.current) {
         // Retry up to 20 times (2 seconds total) to allow hash fragments to be processed
         // This handles the case where Supabase redirects asynchronously
         if (retryCount === 0) {
           console.log('ResetPassword: No tokens found on first check, starting retry loop...');
         }
         retryTimeout = setTimeout(() => {
-          if (isMounted) {
+          if (isMounted && !sessionSetRef.current) {
             processPasswordReset(retryCount + 1);
           }
         }, 100);
-      } else {
+      } else if (!sessionSetRef.current) {
         // No valid reset tokens found after retries
         console.warn('ResetPassword: No password reset tokens found in URL after retries', {
-          hash: window.location.hash,
+          hash: window.location.hash.substring(0, 50) + '...',
           search: window.location.search,
-          fullUrl: window.location.href,
           retryCount
         });
         setError('No valid password reset link found. Please request a new password reset email.');
@@ -147,7 +159,6 @@ const ResetPassword = () => {
         });
         setIsProcessing(false);
         // Don't redirect immediately - let user see the error and option to request new link
-        // They can click "Request New Reset Link" button if needed
       }
     };
 
@@ -156,7 +167,7 @@ const ResetPassword = () => {
 
     // Also listen for hash changes (in case hash arrives after component mounts)
     const handleHashChange = () => {
-      if (isMounted && isProcessing) {
+      if (isMounted && isProcessing && !sessionSetRef.current) {
         console.log('ResetPassword: Hash change detected, rechecking tokens');
         processPasswordReset(0);
       }
@@ -167,6 +178,7 @@ const ResetPassword = () => {
     // Cleanup
     return () => {
       isMounted = false;
+      sessionSetRef.current = false; // Reset on unmount
       if (retryTimeout) {
         clearTimeout(retryTimeout);
       }
@@ -231,8 +243,8 @@ const ResetPassword = () => {
 
   if (isProcessing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <Card className="w-full max-w-md">
+      <div className="fixed inset-0 min-h-screen w-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4 overflow-auto">
+        <Card className="w-full max-w-md mx-auto my-auto">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -251,8 +263,8 @@ const ResetPassword = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
-        <Card className="w-full max-w-md">
+      <div className="fixed inset-0 min-h-screen w-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4 overflow-auto">
+        <Card className="w-full max-w-md mx-auto my-auto">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
               <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
@@ -275,8 +287,8 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
+    <div className="fixed inset-0 min-h-screen w-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4 overflow-auto">
+      <Card className="w-full max-w-md mx-auto my-auto">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
