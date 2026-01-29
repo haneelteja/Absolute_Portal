@@ -1058,6 +1058,7 @@ const OrderManagement: React.FC = () => {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </>
           )}
         </CardContent>
@@ -1194,6 +1195,7 @@ const OrderManagement: React.FC = () => {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </>
           )}
         </CardContent>
