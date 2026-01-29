@@ -28,15 +28,35 @@ const ResetPassword = () => {
   });
 
   useEffect(() => {
-    const handlePasswordReset = async () => {
-      // Check if we're on a password reset URL with hash fragments OR query parameters
+    let retryTimeout: NodeJS.Timeout | null = null;
+    let isMounted = true;
+    
+    const checkForTokens = (): { accessToken: string | null; refreshToken: string | null; type: string | null } => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const queryParams = new URLSearchParams(window.location.search);
       
-      // Try hash fragments first, then query parameters
       const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
       const type = hashParams.get('type') || queryParams.get('type');
+      
+      return { accessToken, refreshToken, type };
+    };
+
+    const processPasswordReset = async (retryCount: number = 0): Promise<void> => {
+      if (!isMounted) return;
+      
+      const { accessToken, refreshToken, type } = checkForTokens();
+      
+      // Log for debugging
+      console.log('ResetPassword: Checking for tokens', {
+        retryCount,
+        hash: window.location.hash,
+        search: window.location.search,
+        fullUrl: window.location.href,
+        hasAccessToken: !!accessToken,
+        hasType: !!type,
+        type: type
+      });
 
       if (type === 'recovery' && accessToken) {
         try {
@@ -61,15 +81,18 @@ const ResetPassword = () => {
               variant: "destructive",
             });
             // Redirect to login after error
-            setTimeout(() => navigate('/auth'), 5000);
+            setTimeout(() => {
+              if (isMounted) navigate('/auth');
+            }, 5000);
+            setIsProcessing(false);
           } else {
-            // Clear the URL hash to clean up the URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
+            // Session set successfully - DON'T clear hash yet, wait until password is reset
+            console.log('ResetPassword: Session set successfully');
             toast({
               title: "Password Reset Ready",
               description: "You can now set your new password.",
             });
+            setIsProcessing(false);
           }
         } catch (err) {
           console.error('Error processing password reset:', err);
@@ -80,17 +103,59 @@ const ResetPassword = () => {
             variant: "destructive",
           });
           // Redirect to login after error
-          setTimeout(() => navigate('/auth'), 3000);
+          setTimeout(() => {
+            if (isMounted) navigate('/auth');
+          }, 3000);
+          setIsProcessing(false);
         }
+      } else if (retryCount < 10) {
+        // Retry up to 10 times (1 second total) to allow hash fragments to be processed
+        // This handles the case where Supabase redirects asynchronously
+        retryTimeout = setTimeout(() => {
+          if (isMounted) {
+            processPasswordReset(retryCount + 1);
+          }
+        }, 100);
       } else {
-        // No valid reset tokens, redirect to login
-        navigate('/auth');
+        // No valid reset tokens found after retries
+        console.warn('ResetPassword: No password reset tokens found in URL after retries', {
+          hash: window.location.hash,
+          search: window.location.search,
+          fullUrl: window.location.href
+        });
+        setError('No valid password reset link found. Please request a new password reset email.');
+        toast({
+          title: "Invalid Reset Link",
+          description: "No valid password reset link found. Please request a new password reset email.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        // Don't redirect immediately - let user see the error and option to request new link
+        // They can click "Request New Reset Link" button if needed
       }
-      
-      setIsProcessing(false);
     };
 
-    handlePasswordReset();
+    // Start processing
+    processPasswordReset();
+
+    // Also listen for hash changes (in case hash arrives after component mounts)
+    const handleHashChange = () => {
+      if (isMounted && isProcessing) {
+        console.log('ResetPassword: Hash change detected, rechecking tokens');
+        processPasswordReset(0);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+
+    // Cleanup
+    return () => {
+      isMounted = false;
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+      window.removeEventListener('hashchange', handleHashChange);
+    };
   }, [navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,6 +187,10 @@ const ResetPassword = () => {
         });
       } else {
         setSuccess(true);
+        
+        // Clear the URL hash AFTER successful password reset
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
         toast({
           title: "Password Reset Success",
           description: "Your password has been reset successfully. You can now sign in.",
