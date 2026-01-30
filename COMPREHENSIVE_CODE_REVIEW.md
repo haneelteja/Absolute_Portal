@@ -43,8 +43,9 @@ A React-based Sales Operations Portal for Aamodha Enterprises, built with:
 **Severity:** Critical
 
 ```typescript
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://qkvmdrtfhpcvwvqjuyuu.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+// ❌ BEFORE (INSECURE - Hardcoded fallback credentials)
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://your-project.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "your_anon_key_here";
 ```
 
 **Root Cause:** Fallback values expose production credentials in source code.  

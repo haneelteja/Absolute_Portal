@@ -28,7 +28,7 @@
 1. Click the **"Add New"** button (or **"Add"** button)
 2. Fill in the form:
    - **Name:** `VITE_SUPABASE_URL`
-   - **Value:** `https://qkvmdrtfhpcvwvqjuyuu.supabase.co`
+   - **Value:** `https://your-project-id.supabase.co` (Get this from Supabase Dashboard → Settings → API)
    - **Environment:** Select all three:
      - ☑️ Production
      - ☑️ Preview
@@ -42,7 +42,7 @@
 1. Click the **"Add New"** button again
 2. Fill in the form:
    - **Name:** `VITE_SUPABASE_ANON_KEY`
-   - **Value:** `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdm1kcnRmaHBjdnd2cWp1eXV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMjgyMTgsImV4cCI6MjA3NDgwNDIxOH0.DJeoI0LFeMArVs5s6DV2HP0kYnjWcIVLQEbiCQr97CE`
+   - **Value:** `your_supabase_anon_key_here` (Get this from Supabase Dashboard → Settings → API → anon/public key)
    - **Environment:** Select all three:
      - ☑️ Production
      - ☑️ Preview
@@ -99,7 +99,7 @@ VITE_SUPABASE_ANON_KEY              [Production, Preview, Development]
 │                                                 │
 │  ┌───────────────────────────────────────────┐ │
 │  │ Name: VITE_SUPABASE_URL                    │ │
-│  │ Value: https://qkvmdrtfhpcvwvqjuyuu...     │ │
+│  │ Value: https://your-project-id.supabase.co │ │
 │  │ Environment: ☑ Production                  │ │
 │  │            ☑ Preview                      │ │
 │  │            ☑ Development                  │ │
@@ -181,9 +181,11 @@ VITE_SUPABASE_ANON_KEY
 
 ### Variable Values
 ```
-VITE_SUPABASE_URL=https://qkvmdrtfhpcvwvqjuyuu.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrdm1kcnRmaHBjdnd2cWp1eXV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyMjgyMTgsImV4cCI6MjA3NDgwNDIxOH0.DJeoI0LFeMArVs5s6DV2HP0kYnjWcIVLQEbiCQr97CE
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 ```
+
+**⚠️ SECURITY NOTE:** Never commit actual credentials to the repository. Always use placeholders in documentation and set real values in Vercel dashboard or `.env` files (which are gitignored).
 
 ### Environments to Enable
 - ☑️ Production
