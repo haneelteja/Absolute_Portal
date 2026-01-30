@@ -15,7 +15,6 @@ const Labels = lazy(() => import("@/components/labels/Labels"));
 const ConfigurationManagement = lazy(() => import("@/components/configurations/ConfigurationManagement"));
 const Reports = lazy(() => import("@/components/reports/Reports"));
 const UserManagement = lazy(() => import("@/components/user-management/UserManagement"));
-// const OrderManagement = lazy(() => import("@/components/order-management/OrderManagement"));
 
 // Loading component for route transitions
 const RouteLoader = () => (

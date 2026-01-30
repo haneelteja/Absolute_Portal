@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCacheInvalidation } from "@/hooks/useCacheInvalidation";
 import type { TransportExpense, TransportExpenseForm } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +65,7 @@ const TransportExpenses = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { invalidateRelated } = useCacheInvalidation();
 
   const { data: customers } = useQuery({
     queryKey: ["customers"],
@@ -215,7 +217,7 @@ const TransportExpenses = () => {
         sku: "",
         no_of_cases: ""
       });
-      queryClient.invalidateQueries({ queryKey: ["transport-expenses"] });
+      invalidateRelated('transport_expenses');
     },
     onError: (error: unknown) => {
       toast({ 
@@ -248,7 +250,7 @@ const TransportExpenses = () => {
       toast({ title: "Success", description: "Transport expense updated!" });
       setIsEditDialogOpen(false);
       setEditingExpense(null);
-      queryClient.invalidateQueries({ queryKey: ["transport-expenses"] });
+      invalidateRelated('transport_expenses');
     },
     onError: (error: unknown) => {
       toast({ 
@@ -270,7 +272,7 @@ const TransportExpenses = () => {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Transport expense deleted!" });
-      queryClient.invalidateQueries({ queryKey: ["transport-expenses"] });
+      invalidateRelated('transport_expenses');
     },
     onError: (error: unknown) => {
       toast({ 

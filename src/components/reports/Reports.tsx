@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getQueryConfig } from "@/lib/query-configs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,13 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import * as XLSX from 'xlsx';
 
-const Reports = () => {
+const Reports = memo(() => {
   const [adminComments, setAdminComments] = useState<{[key: string]: string}>({});
   const [searchTerm, setSearchTerm] = useState("");
 
   // Receivables report
   const { data: receivables, isLoading: receivablesLoading } = useQuery({
     queryKey: ["receivables"],
+    ...getQueryConfig("receivables"),
     queryFn: async () => {
       // Get all transactions grouped by customer
       const { data: transactions } = await supabase
@@ -153,10 +155,11 @@ const Reports = () => {
   // Factory transactions report
   const { data: factoryReport } = useQuery({
     queryKey: ["factory-report"],
+    ...getQueryConfig("factory-report"),
     queryFn: async () => {
       const { data } = await supabase
         .from("factory_payables")
-        .select("*")
+        .select("id, amount, transaction_type, transaction_date, description, sku, quantity")
         .order("transaction_date", { ascending: false });
       
       const totalProduction = data?.filter(t => t.transaction_type === 'production')
@@ -171,11 +174,12 @@ const Reports = () => {
   // Client transactions report
   const { data: clientReport } = useQuery({
     queryKey: ["client-report"],
+    ...getQueryConfig("client-report"),
     queryFn: async () => {
       const { data } = await supabase
         .from("sales_transactions")
         .select(`
-          *,
+          id, customer_id, amount, transaction_type, transaction_date, sku, description, quantity,
           customers (client_name, branch)
         `)
         .order("transaction_date", { ascending: false });
@@ -192,10 +196,11 @@ const Reports = () => {
   // Transport report
   const { data: transportReport } = useQuery({
     queryKey: ["transport-report"],
+    ...getQueryConfig("transport-report"),
     queryFn: async () => {
       const { data } = await supabase
         .from("transport_expenses")
-        .select("*")
+        .select("id, amount, expense_date, expense_group, description, client_id, branch, sku, no_of_cases")
         .order("expense_date", { ascending: false });
       
       const totalExpenses = data?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
@@ -207,10 +212,11 @@ const Reports = () => {
   // Labels report
   const { data: labelsReport } = useQuery({
     queryKey: ["labels-report"],
+    ...getQueryConfig("labels-report"),
     queryFn: async () => {
       const { data: purchases } = await supabase
         .from("label_purchases")
-        .select("*")
+        .select("id, client_name, sku, vendor, quantity, total_amount, purchase_date")
         .order("purchase_date", { ascending: false });
       
       const totalPurchases = purchases?.reduce((sum, p) => sum + (p.total_amount || 0), 0) || 0;
@@ -531,6 +537,8 @@ const Reports = () => {
       </Tabs>
     </div>
   );
-};
+});
+
+Reports.displayName = 'Reports';
 
 export default Reports;

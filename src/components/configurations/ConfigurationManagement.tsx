@@ -99,6 +99,7 @@ const ConfigurationManagement = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { invalidateRelated } = useCacheInvalidation();
 
   // Customer Management queries and mutations
   const { data: customers, error: customersError } = useQuery({
@@ -471,8 +472,7 @@ const ConfigurationManagement = () => {
         price_per_bottle: "",
         tax: ""
       });
-      queryClient.invalidateQueries({ queryKey: ["factory-pricing"] });
-      queryClient.invalidateQueries({ queryKey: ["available-skus"] });
+      invalidateRelated('factory_pricing');
     },
     onError: (error) => {
       toast({ 
@@ -494,8 +494,7 @@ const ConfigurationManagement = () => {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Factory pricing deleted successfully!" });
-      queryClient.invalidateQueries({ queryKey: ["factory-pricing"] });
-      queryClient.invalidateQueries({ queryKey: ["available-skus"] });
+      invalidateRelated('factory_pricing');
       queryClient.invalidateQueries({ queryKey: ["factory-pricing-data"] });
     },
     onError: (error) => {
@@ -570,8 +569,7 @@ const ConfigurationManagement = () => {
       toast({ title: "Success", description: "Factory pricing updated successfully!" });
       setIsEditPricingOpen(false);
       setEditingPricing(null);
-      queryClient.invalidateQueries({ queryKey: ["factory-pricing"] });
-      queryClient.invalidateQueries({ queryKey: ["available-skus"] });
+      invalidateRelated('factory_pricing');
       queryClient.invalidateQueries({ queryKey: ["factory-pricing-data"] });
     },
     onError: (error) => {

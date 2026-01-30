@@ -1,6 +1,8 @@
 import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getQueryConfig } from "@/lib/query-configs";
+import { useCacheInvalidation } from "@/hooks/useCacheInvalidation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +41,7 @@ interface DispatchRow {
 const OrderManagement: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { invalidateRelated } = useCacheInvalidation();
 
   // Form state for order registration
   const [orderForm, setOrderForm] = useState({
@@ -94,6 +97,7 @@ const OrderManagement: React.FC = () => {
 
   const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
     queryKey: ["orders"],
+    ...getQueryConfig("orders"),
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_orders_sorted");
       if (error) {
@@ -115,6 +119,7 @@ const OrderManagement: React.FC = () => {
   // Fetch customers for dropdown (including SKU)
   const { data: customers } = useQuery({
     queryKey: ["customers"],
+    ...getQueryConfig("customers"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
@@ -144,7 +149,7 @@ const OrderManagement: React.FC = () => {
         title: "Success",
         description: "Order created successfully!",
       });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      invalidateRelated('orders');
       // Reset form
       const today = new Date().toISOString().split("T")[0];
       const defaultDeliveryDate = new Date();
@@ -206,8 +211,7 @@ const OrderManagement: React.FC = () => {
         title: "Success",
         description: "Order dispatched successfully!",
       });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["orders-dispatch"] });
+      invalidateRelated('orders');
     },
     onError: (error: any) => {
       toast({
@@ -233,7 +237,7 @@ const OrderManagement: React.FC = () => {
         title: "Success",
         description: "Order deleted successfully!",
       });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      invalidateRelated('orders');
     },
     onError: (error: any) => {
       toast({
@@ -246,6 +250,7 @@ const OrderManagement: React.FC = () => {
 
   const { data: dispatchData, isLoading: dispatchLoading, error: dispatchError } = useQuery({
     queryKey: ["orders-dispatch"],
+    ...getQueryConfig("orders-dispatch"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders_dispatch")

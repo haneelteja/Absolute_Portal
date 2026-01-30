@@ -2,6 +2,8 @@ import { useState, useMemo, useCallback } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getQueryConfig } from "@/lib/query-configs";
+import { useCacheInvalidation } from "@/hooks/useCacheInvalidation";
 import type { 
   FactoryPayable, 
   FactoryPricing, 
@@ -78,14 +80,16 @@ const FactoryPayables = () => {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { invalidateRelated } = useCacheInvalidation();
 
   // Fetch factory pricing data
   const { data: factoryPricing } = useQuery({
     queryKey: ["factory-pricing"],
+    ...getQueryConfig("factory-pricing"),
     queryFn: async () => {
       const { data } = await supabase
         .from("factory_pricing")
-        .select("*")
+        .select("id, sku, cost_per_case, bottles_per_case, pricing_date")
         .order("pricing_date", { ascending: false });
       return data || [];
     },
@@ -108,6 +112,7 @@ const FactoryPayables = () => {
   // Fetch factory transactions
   const { data: transactions, isLoading: transactionsLoading, error: transactionsError } = useQuery({
     queryKey: ["factory-transactions"],
+    ...getQueryConfig("factory-transactions"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("factory_payables")
@@ -431,7 +436,7 @@ const FactoryPayables = () => {
         description: "",
         transaction_date: new Date().toISOString().split('T')[0]
       });
-      queryClient.invalidateQueries({ queryKey: ["factory-transactions"] });
+      invalidateRelated('factory_payables');
     },
     onError: (error: unknown) => {
       toast({ 
@@ -462,8 +467,7 @@ const FactoryPayables = () => {
         description: "",
         transaction_date: new Date().toISOString().split('T')[0]
       });
-      queryClient.invalidateQueries({ queryKey: ["factory-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-summary"] });
+      invalidateRelated('factory_payables');
     },
     onError: (error: unknown) => {
       toast({ 
@@ -496,7 +500,7 @@ const FactoryPayables = () => {
     onSuccess: () => {
       toast({ title: "Success", description: "Transaction updated successfully!" });
       setEditingTransaction(null);
-      queryClient.invalidateQueries({ queryKey: ["factory-transactions"] });
+      invalidateRelated('factory_payables');
     },
     onError: (error: unknown) => {
       toast({ 
@@ -519,7 +523,7 @@ const FactoryPayables = () => {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Transaction deleted successfully!" });
-      queryClient.invalidateQueries({ queryKey: ["factory-transactions"] });
+      invalidateRelated('factory_payables');
     },
     onError: (error: unknown) => {
       toast({ 

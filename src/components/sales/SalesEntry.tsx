@@ -2,6 +2,9 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCacheInvalidation } from "@/hooks/useCacheInvalidation";
+import { getQueryConfig } from "@/lib/query-configs";
+import { useTransactionFilters } from "@/components/sales/hooks/useTransactionFilters";
 import type { 
   Customer, 
   SalesTransaction, 
@@ -18,7 +21,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MobileTable } from "@/components/ui/mobile-table";
 import { useMobileDetection, MOBILE_CLASSES } from "@/lib/mobile-utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2, Edit, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import * as XLSX from 'xlsx';
@@ -27,6 +29,7 @@ import { useAutoSave } from "@/hooks/useAutoSave";
 import { saleFormSchema, paymentFormSchema, salesItemSchema } from "@/lib/validation/schemas";
 import { safeValidate } from "@/lib/validation/utils";
 import { logger } from "@/lib/logger";
+import { EditTransactionDialog } from "@/components/sales/EditTransactionDialog";
 
 const SalesEntry = () => {
   const { isMobileDevice } = useMobileDetection();
@@ -84,36 +87,26 @@ const SalesEntry = () => {
     transaction_date: "",
     branch: ""
   });
-  const [searchTerm, setSearchTerm] = useState("");
+  // Use centralized filter state hook
+  const {
+    searchTerm,
+    columnFilters,
+    columnSorts,
+    currentPage,
+    pageSize,
+    setSearchTerm,
+    setColumnFilter,
+    clearColumnFilter,
+    setColumnSort,
+    setPage,
+    resetFilters,
+  } = useTransactionFilters(50);
+  
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
-  const [columnFilters, setColumnFilters] = useState<{
-    date: string | string[];
-    customer: string | string[];
-    branch: string | string[];
-    type: string | string[];
-    sku: string | string[];
-    amount: string | string[];
-  }>({
-    date: "",
-    customer: "",
-    branch: "",
-    type: "",
-    sku: "",
-    amount: ""
-  });
-  const [columnSorts, setColumnSorts] = useState<{[key: string]: 'asc' | 'desc' | null}>({
-    date: null,
-    customer: null,
-    branch: null,
-    type: null,
-    sku: null,
-    amount: null
-  });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(50); // Transactions per page
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { invalidateRelated } = useCacheInvalidation();
 
   // Auto-save form data to prevent data loss from session timeouts
   
@@ -230,6 +223,7 @@ const SalesEntry = () => {
   // Fetch customers for dropdown (must be before functions that use it)
   const { data: customers, isLoading: customersLoading, error: customersError } = useQuery({
     queryKey: ["customers"],
+    ...getQueryConfig("customers"),
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -502,15 +496,10 @@ const SalesEntry = () => {
         description: ""
       });
 
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["recent-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["transport-expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["label-purchases-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["customers-for-availability"] });
-      queryClient.invalidateQueries({ queryKey: ["sales-transactions-for-availability"] });
-      queryClient.invalidateQueries({ queryKey: ["sku-configurations-for-availability"] });
+      // Invalidate queries to refresh data using centralized hook
+      invalidateRelated('sales_transactions');
+      invalidateRelated('factory_payables');
+      invalidateRelated('transport_expenses');
     } catch (error) {
       toast({
         title: "Error",
@@ -855,6 +844,7 @@ const SalesEntry = () => {
   // Fetch transactions (limited for performance, paginated client-side after filtering)
   const { data: allTransactions, isLoading: transactionsLoading, error: transactionsError } = useQuery({
     queryKey: ["recent-transactions"],
+    ...getQueryConfig("recent-transactions"),
     queryFn: async () => {
       try {
         // Limit to last 90 days or max 2000 records for performance
@@ -894,8 +884,6 @@ const SalesEntry = () => {
         throw error;
       }
     },
-    staleTime: 30000, // 30 seconds
-    cacheTime: 300000, // 5 minutes
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
@@ -1185,22 +1173,16 @@ const SalesEntry = () => {
     currentPage * pageSize
   );
 
-  // Column filter handlers
-  const handleColumnFilterChange = (columnKey: string, value: string | string[]) => {
-    setColumnFilters(prev => ({
-      ...prev,
-      [columnKey]: value
-    }));
-    setCurrentPage(1); // Reset to first page when filter changes
-  };
+  // Column filter handlers - now using hook methods
+  const handleColumnFilterChange = useCallback((columnKey: string, value: string | string[]) => {
+    setColumnFilter(columnKey, value);
+    // Page reset is handled by the hook automatically
+  }, [setColumnFilter]);
 
-  const handleClearColumnFilter = (columnKey: string) => {
-    setColumnFilters(prev => ({
-      ...prev,
-      [columnKey]: ""
-    }));
-    setCurrentPage(1); // Reset to first page when filter clears
-  };
+  const handleClearColumnFilter = useCallback((columnKey: string) => {
+    clearColumnFilter(columnKey);
+    // Page reset is handled by the hook automatically
+  }, [clearColumnFilter]);
 
   // Get unique values for multi-select filters
   const getUniqueCustomers = useMemo(() => {
@@ -1237,12 +1219,9 @@ const SalesEntry = () => {
     return Array.from(unique).sort();
   }, [recentTransactions]);
 
-  const handleColumnSortChange = (columnKey: string, direction: 'asc' | 'desc' | null) => {
-    setColumnSorts(prev => ({
-      ...prev,
-      [columnKey]: direction
-    }));
-  };
+  const handleColumnSortChange = useCallback((columnKey: string, direction: 'asc' | 'desc' | null) => {
+    setColumnSort(columnKey, direction);
+  }, [setColumnSort]);
 
 
   // Export filtered recent transactions to Excel
@@ -1498,14 +1477,10 @@ const SalesEntry = () => {
         amount: "",
         description: ""
       });
-      queryClient.invalidateQueries({ queryKey: ["sales-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["recent-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["transport-expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["label-purchases-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["customers-for-availability"] });
-      queryClient.invalidateQueries({ queryKey: ["sales-transactions-for-availability"] });
-      queryClient.invalidateQueries({ queryKey: ["sku-configurations-for-availability"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-summary"] });
+      // Invalidate related queries using centralized hook
+      invalidateRelated('sales_transactions');
+      invalidateRelated('factory_payables');
+      invalidateRelated('transport_expenses');
     },
     onError: (error) => {
       console.error('Sale mutation error:', error);
@@ -1685,14 +1660,10 @@ const SalesEntry = () => {
     onSuccess: () => {
       toast({ title: "Success", description: "Transaction updated successfully!" });
       setEditingTransaction(null);
-      queryClient.invalidateQueries({ queryKey: ["recent-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["transport-expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["label-purchases-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["customers-for-availability"] });
-      queryClient.invalidateQueries({ queryKey: ["sales-transactions-for-availability"] });
-      queryClient.invalidateQueries({ queryKey: ["sku-configurations-for-availability"] });
+      // Use centralized cache invalidation
+      invalidateRelated('sales_transactions');
+      invalidateRelated('factory_payables');
+      invalidateRelated('transport_expenses');
     },
     onError: (error) => {
       toast({ 
@@ -1754,14 +1725,10 @@ const SalesEntry = () => {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Transaction deleted successfully!" });
-      queryClient.invalidateQueries({ queryKey: ["recent-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["factory-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["transport-expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["label-purchases-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["customers-for-availability"] });
-      queryClient.invalidateQueries({ queryKey: ["sales-transactions-for-availability"] });
-      queryClient.invalidateQueries({ queryKey: ["sku-configurations-for-availability"] });
+      // Invalidate related queries using centralized hook
+      invalidateRelated('sales_transactions');
+      invalidateRelated('factory_payables');
+      invalidateRelated('transport_expenses');
     },
     onError: (error) => {
       toast({ 
@@ -1832,7 +1799,7 @@ const SalesEntry = () => {
     saleMutation.mutate(singleItemSale);
   };
 
-  const handleEditClick = (transaction: SalesTransaction) => {
+  const handleEditClick = useCallback((transaction: SalesTransaction) => {
     setEditingTransaction(transaction);
     setEditForm({
       customer_id: transaction.customer_id || "",
@@ -1844,7 +1811,7 @@ const SalesEntry = () => {
       branch: transaction.branch || "",
       price_per_case: ""
     });
-  };
+  }, []); // Stable function - no dependencies
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1861,11 +1828,11 @@ const SalesEntry = () => {
     });
   };
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = useCallback((id: string) => {
     if (confirm("Are you sure you want to delete this transaction?")) {
       deleteMutation.mutate(id);
     }
-  };
+  }, [deleteMutation]); // Only recreate if deleteMutation changes
 
   return (
     <div className="space-y-6">
@@ -2363,7 +2330,7 @@ const SalesEntry = () => {
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setCurrentPage(1); // Reset to first page when search changes
+                // Page reset is handled by the hook automatically
               }}
               className="flex-1 min-w-[200px]"
             />
@@ -2375,24 +2342,7 @@ const SalesEntry = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setSearchTerm("");
-                  setColumnFilters({
-                    date: "",
-                    customer: "",
-                    branch: "",
-                    type: "",
-                    sku: "",
-                    amount: ""
-                  });
-                  setColumnSorts({
-                    date: null,
-                    customer: null,
-                    branch: null,
-                    type: null,
-                    sku: null,
-                    amount: null
-                  });
-                  setCurrentPage(1); // Reset to first page when clearing filters
+                  resetFilters();
                 }}
                 className="whitespace-nowrap"
               >
@@ -2580,143 +2530,25 @@ const SalesEntry = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Dialog open={!!editingTransaction && editingTransaction.id === transaction.id} onOpenChange={(open) => {
-                              if (!open) {
-                                setEditingTransaction(null);
-                              }
-                            }}>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditClick(transaction)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Edit Transaction</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={handleEditSubmit} className="space-y-6">
-                              {/* First Row: Date, Customer, Branch */}
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-date">Date *</Label>
-                                  <Input
-                                    id="edit-date"
-                                    type="date"
-                                    value={editForm.transaction_date}
-                                    onChange={(e) => setEditForm({...editForm, transaction_date: e.target.value})}
-                                  />
-                                </div>
-                                
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-customer">Customer</Label>
-                                  <Select 
-                                    value={customers?.find(c => c.id === editForm.customer_id)?.client_name || ""} 
-                                    onValueChange={handleEditCustomerChange}
-                                  >
-                                    <SelectTrigger id="edit-customer">
-                                      <SelectValue placeholder="Select customer" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {getUniqueCustomers.map((customerName) => (
-                                        <SelectItem key={customerName} value={customerName}>
-                                          {customerName}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-branch">Branch</Label>
-                                  <Select 
-                                    value={editForm.branch} 
-                                    onValueChange={(value) => setEditForm({...editForm, branch: value})}
-                                    disabled={!editForm.customer_id}
-                                  >
-                                    <SelectTrigger id="edit-branch">
-                                      <SelectValue placeholder={editForm.customer_id ? "Select branch" : "Select customer first"} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {getAvailableBranchesForEdit().map((branch) => (
-                                        <SelectItem key={branch} value={branch}>
-                                          {branch}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-
-                              {/* Second Row: SKU, Quantity (cases), Price per Case */}
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-sku">SKU</Label>
-                                  <Input
-                                    id="edit-sku"
-                                    value={editForm.sku}
-                                    onChange={(e) => setEditForm({...editForm, sku: e.target.value})}
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-quantity">Quantity (cases)</Label>
-                                  <Input
-                                    id="edit-quantity"
-                                    type="number"
-                                    value={editForm.quantity}
-                                    onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-price-per-case">Price per Case (₹)</Label>
-                                  <Input
-                                    id="edit-price-per-case"
-                                    type="number"
-                                    step="0.01"
-                                    value={getPricePerCaseForEdit()}
-                                    readOnly
-                                    className="bg-gray-50"
-                                    placeholder="Select customer and branch first"
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Third Row: Amount, Description */}
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-amount">Amount (₹)</Label>
-                                  <Input
-                                    id="edit-amount"
-                                    type="number"
-                                    step="0.01"
-                                    value={editForm.amount}
-                                    onChange={(e) => setEditForm({...editForm, amount: e.target.value})}
-                                  />
-                                </div>
-                                
-                                <div className="space-y-2 md:col-span-2">
-                                  <Label htmlFor="edit-description">Description</Label>
-                                  <Textarea
-                                    id="edit-description"
-                                    value={editForm.description}
-                                    onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                                  />
-                                </div>
-                              </div>
-                              
-                              <div className="flex justify-end gap-2">
-                                <Button type="submit" disabled={updateMutation.isPending}>
-                                  {updateMutation.isPending ? "Updating..." : "Update"}
-                                </Button>
-                              </div>
-                            </form>
-                          </DialogContent>
-                        </Dialog>
+                        <EditTransactionDialog
+                          transaction={transaction}
+                          editForm={editForm}
+                          customers={customers}
+                          getUniqueCustomers={getUniqueCustomers}
+                          getAvailableBranchesForEdit={getAvailableBranchesForEdit}
+                          getPricePerCaseForEdit={getPricePerCaseForEdit}
+                          isOpen={!!editingTransaction && editingTransaction.id === transaction.id}
+                          isUpdating={updateMutation.isPending}
+                          onOpenChange={(open) => {
+                            if (!open) {
+                              setEditingTransaction(null);
+                            }
+                          }}
+                          onEditClick={handleEditClick}
+                          onEditSubmit={handleEditSubmit}
+                          onFormChange={(updates) => setEditForm({...editForm, ...updates})}
+                          onCustomerChange={handleEditCustomerChange}
+                        />
                         
                         <Button
                           variant="outline"
@@ -2752,7 +2584,7 @@ const SalesEntry = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() => setPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1 || transactionsLoading}
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
@@ -2776,7 +2608,7 @@ const SalesEntry = () => {
                         key={pageNum}
                         variant={currentPage === pageNum ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setCurrentPage(pageNum)}
+                        onClick={() => setPage(pageNum)}
                         disabled={transactionsLoading}
                         className="w-10"
                       >
@@ -2788,7 +2620,7 @@ const SalesEntry = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages || transactionsLoading}
                 >
                   Next
