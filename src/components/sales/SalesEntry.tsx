@@ -182,48 +182,6 @@ const SalesEntry = () => {
   // Invoice generation hooks
   const generateInvoice = useInvoiceGeneration();
   const downloadInvoice = useInvoiceDownload();
-  
-  // Handle invoice generation
-  const handleGenerateInvoice = useCallback(async (transaction: SalesTransaction) => {
-    if (!transaction.customer_id || transaction.transaction_type !== 'sale') {
-      toast({
-        title: "Error",
-        description: "Invoice can only be generated for sale transactions",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const customer = customers?.find(c => c.id === transaction.customer_id);
-    if (!customer) {
-      toast({
-        title: "Error",
-        description: "Customer not found",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      await generateInvoice.mutateAsync({
-        transactionId: transaction.id,
-        transaction,
-        customer,
-      });
-    } catch (error) {
-      // Error is already handled by the hook's onError callback
-      logger.error('Invoice generation failed:', error);
-    }
-  }, [customers, generateInvoice, toast]);
-  
-  // Handle invoice download
-  const handleDownloadInvoice = useCallback(async (invoice: any, format: 'word' | 'pdf') => {
-    try {
-      await downloadInvoice.mutateAsync({ invoice, format });
-    } catch (error) {
-      logger.error('Invoice download failed:', error);
-    }
-  }, [downloadInvoice]);
 
   // Auto-save form data to prevent data loss from session timeouts
   
@@ -366,6 +324,48 @@ const SalesEntry = () => {
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
+
+  // Handle invoice generation (must be after customers query)
+  const handleGenerateInvoice = useCallback(async (transaction: SalesTransaction) => {
+    if (!transaction.customer_id || transaction.transaction_type !== 'sale') {
+      toast({
+        title: "Error",
+        description: "Invoice can only be generated for sale transactions",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const customer = customers?.find(c => c.id === transaction.customer_id);
+    if (!customer) {
+      toast({
+        title: "Error",
+        description: "Customer not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await generateInvoice.mutateAsync({
+        transactionId: transaction.id,
+        transaction,
+        customer,
+      });
+    } catch (error) {
+      // Error is already handled by the hook's onError callback
+      logger.error('Invoice generation failed:', error);
+    }
+  }, [customers, generateInvoice, toast]);
+  
+  // Handle invoice download
+  const handleDownloadInvoice = useCallback(async (invoice: any, format: 'word' | 'pdf') => {
+    try {
+      await downloadInvoice.mutateAsync({ invoice, format });
+    } catch (error) {
+      logger.error('Invoice download failed:', error);
+    }
+  }, [downloadInvoice]);
 
   // Function to handle customer selection and auto-populate SKU options
   const handleCustomerChange = (customerName: string) => {
