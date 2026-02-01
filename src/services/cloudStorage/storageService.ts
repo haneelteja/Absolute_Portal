@@ -5,8 +5,8 @@
 
 import type { CloudStorageAdapter, FileUploadResult } from './storageAdapter';
 import { GoogleDriveAdapter } from './googleDriveAdapter';
+import { OneDriveAdapter } from './onedriveAdapter';
 import { getInvoiceFolderPath } from '@/services/invoiceConfigService';
-// import { OneDriveAdapter } from './onedriveAdapter'; // To be implemented
 
 export type StorageProvider = 'google_drive' | 'onedrive';
 
@@ -18,8 +18,7 @@ export function getStorageAdapter(provider: StorageProvider): CloudStorageAdapte
     case 'google_drive':
       return new GoogleDriveAdapter();
     case 'onedrive':
-      // return new OneDriveAdapter(); // To be implemented
-      throw new Error('OneDrive adapter not yet implemented');
+      return new OneDriveAdapter();
     default:
       throw new Error(`Unknown storage provider: ${provider}`);
   }
@@ -49,7 +48,9 @@ export class StorageService {
     folderPath: string;
   }> {
     try {
-      // Get base folder path from configuration (default: MyDrive/Invoice)
+      // Get base folder path from configuration
+      // For Google Drive: default is "MyDrive/Invoice"
+      // For OneDrive: can be any folder path like "Invoice" or "Documents/Invoice"
       const baseFolderPath = await getInvoiceFolderPath();
       
       // Build folder path: {baseFolderPath}/YYYY/MM-MonthName

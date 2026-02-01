@@ -16,6 +16,7 @@ import {
 } from '@/services/invoiceService';
 import { generateInvoiceDocuments } from '@/services/documentGenerator';
 import { StorageService } from '@/services/cloudStorage/storageService';
+import { getStorageProvider } from '@/services/invoiceConfigService';
 import type { Invoice, SalesTransaction, Customer } from '@/types';
 import { logger } from '@/lib/logger';
 import { useToast } from '@/hooks/use-toast';
@@ -44,7 +45,6 @@ const DEFAULT_COMPANY_CONFIG: CompanyConfig = {
 export function useInvoiceGeneration() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const storageService = new StorageService('google_drive');
 
   const generateMutation = useMutation({
     mutationFn: async ({
@@ -59,6 +59,10 @@ export function useInvoiceGeneration() {
       companyConfig?: CompanyConfig;
     }) => {
       try {
+        // Get storage provider from configuration
+        const storageProvider = await getStorageProvider();
+        const storageService = new StorageService(storageProvider);
+
         // Check if invoice already exists
         const existingInvoice = await getInvoiceByTransactionId(transactionId);
         if (existingInvoice) {
@@ -187,7 +191,9 @@ async function regenerateInvoice(
   customer: Customer,
   companyConfig: CompanyConfig
 ): Promise<Invoice> {
-  const storageService = new StorageService(existingInvoice.storage_provider);
+  // Use the storage provider from the existing invoice, or get from config
+  const storageProvider = existingInvoice.storage_provider || await getStorageProvider();
+  const storageService = new StorageService(storageProvider);
 
   // Prepare invoice data with existing invoice number
   const invoiceData = prepareInvoiceData(transaction, customer, companyConfig);
@@ -219,7 +225,8 @@ async function regenerateInvoice(
     uploadResult.pdf?.fileId || null,
     uploadResult.word.fileUrl,
     uploadResult.pdf?.fileUrl || null,
-    uploadResult.folderPath
+    uploadResult.folderPath,
+    storageProvider
   );
 
   // Mark as regenerated

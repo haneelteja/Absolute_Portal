@@ -44,8 +44,9 @@ CREATE TRIGGER trigger_update_invoice_configs_updated_at
 -- ==============================================
 INSERT INTO invoice_configurations (config_key, config_value, config_type, description)
 VALUES 
-  ('invoice_folder_path', 'MyDrive/Invoice', 'string', 'Invoice folder path in Google Drive'),
-  ('auto_invoice_generation_enabled', 'true', 'boolean', 'Enable Auto Invoice Generation')
+  ('invoice_folder_path', 'MyDrive/Invoice', 'string', 'Invoice folder path in cloud storage'),
+  ('auto_invoice_generation_enabled', 'true', 'boolean', 'Enable Auto Invoice Generation'),
+  ('storage_provider', 'google_drive', 'string', 'Cloud storage provider (google_drive or onedrive)')
 ON CONFLICT (config_key) DO NOTHING;
 
 -- ==============================================

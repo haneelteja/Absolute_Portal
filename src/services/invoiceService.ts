@@ -145,7 +145,8 @@ export async function updateInvoiceFiles(
   pdfFileId: string | null,
   wordFileUrl: string | null,
   pdfFileUrl: string | null,
-  folderPath?: string
+  folderPath?: string,
+  storageProvider?: 'google_drive' | 'onedrive'
 ): Promise<Invoice> {
   try {
     const updateData: Partial<Invoice> = {
@@ -157,6 +158,10 @@ export async function updateInvoiceFiles(
 
     if (folderPath) {
       updateData.folder_path = folderPath;
+    }
+
+    if (storageProvider) {
+      updateData.storage_provider = storageProvider;
     }
 
     const { data, error } = await supabase

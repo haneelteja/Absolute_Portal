@@ -126,7 +126,36 @@ export async function isAutoInvoiceEnabled(): Promise<boolean> {
 }
 
 /**
- * Validate Google Drive folder path format
+ * Get storage provider from configuration
+ * Returns default if not found
+ */
+export async function getStorageProvider(): Promise<'google_drive' | 'onedrive'> {
+  try {
+    const { data, error } = await supabase
+      .from('invoice_configurations')
+      .select('config_value')
+      .eq('config_key', 'storage_provider')
+      .single();
+
+    if (error || !data) {
+      logger.warn('Storage provider not found, using default');
+      return 'google_drive';
+    }
+
+    const provider = data.config_value as string;
+    if (provider === 'onedrive' || provider === 'google_drive') {
+      return provider;
+    }
+
+    return 'google_drive'; // Default fallback
+  } catch (error) {
+    logger.error('Error in getStorageProvider:', error);
+    return 'google_drive'; // Fallback to default
+  }
+}
+
+/**
+ * Validate folder path format (works for both Google Drive and OneDrive)
  */
 export function validateFolderPath(path: string): { valid: boolean; error?: string } {
   if (!path || path.trim() === '') {
@@ -137,15 +166,16 @@ export function validateFolderPath(path: string): { valid: boolean; error?: stri
     return { valid: false, error: 'Path cannot exceed 255 characters' };
   }
 
-  // Google Drive path validation
-  // Must start with "MyDrive/" or valid folder name
+  // Path validation for both Google Drive and OneDrive
   // Can contain letters, numbers, spaces, forward slashes, hyphens, underscores
-  const googleDrivePathPattern = /^MyDrive\/[a-zA-Z0-9\s\/\-_]+$/;
+  // Google Drive: Must start with "MyDrive/"
+  // OneDrive: Can start with any folder name or be relative
+  const pathPattern = /^[a-zA-Z0-9\s\/\-_]+$/;
   
-  if (!googleDrivePathPattern.test(path)) {
+  if (!pathPattern.test(path)) {
     return {
       valid: false,
-      error: 'Invalid folder path format. Use Google Drive format: MyDrive/FolderName'
+      error: 'Invalid folder path format. Use format: FolderName/SubFolder or MyDrive/FolderName'
     };
   }
 

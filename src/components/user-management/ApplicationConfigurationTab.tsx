@@ -19,6 +19,7 @@ import {
 } from '@/services/invoiceConfigService';
 import { EditFolderPathDialog } from './EditFolderPathDialog';
 import { AutoInvoiceToggle } from './AutoInvoiceToggle';
+import { StorageProviderSelect } from './StorageProviderSelect';
 
 const ApplicationConfigurationTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -191,6 +192,13 @@ const ApplicationConfigurationTab: React.FC = () => {
                             config={config}
                             value={config.config_value === 'true'}
                             onChange={(newValue) => handleToggleChange(config, newValue)}
+                            isLoading={updateMutation.isPending}
+                          />
+                        ) : config.config_key === 'storage_provider' ? (
+                          <StorageProviderSelect
+                            config={config}
+                            value={config.config_value === 'onedrive' ? 'onedrive' : 'google_drive'}
+                            onChange={(newValue) => handleStorageProviderChange(config, newValue)}
                             isLoading={updateMutation.isPending}
                           />
                         ) : null}
