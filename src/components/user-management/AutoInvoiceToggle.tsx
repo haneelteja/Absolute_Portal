@@ -17,6 +17,7 @@ interface AutoInvoiceToggleProps {
 }
 
 export const AutoInvoiceToggle: React.FC<AutoInvoiceToggleProps> = ({
+  config,
   value,
   onChange,
   isLoading = false,
