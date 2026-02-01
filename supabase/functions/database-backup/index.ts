@@ -137,13 +137,16 @@ serve(async (req) => {
       const uploadResult = await uploadResponse.json();
 
       // Step 3: Update backup log with success
+      const fileId = uploadResult.id || uploadResult.fileId;
+      const fileUrl = uploadResult.webViewLink || uploadResult.fileUrl || uploadResult.webContentLink;
+      
       await supabase
         .from('backup_logs')
         .update({
           status: 'success',
           file_size_bytes: compressed.length,
-          google_drive_file_id: uploadResult.fileId,
-          google_drive_path: uploadResult.fileUrl || `${backupFolderPath}/${fileName}`,
+          google_drive_file_id: fileId,
+          google_drive_path: fileUrl || `${backupFolderPath}/${fileName}`,
           completed_at: new Date().toISOString(),
         })
         .eq('id', logId);
@@ -154,7 +157,7 @@ serve(async (req) => {
           logId,
           fileName,
           fileSize: compressed.length,
-          googleDrivePath: uploadResult.fileUrl,
+          googleDrivePath: fileUrl,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
