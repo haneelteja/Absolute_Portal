@@ -257,8 +257,13 @@ export function prepareInvoiceData(
   const invoiceDate = transaction.transaction_date;
   const dueDate = calculateDueDate(invoiceDate);
 
-  // Calculate amount in words
-  const amountInWords = convertNumberToWords(transaction.total_amount);
+  // Calculate safe amounts with proper fallbacks
+  const safeAmount = transaction.amount ?? 0;
+  const safeTotalAmount = transaction.total_amount ?? safeAmount;
+  const safePricePerCase = customer.price_per_case ?? 0;
+
+  // Calculate amount in words (use safe total amount)
+  const amountInWords = convertNumberToWords(safeTotalAmount);
 
   return {
     invoiceNumber: '', // Will be generated
@@ -275,13 +280,13 @@ export function prepareInvoiceData(
     clientPhone: undefined,   // Not in current schema
     clientEmail: undefined,   // Not in current schema
     sku: transaction.sku || 'N/A',
-    quantity: transaction.quantity || 0,
-    pricePerCase: customer.price_per_case || 0,
-    amount: transaction.amount,
-    totalAmount: transaction.total_amount,
+    quantity: transaction.quantity ?? 0,
+    pricePerCase: safePricePerCase,
+    amount: safeAmount,
+    totalAmount: safeTotalAmount,
     amountInWords,
     taxAmount: 0, // Can be calculated if tax is applicable
-    grandTotal: transaction.total_amount,
+    grandTotal: safeTotalAmount,
     terms: companyConfig.terms || 'Payment due within 30 days. Late payment may incur interest charges.'
   };
 }

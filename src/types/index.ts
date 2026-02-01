@@ -15,6 +15,7 @@ export interface SalesTransaction {
   id: string;
   customer_id: string;
   amount: number;
+  total_amount?: number; // Added to match database schema
   quantity: number | null;
   sku: string | null;
   description: string | null;
@@ -117,6 +118,24 @@ export interface LabelVendor {
   updated_at: string;
 }
 
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  transaction_id: string;
+  customer_id: string;
+  invoice_date: string;
+  due_date: string | null;
+  word_file_id: string | null;
+  pdf_file_id: string | null;
+  word_file_url: string | null;
+  pdf_file_url: string | null;
+  storage_provider: 'google_drive' | 'onedrive';
+  folder_path: string | null;
+  status: 'generated' | 'sent' | 'paid' | 'cancelled';
+  last_regenerated_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 // Form types
 export interface SaleForm {

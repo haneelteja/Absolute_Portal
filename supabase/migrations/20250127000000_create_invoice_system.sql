@@ -178,7 +178,53 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ==============================================
--- 6. COMMENTS FOR DOCUMENTATION
+-- 6. ROW LEVEL SECURITY (RLS) POLICIES
+-- ==============================================
+-- Enable RLS on invoices table
+ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow authenticated users to read all invoices
+CREATE POLICY "Allow authenticated users to read invoices"
+  ON invoices
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+-- Policy: Allow authenticated users to insert invoices
+CREATE POLICY "Allow authenticated users to insert invoices"
+  ON invoices
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+-- Policy: Allow authenticated users to update invoices
+CREATE POLICY "Allow authenticated users to update invoices"
+  ON invoices
+  FOR UPDATE
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- Enable RLS on invoice_number_sequence table
+ALTER TABLE invoice_number_sequence ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow authenticated users to read invoice number sequences
+CREATE POLICY "Allow authenticated users to read invoice sequences"
+  ON invoice_number_sequence
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+-- Policy: Allow authenticated users to insert/update invoice number sequences
+CREATE POLICY "Allow authenticated users to manage invoice sequences"
+  ON invoice_number_sequence
+  FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- ==============================================
+-- 7. COMMENTS FOR DOCUMENTATION
 -- ==============================================
 COMMENT ON TABLE invoices IS 'Stores invoice records linked to sales transactions';
 COMMENT ON TABLE invoice_number_sequence IS 'Tracks sequential invoice numbers per year/month';

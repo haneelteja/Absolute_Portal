@@ -232,8 +232,13 @@ function formatDate(dateString: string): string {
 /**
  * Format currency for display (₹X,XXX.XX)
  */
-function formatCurrency(amount: number): string {
-  return `₹${amount.toLocaleString('en-IN', {
+function formatCurrency(amount: number | null | undefined): string {
+  // Handle null, undefined, or NaN values
+  const safeAmount = amount ?? 0;
+  if (isNaN(safeAmount)) {
+    return '₹0.00';
+  }
+  return `₹${safeAmount.toLocaleString('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
