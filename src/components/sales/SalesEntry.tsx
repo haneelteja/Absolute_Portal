@@ -22,7 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { MobileTable } from "@/components/ui/mobile-table";
 import { useMobileDetection, MOBILE_CLASSES } from "@/lib/mobile-utils";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Trash2, Edit, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, Edit, Download, ChevronLeft, ChevronRight, FileText, Loader2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { ColumnFilter } from '@/components/ui/column-filter';
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -30,6 +30,77 @@ import { saleFormSchema, paymentFormSchema, salesItemSchema } from "@/lib/valida
 import { safeValidate } from "@/lib/validation/utils";
 import { logger } from "@/lib/logger";
 import { EditTransactionDialog } from "@/components/sales/EditTransactionDialog";
+import { useInvoiceGeneration, useInvoice, useInvoiceDownload } from "@/hooks/useInvoiceGeneration";
+
+// Invoice Actions Component
+const InvoiceActions = ({ 
+  transaction, 
+  customer, 
+  onGenerate, 
+  onDownload,
+  isGenerating 
+}: { 
+  transaction: SalesTransaction;
+  customer?: Customer;
+  onGenerate: (transaction: SalesTransaction) => void;
+  onDownload: (invoice: any, format: 'word' | 'pdf') => void;
+  isGenerating: boolean;
+}) => {
+  const { data: invoice, isLoading: invoiceLoading } = useInvoice(transaction.id);
+  
+  if (transaction.transaction_type !== 'sale') return null;
+  
+  if (invoiceLoading) {
+    return (
+      <Button variant="outline" size="sm" disabled>
+        <Loader2 className="h-4 w-4 animate-spin" />
+      </Button>
+    );
+  }
+  
+  if (invoice) {
+    return (
+      <>
+        {invoice.word_file_url && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDownload(invoice, 'word')}
+            title="Download Word Invoice"
+          >
+            <FileText className="h-4 w-4" />
+          </Button>
+        )}
+        {invoice.pdf_file_url && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDownload(invoice, 'pdf')}
+            title="Download PDF Invoice"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        )}
+      </>
+    );
+  }
+  
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => onGenerate(transaction)}
+      disabled={isGenerating}
+      title="Generate Invoice"
+    >
+      {isGenerating ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <FileText className="h-4 w-4" />
+      )}
+    </Button>
+  );
+};
 
 const SalesEntry = () => {
   const { isMobileDevice } = useMobileDetection();
@@ -107,6 +178,52 @@ const SalesEntry = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { invalidateRelated } = useCacheInvalidation();
+  
+  // Invoice generation hooks
+  const generateInvoice = useInvoiceGeneration();
+  const downloadInvoice = useInvoiceDownload();
+  
+  // Handle invoice generation
+  const handleGenerateInvoice = useCallback(async (transaction: SalesTransaction) => {
+    if (!transaction.customer_id || transaction.transaction_type !== 'sale') {
+      toast({
+        title: "Error",
+        description: "Invoice can only be generated for sale transactions",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const customer = customers?.find(c => c.id === transaction.customer_id);
+    if (!customer) {
+      toast({
+        title: "Error",
+        description: "Customer not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      await generateInvoice.mutateAsync({
+        transactionId: transaction.id,
+        transaction,
+        customer,
+      });
+    } catch (error) {
+      // Error is already handled by the hook's onError callback
+      logger.error('Invoice generation failed:', error);
+    }
+  }, [customers, generateInvoice, toast]);
+  
+  // Handle invoice download
+  const handleDownloadInvoice = useCallback(async (invoice: any, format: 'word' | 'pdf') => {
+    try {
+      await downloadInvoice.mutateAsync({ invoice, format });
+    } catch (error) {
+      logger.error('Invoice download failed:', error);
+    }
+  }, [downloadInvoice]);
 
   // Auto-save form data to prevent data loss from session timeouts
   
@@ -2530,6 +2647,13 @@ const SalesEntry = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <InvoiceActions
+                          transaction={transaction}
+                          customer={customer}
+                          onGenerate={handleGenerateInvoice}
+                          onDownload={handleDownloadInvoice}
+                          isGenerating={generateInvoice.isPending}
+                        />
                         <EditTransactionDialog
                           transaction={transaction}
                           editForm={editForm}
