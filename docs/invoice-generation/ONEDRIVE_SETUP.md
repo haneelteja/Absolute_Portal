@@ -197,6 +197,31 @@ curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/onedrive-upload \
 
 ## 🔍 Troubleshooting
 
+### Error: "Selected user account does not exist in tenant 'Microsoft Services'"
+**This error occurs when:**
+- You're using a personal Microsoft account (@outlook.com, @hotmail.com, @live.com) with a single-tenant app registration
+- Your account belongs to a different Azure AD tenant than the app registration
+- The app registration is configured for a specific organization but you're using a different account
+
+**Solutions:**
+
+**Option 1: Change App Registration to Multi-Tenant (Recommended)**
+1. Go to Azure Portal → **Microsoft Entra ID** → **App registrations**
+2. Select your app registration
+3. Click **"Authentication"** in the left menu
+4. Under **"Supported account types"**, select:
+   - ✅ **"Accounts in any organizational directory and personal Microsoft accounts"**
+5. Click **"Save"**
+6. Try the OAuth flow again with your personal Microsoft account
+
+**Option 2: Use a Work/School Account**
+- If you have a work or school Microsoft account (@yourcompany.com), use that instead
+- Ensure the account belongs to the same tenant as your app registration
+
+**Option 3: Use Correct Tenant ID**
+- If using a work/school account, ensure `ONEDRIVE_TENANT_ID` matches your organization's tenant ID
+- For personal accounts with multi-tenant apps, use `common` as the tenant ID
+
 ### Error: "Refresh token not provided"
 - **Solution:** Ensure `ONEDRIVE_REFRESH_TOKEN` is set in Supabase Edge Function secrets
 

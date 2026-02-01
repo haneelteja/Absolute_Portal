@@ -20,6 +20,11 @@ import {
 import { EditFolderPathDialog } from './EditFolderPathDialog';
 import { AutoInvoiceToggle } from './AutoInvoiceToggle';
 import { StorageProviderSelect } from './StorageProviderSelect';
+import { BackupLogsDialog } from './BackupLogsDialog';
+import { EditBackupFolderDialog } from './EditBackupFolderDialog';
+import { EditNotificationEmailDialog } from './EditNotificationEmailDialog';
+import { triggerManualBackup, getBackupConfig, type BackupConfig } from '@/services/backupService';
+import { Database, Play } from 'lucide-react';
 
 const ApplicationConfigurationTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,6 +38,18 @@ const ApplicationConfigurationTab: React.FC = () => {
     queryKey: ['invoice-configurations'],
     queryFn: getInvoiceConfigurations,
   });
+
+  // Fetch backup configuration
+  const { data: backupConfigData, refetch: refetchBackupConfig } = useQuery({
+    queryKey: ['backup-config'],
+    queryFn: getBackupConfig,
+  });
+
+  React.useEffect(() => {
+    if (backupConfigData) {
+      setBackupConfig(backupConfigData);
+    }
+  }, [backupConfigData]);
 
   // Update configuration mutation
   const updateMutation = useMutation({
@@ -201,6 +218,26 @@ const ApplicationConfigurationTab: React.FC = () => {
                             onChange={(newValue) => handleStorageProviderChange(config, newValue)}
                             isLoading={updateMutation.isPending}
                           />
+                        ) : config.config_key === 'backup_folder_path' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleBackupFolderEdit(config)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'backup_notification_email' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleNotificationEmailEdit(config)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
                         ) : null}
                       </TableCell>
                     </TableRow>
@@ -219,14 +256,94 @@ const ApplicationConfigurationTab: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Backup Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Database Backup
+          </CardTitle>
+          <CardDescription>
+            Manage database backup settings and view backup logs
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Backup Actions */}
+            <div className="flex gap-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsBackupLogsOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Database className="h-4 w-4" />
+                View Backup Logs
+              </Button>
+              <Button
+                onClick={handleManualBackup}
+                disabled={isRunningBackup}
+                className="flex items-center gap-2"
+              >
+                {isRunningBackup ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Running Backup...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    Run Backup Now
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Backup Info */}
+            {backupConfig && (
+              <div className="text-sm text-gray-600 space-y-1">
+                <p><strong>Backup Folder:</strong> {backupConfig.backup_folder_path}</p>
+                <p><strong>Notification Email:</strong> {backupConfig.backup_notification_email}</p>
+                <p><strong>Status:</strong> {backupConfig.backup_enabled ? 'Enabled' : 'Disabled'}</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Edit Folder Path Dialog */}
-      {editingConfig && (
+      {editingConfig && editingConfig.config_key === 'invoice_folder_path' && (
         <EditFolderPathDialog
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
           currentPath={editingConfig.config_value}
           onSave={handleSaveFolderPath}
           isLoading={updateMutation.isPending}
+        />
+      )}
+
+      {/* Backup Logs Dialog */}
+      <BackupLogsDialog
+        open={isBackupLogsOpen}
+        onOpenChange={setIsBackupLogsOpen}
+      />
+
+      {/* Edit Backup Folder Dialog */}
+      {editingConfig && editingConfig.config_key === 'backup_folder_path' && backupConfig && (
+        <EditBackupFolderDialog
+          open={isBackupFolderDialogOpen}
+          onOpenChange={setIsBackupFolderDialogOpen}
+          currentPath={backupConfig.backup_folder_path}
+          onSuccess={handleBackupConfigRefresh}
+        />
+      )}
+
+      {/* Edit Notification Email Dialog */}
+      {editingConfig && editingConfig.config_key === 'backup_notification_email' && backupConfig && (
+        <EditNotificationEmailDialog
+          open={isNotificationEmailDialogOpen}
+          onOpenChange={setIsNotificationEmailDialogOpen}
+          currentEmail={backupConfig.backup_notification_email}
+          onSuccess={handleBackupConfigRefresh}
         />
       )}
     </div>

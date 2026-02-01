@@ -224,6 +224,32 @@ supabase functions deploy onedrive-upload
 
 ## 🔍 Troubleshooting
 
+### Error: "Selected user account does not exist in tenant 'Microsoft Services'"
+**This is the most common error when setting up OneDrive integration.**
+
+**What it means:**
+- Your Microsoft account doesn't match the tenant configured in your app registration
+- You're using a personal account (@outlook.com, @hotmail.com) but the app is single-tenant
+- Your account belongs to a different organization than the app registration
+
+**Quick Fix - Change to Multi-Tenant:**
+
+1. In Azure Portal, go to your app registration
+2. Click **"Authentication"** in the left menu
+3. Scroll to **"Supported account types"**
+4. Select: **"Accounts in any organizational directory and personal Microsoft accounts"**
+5. Click **"Save"** at the top
+6. Wait 1-2 minutes for changes to propagate
+7. Try the OAuth flow again in OAuth Playground
+
+**Alternative Solutions:**
+
+- **Use a work/school account:** If you have a work Microsoft account, use that instead
+- **Check tenant ID:** Ensure you're using the correct tenant ID (or `common` for multi-tenant)
+
+**After fixing, update Supabase secrets:**
+- If you changed to multi-tenant, set `ONEDRIVE_TENANT_ID` to `common` in Supabase Edge Function secrets
+
 ### Error: "AADSTS70011: Invalid scope"
 - **Solution:** Ensure you've added `offline_access` permission in API permissions
 
