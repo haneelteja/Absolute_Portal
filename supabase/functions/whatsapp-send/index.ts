@@ -250,43 +250,121 @@ serve(async (req) => {
           '/api/v1/messages',
           '/v1/messages',
           '/messages/send',
+          '/api/send',
+          '/send',
+          '/api/v1/send',
+          '/v1/send',
+          '/messages',
+          '/api/messages',
         ];
 
         let textResponse: Response | null = null;
         let lastError: string = '';
+        const attemptedEndpoints: string[] = [];
+
+        // Also try with API key as query parameter (some APIs use this)
+        const requestBodies = [
+          {
+            to: customer.whatsapp_number,
+            message: messageContent,
+            template_id: templateIdToUse,
+          },
+          {
+            phone: customer.whatsapp_number,
+            text: messageContent,
+            template_id: templateIdToUse,
+          },
+          {
+            recipient: customer.whatsapp_number,
+            message: messageContent,
+            template_id: templateIdToUse,
+          },
+        ];
 
         for (const endpoint of endpointVariants) {
-          try {
-            textResponse = await fetch(`${apiUrl}${endpoint}`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                to: customer.whatsapp_number,
-                message: messageContent,
-                template_id: templateIdToUse,
-              }),
-            });
+          for (const requestBody of requestBodies) {
+            try {
+              const fullUrl = `${apiUrl}${endpoint}`;
+              attemptedEndpoints.push(fullUrl);
+              
+              // Try with Bearer token
+              textResponse = await fetch(fullUrl, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${apiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+              });
 
-            if (textResponse.ok) {
-              break; // Success, exit loop
-            } else {
-              const errorData = await textResponse.json().catch(() => ({ error: 'Unknown error' }));
-              lastError = `Endpoint ${endpoint}: ${JSON.stringify(errorData)}`;
-              console.log(`Tried ${endpoint}, got ${textResponse.status}:`, errorData);
-              textResponse = null; // Reset for next attempt
+              if (textResponse.ok) {
+                console.log(`✅ Success with endpoint: ${endpoint}, body format: ${JSON.stringify(Object.keys(requestBody))}`);
+                break; // Success, exit both loops
+              } else {
+                const errorData = await textResponse.json().catch(() => ({ error: 'Unknown error' }));
+                lastError = `Endpoint ${endpoint} (${JSON.stringify(Object.keys(requestBody))}): ${JSON.stringify(errorData)}`;
+                console.log(`❌ Tried ${endpoint}, got ${textResponse.status}:`, errorData);
+                textResponse = null;
+              }
+            } catch (err) {
+              lastError = `Endpoint ${endpoint}: ${err instanceof Error ? err.message : 'Unknown error'}`;
+              console.log(`❌ Error trying ${endpoint}:`, err);
+              textResponse = null;
             }
-          } catch (err) {
-            lastError = `Endpoint ${endpoint}: ${err instanceof Error ? err.message : 'Unknown error'}`;
-            console.log(`Error trying ${endpoint}:`, err);
-            textResponse = null;
+            
+            if (textResponse && textResponse.ok) break; // Exit inner loop if successful
+          }
+          if (textResponse && textResponse.ok) break; // Exit outer loop if successful
+        }
+
+        // If Bearer token failed, try with API key as query parameter
+        if (!textResponse || !textResponse.ok) {
+          console.log('Trying with API key as query parameter...');
+          for (const endpoint of endpointVariants.slice(0, 5)) { // Try top 5 endpoints
+            try {
+              const fullUrl = `${apiUrl}${endpoint}?api_key=${apiKey}`;
+              attemptedEndpoints.push(fullUrl);
+              
+              textResponse = await fetch(fullUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  to: customer.whatsapp_number,
+                  message: messageContent,
+                  template_id: templateIdToUse,
+                }),
+              });
+
+              if (textResponse.ok) {
+                console.log(`✅ Success with endpoint (query param): ${endpoint}`);
+                break;
+              } else {
+                const errorData = await textResponse.json().catch(() => ({ error: 'Unknown error' }));
+                lastError = `Endpoint ${endpoint} (query param): ${JSON.stringify(errorData)}`;
+                console.log(`❌ Tried ${endpoint} (query param), got ${textResponse.status}:`, errorData);
+                textResponse = null;
+              }
+            } catch (err) {
+              lastError = `Endpoint ${endpoint} (query param): ${err instanceof Error ? err.message : 'Unknown error'}`;
+              console.log(`❌ Error trying ${endpoint} (query param):`, err);
+              textResponse = null;
+            }
+            if (textResponse && textResponse.ok) break;
           }
         }
 
         if (!textResponse || !textResponse.ok) {
-          throw new Error(`API error: All endpoint variants failed. Last error: ${lastError}. Please verify the 360Messenger API endpoint structure.`);
+          const errorDetails = {
+            message: 'All endpoint variants failed',
+            attemptedEndpoints: attemptedEndpoints.slice(0, 10), // Show first 10 attempts
+            lastError,
+            apiUrl,
+            suggestion: 'Please check 360Messenger API documentation or contact support for the correct endpoint format'
+          };
+          console.error('All endpoint attempts failed:', errorDetails);
+          throw new Error(`API error: ${JSON.stringify(errorDetails)}`);
         }
 
         apiResponse = await textResponse.json();
