@@ -190,44 +190,103 @@ serve(async (req) => {
         // Send media message
         // Note: 360Messenger API may require file download and multipart upload
         // For now, we'll send the URL and let the API handle it
-        const mediaResponse = await fetch(`${apiUrl}/api/v1/messages/media`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            to: customer.whatsapp_number,
-            message: messageContent,
-            media_url: attachmentUrl,
-            media_type: attachmentType,
-          }),
-        });
+        // Try multiple endpoint formats
+        const mediaEndpointVariants = [
+          '/api/v1/messages/media',
+          '/v1/messages/media',
+          '/api/messages/media',
+          '/messages/media',
+          '/api/v1/messages',
+          '/v1/messages',
+        ];
 
-        if (!mediaResponse.ok) {
-          const errorData = await mediaResponse.json().catch(() => ({ error: 'Unknown error' }));
-          throw new Error(`API error: ${JSON.stringify(errorData)}`);
+        let mediaResponse: Response | null = null;
+        let lastMediaError: string = '';
+
+        for (const endpoint of mediaEndpointVariants) {
+          try {
+            mediaResponse = await fetch(`${apiUrl}${endpoint}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                to: customer.whatsapp_number,
+                message: messageContent,
+                media_url: attachmentUrl,
+                media_type: attachmentType,
+              }),
+            });
+
+            if (mediaResponse.ok) {
+              break; // Success, exit loop
+            } else {
+              const errorData = await mediaResponse.json().catch(() => ({ error: 'Unknown error' }));
+              lastMediaError = `Endpoint ${endpoint}: ${JSON.stringify(errorData)}`;
+              console.log(`Tried ${endpoint}, got ${mediaResponse.status}:`, errorData);
+              mediaResponse = null;
+            }
+          } catch (err) {
+            lastMediaError = `Endpoint ${endpoint}: ${err instanceof Error ? err.message : 'Unknown error'}`;
+            console.log(`Error trying ${endpoint}:`, err);
+            mediaResponse = null;
+          }
+        }
+
+        if (!mediaResponse || !mediaResponse.ok) {
+          throw new Error(`API error: All media endpoint variants failed. Last error: ${lastMediaError}. Please verify the 360Messenger API endpoint structure.`);
         }
 
         apiResponse = await mediaResponse.json();
       } else {
         // Send text message
-        const textResponse = await fetch(`${apiUrl}/api/v1/messages/text`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            to: customer.whatsapp_number,
-            message: messageContent,
-            template_id: templateIdToUse,
-          }),
-        });
+        // Try multiple endpoint formats as 360Messenger API structure may vary
+        const endpointVariants = [
+          '/api/v1/messages/text',
+          '/v1/messages/text',
+          '/api/messages/text',
+          '/messages/text',
+          '/api/v1/messages',
+          '/v1/messages',
+          '/messages/send',
+        ];
 
-        if (!textResponse.ok) {
-          const errorData = await textResponse.json().catch(() => ({ error: 'Unknown error' }));
-          throw new Error(`API error: ${JSON.stringify(errorData)}`);
+        let textResponse: Response | null = null;
+        let lastError: string = '';
+
+        for (const endpoint of endpointVariants) {
+          try {
+            textResponse = await fetch(`${apiUrl}${endpoint}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                to: customer.whatsapp_number,
+                message: messageContent,
+                template_id: templateIdToUse,
+              }),
+            });
+
+            if (textResponse.ok) {
+              break; // Success, exit loop
+            } else {
+              const errorData = await textResponse.json().catch(() => ({ error: 'Unknown error' }));
+              lastError = `Endpoint ${endpoint}: ${JSON.stringify(errorData)}`;
+              console.log(`Tried ${endpoint}, got ${textResponse.status}:`, errorData);
+              textResponse = null; // Reset for next attempt
+            }
+          } catch (err) {
+            lastError = `Endpoint ${endpoint}: ${err instanceof Error ? err.message : 'Unknown error'}`;
+            console.log(`Error trying ${endpoint}:`, err);
+            textResponse = null;
+          }
+        }
+
+        if (!textResponse || !textResponse.ok) {
+          throw new Error(`API error: All endpoint variants failed. Last error: ${lastError}. Please verify the 360Messenger API endpoint structure.`);
         }
 
         apiResponse = await textResponse.json();
