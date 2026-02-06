@@ -4,6 +4,20 @@
 
 > **Note:** Supabase does **not** provide a built-in Cron UI for Edge Functions. You must schedule runs using either **pg_cron** inside the database (if available on your plan) or an **external scheduler** (cron-job.org, GitHub Actions, Vercel Cron, etc.).
 
+---
+
+## Complete setup (fix 401 on cron-job.org)
+
+If your cron-job.org test run returns **401 Unauthorized**, do these three steps:
+
+| Step | Action |
+|------|--------|
+| 1 | **Supabase Dashboard** → **Project Settings** → **Edge Functions** → **Secrets**. Add secret: **Name** = `BACKUP_CRON_SECRET`, **Value** = a long random string (e.g. generate with PowerShell: `-join ((48..57) + (65..90) + (97..122) \| Get-Random -Count 32 \| ForEach-Object { [char]$_ })`). |
+| 2 | **Redeploy:** `supabase functions deploy backup-scheduler` |
+| 3 | **cron-job.org** → Edit job → **Request headers**. Add: **Key** = `x-backup-cron-secret`, **Value** = the **exact same** string from step 1 (no `Bearer `, no quotes). Set schedule to every 15 minutes. Save and run **Perform test run**. |
+
+You should get **200** and JSON like `{"triggered":false,"reason":"Current time does not match schedule"}` — that means the cron is working; the backup will run when the clock matches your configured backup time (e.g. 14:00 IST).
+
 **Current setup:** Backup scheduler runs **every 15 minutes** (`*/15 * * * *`). It checks the configured `backup_schedule_time_ist` (e.g. 14:00) and triggers **database-backup** only when the current IST time matches. You can change the backup time later in Application Configuration without changing cron.
 
 **Configurable backup time:** Use **backup-scheduler** (runs every 15 min, reads `backup_schedule_time_ist` from Application Configuration).  
@@ -48,9 +62,9 @@ The **backup-scheduler** function uses a **shared secret** instead of the Supaba
    ```
 
 4. **In cron-job.org**  
-   Request headers:  
-   - **Authorization** = `Bearer YOUR_SAME_SECRET`  
-   (literally the word `Bearer`, a space, then the exact same string you set as `BACKUP_CRON_SECRET`).
+   Request headers (use **one** of these):
+   - **Recommended:** **Key** = `x-backup-cron-secret`, **Value** = your exact secret (no `Bearer `).
+   - **Or:** **Key** = `Authorization`, **Value** = `Bearer YOUR_SAME_SECRET` (word `Bearer`, space, then the secret).
 
 5. **Test run**  
    Use "Perform test run" in cron-job.org; you should get **200** and a JSON body (e.g. `triggered: false, reason: "Current time does not match schedule"` is normal outside the backup window).
