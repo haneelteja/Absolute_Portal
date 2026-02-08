@@ -51,7 +51,8 @@ const SupabaseVerify: React.FC = () => {
           } else {
             console.log('Session set successfully:', data);
             setSuccess(true);
-            
+            // Mark recovery in progress so portal is not shown until password is set
+            sessionStorage.setItem('absolute_portal_recovery_in_progress', 'true');
             // Clear the URL hash
             window.history.replaceState({}, document.title, '/reset-password');
             

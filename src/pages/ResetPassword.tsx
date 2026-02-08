@@ -10,8 +10,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Lock, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const RECOVERY_IN_PROGRESS_KEY = 'absolute_portal_recovery_in_progress';
+
 const ResetPassword = () => {
-  const { updatePassword } = useAuth();
+  const { updatePassword, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -38,7 +40,7 @@ const ResetPassword = () => {
       const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
       const type = hashParams.get('type') || queryParams.get('type');
 
-      if (type === 'recovery' && accessToken) {
+      if (accessToken && (type === 'recovery' || type === 'invite')) {
         try {
           // Set the session with the tokens from the URL
           const { data, error } = await supabase.auth.setSession({
@@ -63,12 +65,14 @@ const ResetPassword = () => {
             // Redirect to login after error
             setTimeout(() => navigate('/auth'), 5000);
           } else {
+            // Mark recovery in progress so portal is not shown until password is set
+            sessionStorage.setItem(RECOVERY_IN_PROGRESS_KEY, 'true');
             // Clear the URL hash to clean up the URL
             window.history.replaceState({}, document.title, window.location.pathname);
             
             toast({
               title: "Password Reset Ready",
-              description: "You can now set your new password.",
+              description: "Set your new password below. You will sign in after saving.",
             });
           }
         } catch (err) {
@@ -121,13 +125,15 @@ const ResetPassword = () => {
           variant: "destructive",
         });
       } else {
+        sessionStorage.removeItem(RECOVERY_IN_PROGRESS_KEY);
+        await signOut();
         setSuccess(true);
         toast({
           title: "Password Reset Success",
-          description: "Your password has been reset successfully. You can now sign in.",
+          description: "Please sign in with your new password.",
         });
         
-        // Redirect to login after 3 seconds
+        // Redirect to login so user signs in with new password (no auto portal access)
         setTimeout(() => {
           navigate('/auth');
         }, 3000);

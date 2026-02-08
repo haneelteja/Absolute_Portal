@@ -291,6 +291,7 @@ const Auth = () => {
                     value={signInForm.password}
                     onChange={(e) => setSignInForm({ ...signInForm, password: e.target.value })}
                     required
+                    autoComplete="current-password"
                     className="pr-10 h-11 text-base"
                   />
                   <Button

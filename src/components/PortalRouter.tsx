@@ -20,33 +20,11 @@ const PortalRouter: React.FC = () => {
     const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
     const type = hashParams.get('type') || queryParams.get('type');
 
-    if (type === 'recovery' && accessToken) {
+    if (accessToken && (type === 'recovery' || type === 'invite')) {
       setIsPasswordReset(true);
     }
     setIsCheckingReset(false);
   }, []);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('PortalRouter state:', {
-      user: !!user,
-      authLoading,
-      requiresPasswordReset,
-      isPasswordReset,
-      isCheckingReset
-    });
-  }, [user, authLoading, requiresPasswordReset, isPasswordReset, isCheckingReset]);
-
-  // Ensure state updates are logged for debugging
-  useEffect(() => {
-    console.log('PortalRouter state updated:', {
-      user: !!user,
-      authLoading,
-      requiresPasswordReset,
-      isPasswordReset,
-      isCheckingReset
-    });
-  }, [user, authLoading, requiresPasswordReset, isPasswordReset, isCheckingReset]);
 
   // Show loading spinner while authentication is being determined
   if (authLoading || isCheckingReset) {
@@ -62,6 +40,11 @@ const PortalRouter: React.FC = () => {
 
   // If this is a password reset flow, show reset password page
   if (isPasswordReset) {
+    return <ResetPassword />;
+  }
+
+  // Recovery in progress: user landed from reset link but has not set new password yet — do not show portal
+  if (user && typeof window !== 'undefined' && sessionStorage.getItem('absolute_portal_recovery_in_progress') === 'true') {
     return <ResetPassword />;
   }
 
