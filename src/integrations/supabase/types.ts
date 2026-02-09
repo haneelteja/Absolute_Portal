@@ -46,8 +46,8 @@ export type Database = {
       }
       customers: {
         Row: {
-          branch: string | null
-          client_name: string
+          area: string | null
+          dealer_name: string
           created_at: string
           id: string
           is_active: boolean
@@ -58,8 +58,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          branch?: string | null
-          client_name: string
+          area?: string | null
+          dealer_name: string
           created_at?: string
           id?: string
           is_active?: boolean
@@ -70,8 +70,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          branch?: string | null
-          client_name?: string
+          area?: string | null
+          dealer_name?: string
           created_at?: string
           id?: string
           is_active?: boolean
@@ -314,7 +314,7 @@ export type Database = {
       sales_transactions: {
         Row: {
           amount: number
-          branch: string | null
+          area: string | null
           created_at: string
           customer_id: string
           description: string | null
@@ -328,7 +328,7 @@ export type Database = {
         }
         Insert: {
           amount: number
-          branch?: string | null
+          area?: string | null
           created_at?: string
           customer_id: string
           description?: string | null
@@ -342,7 +342,7 @@ export type Database = {
         }
         Update: {
           amount?: number
-          branch?: string | null
+          area?: string | null
           created_at?: string
           customer_id?: string
           description?: string | null
@@ -397,7 +397,7 @@ export type Database = {
       transport_expenses: {
         Row: {
           amount: number
-          branch: string | null
+          area: string | null
           client_id: string | null
           created_at: string
           description: string
@@ -408,7 +408,7 @@ export type Database = {
         }
         Insert: {
           amount: number
-          branch?: string | null
+          area?: string | null
           client_id?: string | null
           created_at?: string
           description: string
@@ -419,7 +419,7 @@ export type Database = {
         }
         Update: {
           amount?: number
-          branch?: string | null
+          area?: string | null
           client_id?: string | null
           created_at?: string
           description?: string

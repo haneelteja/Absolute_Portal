@@ -51,7 +51,7 @@ const FactoryPayables = () => {
   const [columnFilters, setColumnFilters] = useState<{
     date: string | string[];
     client: string | string[];
-    branch: string | string[];
+    area: string | string[];
     sku: string | string[];
     quantity: string | string[];
     price_per_case: string | string[];
@@ -60,7 +60,7 @@ const FactoryPayables = () => {
   }>({
     date: "",
     client: "",
-    branch: "",
+    area: "",
     sku: "",
     quantity: "",
     price_per_case: "",
@@ -70,7 +70,7 @@ const FactoryPayables = () => {
   const [columnSorts, setColumnSorts] = useState<{[key: string]: 'asc' | 'desc' | null}>({
     date: null,
     client: null,
-    branch: null,
+    area: null,
     sku: null,
     quantity: null,
     price_per_case: null,
@@ -120,8 +120,8 @@ const FactoryPayables = () => {
           *,
           customers (
             id,
-            client_name,
-            branch
+            dealer_name,
+            area
           )
         `)
         .order("created_at", { ascending: false });
@@ -154,8 +154,8 @@ const FactoryPayables = () => {
     const type = transaction.transaction_type || '';
     const clientName = transaction.transaction_type === 'payment' 
       ? (transaction.description || 'Elma Payment')
-      : (transaction.customers?.client_name || '');
-    const branch = transaction.customers?.branch || '';
+      : (transaction.customers?.dealer_name || '');
+    const area = transaction.customers?.area || '';
     const quantity = transaction.quantity?.toString() || '';
     const pricePerCase = getPricePerCase(transaction.sku);
     const pricePerCaseStr = pricePerCase?.toString() || '';
@@ -166,7 +166,7 @@ const FactoryPayables = () => {
       const matchesGlobalSearch = (
         sku.toLowerCase().includes(searchLower) ||
         clientName.toLowerCase().includes(searchLower) ||
-        branch.toLowerCase().includes(searchLower) ||
+        area.toLowerCase().includes(searchLower) ||
         quantity.includes(searchLower) ||
         pricePerCaseStr.includes(searchLower) ||
         amount.includes(searchLower) ||
@@ -192,10 +192,10 @@ const FactoryPayables = () => {
     }
     
     // Branch filter (multi-select)
-    if (columnFilters.branch) {
-      const branchFilter = Array.isArray(columnFilters.branch) ? columnFilters.branch : [columnFilters.branch];
-      if (branchFilter.length > 0 && !branchFilter.some(filter => 
-        branch.toLowerCase().includes(filter.toLowerCase())
+    if (columnFilters.area) {
+      const areaFilter = Array.isArray(columnFilters.area) ? columnFilters.area : [columnFilters.area];
+      if (areaFilter.length > 0 && !areaFilter.some(filter => 
+        area.toLowerCase().includes(filter.toLowerCase())
       )) return false;
     }
     
@@ -251,14 +251,14 @@ const FactoryPayables = () => {
       case 'client':
         valueA = a.transaction_type === 'payment' 
           ? (a.description || 'Elma Payment')
-          : (a.customers?.client_name || '');
+          : (a.customers?.dealer_name || '');
         valueB = b.transaction_type === 'payment' 
           ? (b.description || 'Elma Payment')
-          : (b.customers?.client_name || '');
+          : (b.customers?.dealer_name || '');
         break;
-      case 'branch':
-        valueA = a.customers?.branch || '';
-        valueB = b.customers?.branch || '';
+      case 'area':
+        valueA = a.customers?.area || '';
+        valueB = b.customers?.area || '';
         break;
       case 'sku':
         valueA = a.sku || '';
@@ -312,7 +312,7 @@ const FactoryPayables = () => {
     transactions.forEach(t => {
       const clientName = t.transaction_type === 'payment' 
         ? (t.description || 'Elma Payment')
-        : (t.customers?.client_name || '');
+        : (t.customers?.dealer_name || '');
       if (clientName) unique.add(clientName);
     });
     return Array.from(unique).sort();
@@ -322,8 +322,8 @@ const FactoryPayables = () => {
     if (!transactions) return [];
     const unique = new Set<string>();
     transactions.forEach(t => {
-      const branch = t.customers?.branch;
-      if (branch) unique.add(branch);
+      const area = t.customers?.area;
+      if (area) unique.add(area);
     });
     return Array.from(unique).sort();
   }, [transactions]);
@@ -356,13 +356,13 @@ const FactoryPayables = () => {
     const exportData = filteredAndSortedTransactions.map((transaction) => {
       const clientName = transaction.transaction_type === 'payment' 
         ? (transaction.description || 'Elma Payment')
-        : (transaction.customers?.client_name || '');
+        : (transaction.customers?.dealer_name || '');
       const pricePerCase = getPricePerCase(transaction.sku);
       
       return {
         'Date': new Date(transaction.transaction_date).toLocaleDateString(),
         'Client': clientName,
-        'Branch': transaction.customers?.branch || '',
+        'Branch': transaction.customers?.area || '',
         'SKU': transaction.sku || '',
         'Quantity': transaction.quantity || 0,
         'Price per case': pricePerCase || '',
@@ -798,7 +798,7 @@ const FactoryPayables = () => {
                   setColumnFilters({
                     date: "",
                     client: "",
-                    branch: "",
+                    area: "",
                     sku: "",
                     quantity: "",
                     price_per_case: "",
@@ -808,7 +808,7 @@ const FactoryPayables = () => {
                   setColumnSorts({
                     date: null,
                     client: null,
-                    branch: null,
+                    area: null,
                     sku: null,
                     quantity: null,
                     price_per_case: null,
@@ -861,13 +861,13 @@ const FactoryPayables = () => {
                 <div className="flex items-center justify-between">
                   <span>Branch</span>
                   <ColumnFilter
-                    columnKey="branch"
+                    columnKey="area"
                     columnName="Branch"
-                    filterValue={columnFilters.branch}
-                    onFilterChange={(value) => handleColumnFilterChange('branch', value)}
-                    onClearFilter={() => handleClearColumnFilter('branch')}
-                    sortDirection={columnSorts.branch}
-                    onSortChange={(direction) => handleColumnSortChange('branch', direction)}
+                    filterValue={columnFilters.area}
+                    onFilterChange={(value) => handleColumnFilterChange('area', value)}
+                    onClearFilter={() => handleClearColumnFilter('area')}
+                    sortDirection={columnSorts.area}
+                    onSortChange={(direction) => handleColumnSortChange('area', direction)}
                     dataType="multiselect"
                     options={getUniqueBranches}
                   />
@@ -972,7 +972,7 @@ const FactoryPayables = () => {
               filteredAndSortedTransactions.map((transaction) => {
                 const clientName = transaction.transaction_type === 'payment' 
                   ? (transaction.description || 'Elma Payment')
-                  : (transaction.customers?.client_name || '-');
+                  : (transaction.customers?.dealer_name || '-');
                 const pricePerCase = getPricePerCase(transaction.sku);
                 
                 return (
@@ -984,7 +984,7 @@ const FactoryPayables = () => {
                   {clientName}
                 </TableCell>
                 <TableCell>
-                  {transaction.customers?.branch || '-'}
+                  {transaction.customers?.area || '-'}
                 </TableCell>
                 <TableCell>
                   {transaction.sku || '-'}

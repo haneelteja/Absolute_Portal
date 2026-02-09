@@ -109,7 +109,7 @@ serve(async (req) => {
     // Step 2: Get customer details
     const { data: customer, error: customerError } = await supabase
       .from('customers')
-      .select('id, client_name, whatsapp_number')
+      .select('id, dealer_name, whatsapp_number')
       .eq('id', customerId)
       .single();
 
@@ -123,12 +123,12 @@ serve(async (req) => {
       apiKeyPrefix: apiKey ? `${apiKey.substring(0, 10)}...` : 'missing',
       messageType,
       customerId,
-      customerName: customer.client_name,
+      customerName: customer.dealer_name,
       whatsappNumber: customer.whatsapp_number,
     });
 
     if (!customer.whatsapp_number) {
-      throw new Error(`Customer ${customer.client_name} does not have a WhatsApp number`);
+      throw new Error(`Customer ${customer.dealer_name} does not have a WhatsApp number`);
     }
 
     // Validate WhatsApp number format
@@ -167,7 +167,7 @@ serve(async (req) => {
 
       // Replace placeholders
       const defaultPlaceholders: Record<string, string> = {
-        customerName: customer.client_name,
+        customerName: customer.dealer_name,
         ...placeholders,
       };
 
@@ -185,7 +185,7 @@ serve(async (req) => {
       .from('whatsapp_message_logs')
       .insert({
         customer_id: customerId,
-        customer_name: customer.client_name,
+        customer_name: customer.dealer_name,
         whatsapp_number: customer.whatsapp_number,
         message_type: messageType,
         trigger_type: triggerType,

@@ -48,21 +48,20 @@ export const roleSchema = z.enum(['admin', 'manager', 'client'], {
 export const userFormSchema = z.object({
   username: usernameSchema,
   email: emailSchema,
-  associated_client_branches: z
-    .array(z.string().min(1, 'Client-branch combination cannot be empty'))
+  associated_dealer_areas: z
+    .array(z.string().min(1, 'Dealer-area combination cannot be empty'))
     .min(0),
   role: roleSchema,
 }).refine(
   (data) => {
-    // For client role, require at least one client-branch combination
     if (data.role === 'client') {
-      return data.associated_client_branches.length > 0;
+      return data.associated_dealer_areas.length > 0;
     }
     return true;
   },
   {
-    message: 'Client role requires at least one client-branch combination',
-    path: ['associated_client_branches'],
+    message: 'Client role requires at least one dealer-area combination',
+    path: ['associated_dealer_areas'],
   }
 );
 
@@ -100,7 +99,7 @@ export const saleFormSchema = z.object({
     .string()
     .min(1, 'Transaction date is required')
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
-  branch: z.string().min(1, 'Branch is required').max(100, 'Branch must be less than 100 characters'),
+  area: z.string().min(1, 'Area is required').max(100, 'Area must be less than 100 characters'),
 });
 
 export type SaleFormInput = z.infer<typeof saleFormSchema>;
@@ -110,7 +109,7 @@ export type SaleFormInput = z.infer<typeof saleFormSchema>;
  */
 export const paymentFormSchema = z.object({
   customer_id: z.string().min(1, 'Customer is required'),
-  branch: z.string().min(1, 'Branch is required').max(100, 'Branch must be less than 100 characters'),
+  area: z.string().min(1, 'Area is required').max(100, 'Area must be less than 100 characters'),
   amount: z
     .string()
     .min(1, 'Amount is required')

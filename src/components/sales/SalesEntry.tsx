@@ -126,7 +126,7 @@ const SalesEntry = () => {
     sku: "",
     description: "",
     transaction_date: new Date().toISOString().split('T')[0],
-    branch: ""
+    area: ""
   });
 
   // State for multiple sales items
@@ -156,7 +156,7 @@ const SalesEntry = () => {
 
   const [paymentForm, setPaymentForm] = useState({
     customer_id: "",
-    branch: "",
+    area: "",
     amount: "",
     description: "",
     transaction_date: new Date().toISOString().split('T')[0]
@@ -170,7 +170,7 @@ const SalesEntry = () => {
     sku: "",
     description: "",
     transaction_date: "",
-    branch: ""
+    area: ""
   });
   // Use centralized filter state hook
   const {
@@ -270,7 +270,7 @@ const SalesEntry = () => {
       sku: "",
       description: "",
       transaction_date: new Date().toISOString().split('T')[0],
-      branch: ""
+      area: ""
     });
     setCurrentItem({
       sku: "",
@@ -290,7 +290,7 @@ const SalesEntry = () => {
   const resetPaymentForm = useCallback(() => {
     setPaymentForm({
       customer_id: "",
-      branch: "",
+      area: "",
       amount: "",
       description: "",
       transaction_date: new Date().toISOString().split('T')[0]
@@ -317,9 +317,9 @@ const SalesEntry = () => {
       try {
         const { data, error } = await supabase
           .from("customers")
-          .select("id, client_name, branch, sku, price_per_case, created_at, whatsapp_number")
+          .select("id, dealer_name, area, sku, price_per_case, created_at, whatsapp_number")
           .eq("is_active", true)
-          .order("client_name", { ascending: true });
+          .order("dealer_name", { ascending: true });
         
         if (error) {
           console.error('Error fetching customers:', error);
@@ -384,12 +384,12 @@ const SalesEntry = () => {
   // Function to handle customer selection and auto-populate SKU options
   const handleCustomerChange = (customerName: string) => {
     // Find the first customer with this name to get the customer_id
-    const selectedCustomer = customers?.find(c => c.client_name === customerName);
+    const selectedCustomer = customers?.find(c => c.dealer_name === customerName);
     
     setSaleForm({
       ...saleForm, 
       customer_id: selectedCustomer?.id || "",
-      branch: "", // Reset branch when customer changes
+      area: "", // Reset area when customer changes
     });
     
     // Reset current item and sales items when customer changes
@@ -471,10 +471,10 @@ const SalesEntry = () => {
 
   // Function to handle multiple sales submission
   const handleMultipleSalesSubmit = async () => {
-    if (!saleForm.customer_id || !saleForm.branch || salesItems.length === 0) {
+    if (!saleForm.customer_id || !saleForm.area || salesItems.length === 0) {
       toast({
         title: "Error",
-        description: "Please select customer, branch, and add at least one item",
+        description: "Please select customer, area, and add at least one item",
         variant: "destructive"
       });
       return;
@@ -484,7 +484,7 @@ const SalesEntry = () => {
       // Get customer details once for all items
       const { data: customerData } = await supabase
         .from("customers")
-        .select("client_name, branch")
+        .select("dealer_name, area")
         .eq("id", saleForm.customer_id)
         .single();
 
@@ -554,7 +554,7 @@ const SalesEntry = () => {
           sku: item.sku || null,
           amount: Math.max(0, finalFactoryAmount), // Ensure amount is never negative
           quantity: quantity || null,
-          description: customerData?.client_name || "Unknown Client", // Use client name as description
+          description: customerData?.dealer_name || "Unknown Dealer", // Use client name as description
           transaction_date: saleForm.transaction_date,
           customer_id: saleForm.customer_id
         };
@@ -585,12 +585,12 @@ const SalesEntry = () => {
         
         const transportData = {
           amount: 0,
-          description: selectedCustomer ? `${selectedCustomer.client_name}-${selectedCustomer.branch} Transport` : 'Client-Branch Transport',
+          description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Client-Branch Transport',
           expense_date: saleForm.transaction_date,
           expense_group: "Client Sale Transport",
           client_id: saleForm.customer_id,
-          client_name: selectedCustomer?.client_name || 'N/A',
-          branch: selectedCustomer?.branch || 'N/A'
+          dealer_name: selectedCustomer?.dealer_name || 'N/A',
+          area: selectedCustomer?.area || 'N/A'
         };
         
         // Transport transaction data prepared
@@ -670,14 +670,14 @@ const SalesEntry = () => {
 
   // Get price per case for current item
   const getPricePerCaseForCurrentItem = () => {
-    if (!saleForm.customer_id || !saleForm.branch || !currentItem.sku) return "";
+    if (!saleForm.customer_id || !saleForm.area || !currentItem.sku) return "";
     
     const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
     if (!selectedCustomer) return "";
     
     const customerPricing = customers?.find(c => 
-      c.client_name === selectedCustomer.client_name && 
-      c.branch === saleForm.branch &&
+      c.dealer_name === selectedCustomer.dealer_name && 
+      c.area === saleForm.area &&
       c.sku === currentItem.sku
     );
     
@@ -687,112 +687,112 @@ const SalesEntry = () => {
   // Function to handle customer selection in edit form
   const handleEditCustomerChange = (customerName: string) => {
     // Find the first customer with this name to get the customer_id
-    const selectedCustomer = customers?.find(c => c.client_name === customerName);
+    const selectedCustomer = customers?.find(c => c.dealer_name === customerName);
     
     setEditForm({
       ...editForm, 
       customer_id: selectedCustomer?.id || "",
-      branch: "", // Reset branch when customer changes
+      area: "", // Reset area when customer changes
       sku: "", // Reset SKU when customer changes
       amount: "", // Reset amount when customer changes
       price_per_case: "" // Reset price per case when customer changes
     });
   };
 
-  // Get available SKUs for the selected customer and branch
+  // Get available SKUs for the selected customer and area
   const getAvailableSKUs = useCallback(() => {
-    if (!saleForm.customer_id || !saleForm.branch) return [];
+    if (!saleForm.customer_id || !saleForm.area) return [];
     
     const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
     if (!selectedCustomer) return [];
     
-    // Filter customers by the selected customer name and branch to get available SKUs
+    // Filter customers by the selected customer name and area to get available SKUs
     const customerSKUs = customers?.filter(c => 
-      c.client_name === selectedCustomer.client_name && 
-      c.branch === saleForm.branch &&
+      c.dealer_name === selectedCustomer.dealer_name && 
+      c.area === saleForm.area &&
       c.sku && 
       c.sku.trim() !== ''
     ) || [];
     
-    // Return unique SKUs for this customer-branch combination
+    // Return unique SKUs for this customer-area combination
     const uniqueSKUs = customerSKUs.map(customer => ({
       id: `sku-${customer.sku}`,
       sku: customer.sku,
-      client_name: customer.client_name,
-      branch: customer.branch,
+      dealer_name: customer.dealer_name,
+      area: customer.area,
       price_per_case: customer.price_per_case || 0
     }));
     
-    // Return filtered SKUs for the selected customer-branch combination
+    // Return filtered SKUs for the selected customer-area combination
     
     return uniqueSKUs;
-  }, [saleForm.customer_id, saleForm.branch, customers]);
+  }, [saleForm.customer_id, saleForm.area, customers]);
 
-  // Get available branches for selected customer
-  const getAvailableBranches = () => {
+  // Get available areaes for selected customer
+  const getAvailableAreas = () => {
     if (!saleForm.customer_id) return [];
     
     const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
     if (!selectedCustomer) return [];
     
-    // Get all unique branches for the selected customer's client_name (case-insensitive)
-    const branchSet = new Set<string>();
+    // Get all unique areaes for the selected customer's dealer_name (case-insensitive)
+    const areaSet = new Set<string>();
     const seenBranches = new Set<string>();
     
     customers?.forEach(customer => {
-      if (customer.client_name === selectedCustomer.client_name && customer.branch && customer.branch.trim() !== '') {
-        const trimmedBranch = customer.branch.trim();
-        const lowerCaseBranch = trimmedBranch.toLowerCase();
+      if (customer.dealer_name === selectedCustomer.dealer_name && customer.area && customer.area.trim() !== '') {
+        const trimmedArea = customer.area.trim();
+        const lowerCaseArea = trimmedArea.toLowerCase();
         
-        // Only add if we haven't seen this branch (case-insensitive) before
-        if (!seenBranches.has(lowerCaseBranch)) {
-          branchSet.add(trimmedBranch);
-          seenBranches.add(lowerCaseBranch);
+        // Only add if we haven't seen this area (case-insensitive) before
+        if (!seenBranches.has(lowerCaseArea)) {
+          areaSet.add(trimmedArea);
+          seenBranches.add(lowerCaseArea);
         }
       }
     });
     
-    const uniqueBranches = Array.from(branchSet).sort();
-    // Return available branches for selected customer
+    const uniqueBranches = Array.from(areaSet).sort();
+    // Return available areaes for selected customer
     return uniqueBranches;
   };
 
-  // Get available branches for edit form
-  const getAvailableBranchesForEdit = () => {
+  // Get available areaes for edit form
+  const getAvailableAreasForEdit = () => {
     if (!editForm.customer_id) return [];
     
     const selectedCustomer = customers?.find(c => c.id === editForm.customer_id);
     if (!selectedCustomer) return [];
     
-    // Get all unique branches for the selected customer's client_name (case-insensitive)
-    const branchSet = new Set<string>();
+    // Get all unique areaes for the selected customer's dealer_name (case-insensitive)
+    const areaSet = new Set<string>();
     const seenBranches = new Set<string>();
     
     customers?.forEach(customer => {
-      if (customer.client_name === selectedCustomer.client_name && customer.branch && customer.branch.trim() !== '') {
-        const trimmedBranch = customer.branch.trim();
-        const lowerCaseBranch = trimmedBranch.toLowerCase();
+      if (customer.dealer_name === selectedCustomer.dealer_name && customer.area && customer.area.trim() !== '') {
+        const trimmedArea = customer.area.trim();
+        const lowerCaseArea = trimmedArea.toLowerCase();
         
-        // Only add if we haven't seen this branch (case-insensitive) before
-        if (!seenBranches.has(lowerCaseBranch)) {
-          branchSet.add(trimmedBranch);
-          seenBranches.add(lowerCaseBranch);
+        // Only add if we haven't seen this area (case-insensitive) before
+        if (!seenBranches.has(lowerCaseArea)) {
+          areaSet.add(trimmedArea);
+          seenBranches.add(lowerCaseArea);
         }
       }
     });
     
-    const uniqueBranches = Array.from(branchSet).sort();
-    // Return available branches for edit form
+    const uniqueBranches = Array.from(areaSet).sort();
+    // Return available areaes for edit form
     return uniqueBranches;
   };
 
-  // Get price per case for selected customer and branch
+  // Get price per case for selected customer and area
   const getPricePerCase = () => {
-    if (!saleForm.customer_id || !saleForm.branch) return "";
+    if (!saleForm.customer_id || !saleForm.area) return "";
     
     const customer = customers?.find(c => 
       c.id === saleForm.customer_id && 
-      c.branch === saleForm.branch
+      c.area === saleForm.area
     );
     
     return customer?.price_per_case?.toString() || "";
@@ -800,11 +800,11 @@ const SalesEntry = () => {
 
   // Get price per case for edit form
   const getPricePerCaseForEdit = () => {
-    if (!editForm.customer_id || !editForm.branch) return "";
+    if (!editForm.customer_id || !editForm.area) return "";
     
     const customer = customers?.find(c => 
       c.id === editForm.customer_id && 
-      c.branch === editForm.branch
+      c.area === editForm.area
     );
     
     return customer?.price_per_case?.toString() || "";
@@ -816,10 +816,10 @@ const SalesEntry = () => {
     const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
     let pricePerCase = "";
     
-    if (selectedCustomer && saleForm.branch) {
+    if (selectedCustomer && saleForm.area) {
       const customerSKURecord = customers?.find(c => 
-        c.client_name === selectedCustomer.client_name && 
-        c.branch === saleForm.branch &&
+        c.dealer_name === selectedCustomer.dealer_name && 
+        c.area === saleForm.area &&
         c.sku === sku
       );
       pricePerCase = customerSKURecord?.price_per_case?.toString() || "";
@@ -849,8 +849,8 @@ const SalesEntry = () => {
 
     // Find the specific customer-SKU combination for pricing
     const customerSKURecord = customers?.find(c => 
-      c.client_name === selectedCustomer.client_name && 
-      c.branch === selectedCustomer.branch &&
+      c.dealer_name === selectedCustomer.dealer_name && 
+      c.area === selectedCustomer.area &&
       c.sku === saleForm.sku
     );
 
@@ -905,17 +905,17 @@ const SalesEntry = () => {
     const uniqueCustomerNames: string[] = [];
     
     customers.forEach(customer => {
-      const lowerCaseName = customer.client_name.toLowerCase();
+      const lowerCaseName = customer.dealer_name.toLowerCase();
       if (!seenNames.has(lowerCaseName)) {
         seenNames.add(lowerCaseName);
-        uniqueCustomerNames.push(customer.client_name);
+        uniqueCustomerNames.push(customer.dealer_name);
       }
     });
     
     return uniqueCustomerNames.sort();
   };
 
-  // Get branches for a specific customer
+  // Get areaes for a specific customer
   const getBranchesForCustomer = (customerId: string) => {
     if (!customers || !customerId) return [];
     
@@ -923,15 +923,15 @@ const SalesEntry = () => {
     if (!customer) return [];
     
     return customers
-      .filter(c => c.client_name === customer.client_name)
-      .map(c => c.branch)
-      .filter((branch, index, self) => self.indexOf(branch) === index)
+      .filter(c => c.dealer_name === customer.dealer_name)
+      .map(c => c.area)
+      .filter((area, index, self) => self.indexOf(area) === index)
       .sort();
   };
 
-  // Check if only one SKU is available for the selected customer-branch combination
+  // Check if only one SKU is available for the selected customer-area combination
   const checkSingleSKUMode = useCallback(() => {
-    if (!saleForm.customer_id || !saleForm.branch) {
+    if (!saleForm.customer_id || !saleForm.area) {
       setIsSingleSKUMode(false);
       setSingleSKUData(null);
       return;
@@ -965,9 +965,9 @@ const SalesEntry = () => {
         description: ""
       });
     }
-  }, [saleForm.customer_id, saleForm.branch, getAvailableSKUs]);
+  }, [saleForm.customer_id, saleForm.area, getAvailableSKUs]);
 
-  // Check for single SKU mode when customer or branch changes
+  // Check for single SKU mode when customer or area changes
   useEffect(() => {
     checkSingleSKUMode();
   }, [checkSingleSKUMode]);
@@ -994,7 +994,7 @@ const SalesEntry = () => {
             sku,
             description,
             created_at,
-            customers (client_name, branch)
+            customers (dealer_name, area)
           `, { count: 'exact' })
           .gte("created_at", ninetyDaysAgo.toISOString())
           .order("transaction_date", { ascending: false })
@@ -1149,8 +1149,8 @@ const SalesEntry = () => {
       
       return transactionsWithOutstanding.filter((transaction) => {
         try {
-          const customerName = transaction.customers?.client_name || '';
-          const branch = transaction.customers?.branch || '';
+          const customerName = transaction.customers?.dealer_name || '';
+          const area = transaction.customers?.area || '';
           const sku = transaction.sku || '';
           const description = transaction.description || '';
           const amount = transaction.amount?.toString() || '';
@@ -1170,7 +1170,7 @@ const SalesEntry = () => {
             const searchLower = debouncedSearchTerm.toLowerCase();
             const matchesGlobalSearch = (
               customerName.toLowerCase().includes(searchLower) ||
-              branch.toLowerCase().includes(searchLower) ||
+              area.toLowerCase().includes(searchLower) ||
               sku.toLowerCase().includes(searchLower) ||
               description.toLowerCase().includes(searchLower) ||
               amount.includes(searchLower) ||
@@ -1197,10 +1197,10 @@ const SalesEntry = () => {
           }
           
           // Branch filter (multi-select)
-          if (columnFilters.branch) {
-            const branchFilter = Array.isArray(columnFilters.branch) ? columnFilters.branch : [columnFilters.branch];
-            if (branchFilter.length > 0 && !branchFilter.some(filter => 
-              branch.toLowerCase().includes(filter.toLowerCase())
+          if (columnFilters.area) {
+            const areaFilter = Array.isArray(columnFilters.area) ? columnFilters.area : [columnFilters.area];
+            if (areaFilter.length > 0 && !areaFilter.some(filter => 
+              area.toLowerCase().includes(filter.toLowerCase())
             )) return false;
           }
           
@@ -1255,12 +1255,12 @@ const SalesEntry = () => {
               if (isNaN(valueA) || isNaN(valueB)) return 0;
               break;
             case 'customer':
-              valueA = a.customers?.client_name || '';
-              valueB = b.customers?.client_name || '';
+              valueA = a.customers?.dealer_name || '';
+              valueB = b.customers?.dealer_name || '';
               break;
-            case 'branch':
-              valueA = a.customers?.branch || '';
-              valueB = b.customers?.branch || '';
+            case 'area':
+              valueA = a.customers?.area || '';
+              valueB = b.customers?.area || '';
               break;
             case 'type':
               valueA = a.transaction_type || '';
@@ -1319,7 +1319,7 @@ const SalesEntry = () => {
   const getUniqueCustomers = useMemo(() => {
     const unique = new Set<string>();
     recentTransactions?.forEach(t => {
-      const name = t.customers?.client_name;
+      const name = t.customers?.dealer_name;
       if (name) unique.add(name);
     });
     return Array.from(unique).sort();
@@ -1328,8 +1328,8 @@ const SalesEntry = () => {
   const getUniqueBranches = useMemo(() => {
     const unique = new Set<string>();
     recentTransactions?.forEach(t => {
-      const branch = t.customers?.branch;
-      if (branch) unique.add(branch);
+      const area = t.customers?.area;
+      if (area) unique.add(area);
     });
     return Array.from(unique).sort();
   }, [recentTransactions]);
@@ -1361,8 +1361,8 @@ const SalesEntry = () => {
       const customer = customers?.find(c => c.id === transaction.customer_id);
       return {
         'Date': new Date(transaction.transaction_date).toLocaleDateString(),
-        'Customer': transaction.customers?.client_name || 'N/A',
-        'Branch': transaction.customers?.branch || 'N/A',
+        'Customer': transaction.customers?.dealer_name || 'N/A',
+        'Branch': transaction.customers?.area || 'N/A',
         'Type': transaction.transaction_type || '',
         'SKU': transaction.sku || '',
         'Quantity (cases)': transaction.quantity || 0,
@@ -1443,7 +1443,7 @@ const SalesEntry = () => {
         sku: data.sku || null,
         description: data.description || null,
         transaction_date: data.transaction_date,
-        branch: data.branch || null
+        area: data.area || null
       };
       
       console.log('Inserting sales transaction:', saleData);
@@ -1512,7 +1512,7 @@ const SalesEntry = () => {
       // Get customer details for factory payables
       const { data: customerData } = await supabase
         .from("customers")
-        .select("client_name, branch")
+        .select("dealer_name, area")
         .eq("id", data.customer_id)
         .single();
 
@@ -1529,7 +1529,7 @@ const SalesEntry = () => {
         transaction_type: "production",
         sku: data.sku || null,
         amount: Math.max(0, finalFactoryAmount), // Ensure amount is never negative
-        description: customerData?.client_name || "Unknown Client", // Use client name as description
+        description: customerData?.dealer_name || "Unknown Dealer", // Use client name as description
         transaction_date: data.transaction_date,
         customer_id: data.customer_id
       };
@@ -1566,12 +1566,12 @@ const SalesEntry = () => {
       
       const transportData = {
         amount: 0,
-        description: selectedCustomer ? `${selectedCustomer.client_name}-${selectedCustomer.branch} Transport` : 'Client-Branch Transport',
+        description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Client-Branch Transport',
         expense_date: data.transaction_date,
         expense_group: "Client Sale Transport",
         client_id: data.customer_id,
-        client_name: selectedCustomer?.client_name || 'N/A',
-        branch: selectedCustomer?.branch || 'N/A'
+        dealer_name: selectedCustomer?.dealer_name || 'N/A',
+        area: selectedCustomer?.area || 'N/A'
       };
       
       // Transport transaction data prepared
@@ -1683,8 +1683,8 @@ const SalesEntry = () => {
     mutationFn: async (data: PaymentForm) => {
       try {
         // Validate input data
-        if (!data.customer_id || !data.branch || !data.amount) {
-          throw new Error('Missing required fields: customer, branch, or amount');
+        if (!data.customer_id || !data.area || !data.amount) {
+          throw new Error('Missing required fields: customer, area, or amount');
         }
 
         const amount = parseFloat(data.amount);
@@ -1718,7 +1718,7 @@ const SalesEntry = () => {
       toast({ title: "Success", description: "Payment recorded successfully!" });
       setPaymentForm({
         customer_id: "",
-        branch: "",
+        area: "",
         amount: "",
         description: "",
         transaction_date: new Date().toISOString().split('T')[0]
@@ -1787,7 +1787,7 @@ const SalesEntry = () => {
 
         // Get customer name for description update
         const selectedCustomer = customers?.find(c => c.id === data.customer_id);
-        const newDescription = selectedCustomer?.client_name || "Unknown Client";
+        const newDescription = selectedCustomer?.dealer_name || "Unknown Dealer";
 
         // Find and update factory payables transaction using reliable identifiers:
         // customer_id, transaction_date, sku, and transaction_type
@@ -1828,10 +1828,10 @@ const SalesEntry = () => {
           .from("transport_expenses")
           .update({
             expense_date: data.transaction_date,
-            description: selectedCustomer ? `${selectedCustomer.client_name}-${selectedCustomer.branch} Transport` : 'Client-Branch Transport',
+            description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Client-Branch Transport',
             client_id: data.customer_id,
-            client_name: selectedCustomer?.client_name || 'N/A',
-            branch: selectedCustomer?.branch || 'N/A'
+            dealer_name: selectedCustomer?.dealer_name || 'N/A',
+            area: selectedCustomer?.area || 'N/A'
           })
           .eq("expense_group", "Client Sale Transport")
           .eq("client_id", originalCustomerId)
@@ -1993,7 +1993,7 @@ const SalesEntry = () => {
       sku: transaction.sku || "",
       description: transaction.description || "",
       transaction_date: transaction.transaction_date || "",
-      branch: transaction.branch || "",
+      area: transaction.area || "",
       price_per_case: ""
     });
   }, []); // Stable function - no dependencies
@@ -2032,7 +2032,7 @@ const SalesEntry = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="mb-0">Record Sale</CardTitle>
-                <CardDescription className="mb-0">Record sales for a single customer and branch</CardDescription>
+                <CardDescription className="mb-0">Record sales for a single customer and area</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -2065,7 +2065,7 @@ const SalesEntry = () => {
                   <div className="space-y-2">
                     <Label htmlFor="sale-customer">Customer *</Label>
                     <Select 
-                      value={saleForm.customer_id ? (customers?.find(c => c.id === saleForm.customer_id)?.client_name || undefined) : undefined}
+                      value={saleForm.customer_id ? (customers?.find(c => c.id === saleForm.customer_id)?.dealer_name || undefined) : undefined}
                       onValueChange={handleCustomerChange}
                       disabled={customersLoading}
                     >
@@ -2087,19 +2087,19 @@ const SalesEntry = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="sale-branch">Branch *</Label>
+                    <Label htmlFor="sale-area">Branch *</Label>
                     <Select 
-                      value={saleForm.branch || undefined}
-                      onValueChange={(value) => setSaleForm({...saleForm, branch: value})}
+                      value={saleForm.area || undefined}
+                      onValueChange={(value) => setSaleForm({...saleForm, area: value})}
                       disabled={!saleForm.customer_id}
                     >
-                      <SelectTrigger id="sale-branch">
-                        <SelectValue placeholder={saleForm.customer_id ? "Select branch" : "Select customer first"} />
+                      <SelectTrigger id="sale-area">
+                        <SelectValue placeholder={saleForm.customer_id ? "Select area" : "Select customer first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {getAvailableBranches().map((branch) => (
-                          <SelectItem key={branch} value={branch}>
-                            {branch}
+                        {getAvailableAreas().map((area) => (
+                          <SelectItem key={area} value={area}>
+                            {area}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -2108,7 +2108,7 @@ const SalesEntry = () => {
                 </div>
 
                 {/* Conditional Rendering based on SKU availability */}
-                {saleForm.customer_id && saleForm.branch && (
+                {saleForm.customer_id && saleForm.area && (
                   <>
                     {/* No SKUs Available */}
                     {getAvailableSKUs().length === 0 ? (
@@ -2116,14 +2116,14 @@ const SalesEntry = () => {
                         <CardHeader>
                           <CardTitle className="text-base text-amber-600">No SKUs Available</CardTitle>
                           <CardDescription className="text-sm">
-                            No SKUs are configured for this customer-branch combination. Please configure SKUs in the Configuration Management section first.
+                            No SKUs are configured for this customer-area combination. Please configure SKUs in the Configuration Management section first.
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="text-center py-8">
                             <div className="text-4xl mb-4">📦</div>
                             <p className="text-muted-foreground">
-                              Add SKU configurations for <strong>{customers?.find(c => c.id === saleForm.customer_id)?.client_name}</strong> - <strong>{saleForm.branch}</strong> in Configuration Management.
+                              Add SKU configurations for <strong>{customers?.find(c => c.id === saleForm.customer_id)?.dealer_name}</strong> - <strong>{saleForm.area}</strong> in Configuration Management.
                             </p>
                           </div>
                         </CardContent>
@@ -2400,10 +2400,10 @@ const SalesEntry = () => {
                   <div className="space-y-2">
                     <Label htmlFor="payment-customer">Customer *</Label>
                     <Select 
-                      value={paymentForm.customer_id ? (customers?.find(c => c.id === paymentForm.customer_id)?.client_name || undefined) : undefined}
+                      value={paymentForm.customer_id ? (customers?.find(c => c.id === paymentForm.customer_id)?.dealer_name || undefined) : undefined}
                       onValueChange={(customerName) => {
-                        const selectedCustomer = customers?.find(c => c.client_name === customerName);
-                        setPaymentForm({...paymentForm, customer_id: selectedCustomer?.id || "", branch: ""});
+                        const selectedCustomer = customers?.find(c => c.dealer_name === customerName);
+                        setPaymentForm({...paymentForm, customer_id: selectedCustomer?.id || "", area: ""});
                       }}
                     >
                       <SelectTrigger id="payment-customer">
@@ -2420,19 +2420,19 @@ const SalesEntry = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="payment-branch">Branch *</Label>
+                    <Label htmlFor="payment-area">Branch *</Label>
                     <Select 
-                      value={paymentForm.branch || undefined}
-                      onValueChange={(branch) => setPaymentForm({...paymentForm, branch})}
+                      value={paymentForm.area || undefined}
+                      onValueChange={(area) => setPaymentForm({...paymentForm, area})}
                       disabled={!paymentForm.customer_id}
                     >
-                      <SelectTrigger id="payment-branch">
-                        <SelectValue placeholder={paymentForm.customer_id ? "Select branch" : "Select customer first"} />
+                      <SelectTrigger id="payment-area">
+                        <SelectValue placeholder={paymentForm.customer_id ? "Select area" : "Select customer first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {paymentForm.customer_id && getBranchesForCustomer(paymentForm.customer_id).map((branch) => (
-                          <SelectItem key={branch} value={branch}>
-                            {branch}
+                        {paymentForm.customer_id && getBranchesForCustomer(paymentForm.customer_id).map((area) => (
+                          <SelectItem key={area} value={area}>
+                            {area}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -2511,7 +2511,7 @@ const SalesEntry = () => {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Input
-              placeholder="Search transactions by customer, branch, SKU, description, amount, date, or type..."
+              placeholder="Search transactions by customer, area, SKU, description, amount, date, or type..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -2576,13 +2576,13 @@ const SalesEntry = () => {
                   <div className="flex items-center justify-between">
                     <span>Branch</span>
                     <ColumnFilter
-                      columnKey="branch"
+                      columnKey="area"
                       columnName="Branch"
-                      filterValue={columnFilters.branch}
-                      onFilterChange={(value) => handleColumnFilterChange('branch', value)}
-                      onClearFilter={() => handleClearColumnFilter('branch')}
-                      sortDirection={columnSorts.branch}
-                      onSortChange={(direction) => handleColumnSortChange('branch', direction)}
+                      filterValue={columnFilters.area}
+                      onFilterChange={(value) => handleColumnFilterChange('area', value)}
+                      onClearFilter={() => handleClearColumnFilter('area')}
+                      sortDirection={columnSorts.area}
+                      onSortChange={(direction) => handleColumnSortChange('area', direction)}
                       dataType="multiselect"
                       options={getUniqueBranches}
                     />
@@ -2693,10 +2693,10 @@ const SalesEntry = () => {
                   <TableRow key={transaction.id}>
                     <TableCell>{new Date(transaction.transaction_date).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      {transaction.customers?.client_name}
+                      {transaction.customers?.dealer_name}
                     </TableCell>
                     <TableCell>
-                      {transaction.customers?.branch || '-'}
+                      {transaction.customers?.area || '-'}
                     </TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs ${
@@ -2733,7 +2733,7 @@ const SalesEntry = () => {
                           editForm={editForm}
                           customers={customers}
                           getUniqueCustomers={getUniqueCustomers}
-                          getAvailableBranchesForEdit={getAvailableBranchesForEdit}
+                          getAvailableAreasForEdit={getAvailableAreasForEdit}
                           getPricePerCaseForEdit={getPricePerCaseForEdit}
                           isOpen={!!editingTransaction && editingTransaction.id === transaction.id}
                           isUpdating={updateMutation.isPending}

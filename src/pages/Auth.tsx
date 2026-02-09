@@ -274,6 +274,7 @@ const Auth = () => {
                 <Input
                   id="signin-email"
                   type="email"
+                  autoComplete="username"
                   placeholder="Enter your email"
                   value={signInForm.email}
                   onChange={(e) => setSignInForm({ ...signInForm, email: e.target.value })}
@@ -349,6 +350,7 @@ const Auth = () => {
                     <Input
                       id="current-password"
                       type="password"
+                      autoComplete="current-password"
                       placeholder="Enter current password"
                       value={changePasswordForm.currentPassword}
                       onChange={(e) => setChangePasswordForm({ ...changePasswordForm, currentPassword: e.target.value })}
@@ -360,6 +362,7 @@ const Auth = () => {
                     <Input
                       id="new-password"
                       type="password"
+                      autoComplete="new-password"
                       placeholder="Enter new password (min 6 characters)"
                       value={changePasswordForm.newPassword}
                       onChange={(e) => setChangePasswordForm({ ...changePasswordForm, newPassword: e.target.value })}
@@ -371,6 +374,7 @@ const Auth = () => {
                     <Input
                       id="confirm-new-password"
                       type="password"
+                      autoComplete="new-password"
                       placeholder="Confirm new password"
                       value={changePasswordForm.confirmPassword}
                       onChange={(e) => setChangePasswordForm({ ...changePasswordForm, confirmPassword: e.target.value })}
@@ -418,6 +422,7 @@ const Auth = () => {
                   <Input
                     id="reset-email"
                     type="email"
+                    autoComplete="email"
                     placeholder="Enter your email address"
                     value={forgotPasswordForm.email}
                     onChange={(e) => setForgotPasswordForm({ ...forgotPasswordForm, email: e.target.value })}

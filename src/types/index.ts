@@ -1,8 +1,8 @@
 // Database table types
 export interface Customer {
   id: string;
-  client_name: string;
-  branch: string | null;
+  dealer_name: string;
+  area: string | null;
   sku: string | null;
   price_per_case: number | null;
   price_per_bottle: number | null;
@@ -22,12 +22,12 @@ export interface SalesTransaction {
   description: string | null;
   transaction_date: string;
   transaction_type: string;
-  branch: string | null;
+  area: string | null;
   created_at: string;
   updated_at: string;
   customers?: {
-    client_name: string;
-    branch: string | null;
+    dealer_name: string;
+    area: string | null;
   };
 }
 
@@ -38,16 +38,16 @@ export interface FactoryPayable {
   sku: string | null;
   description: string | null;
   customer_id?: string | null;
-  client_name?: string | null;
-  branch?: string | null;
+  dealer_name?: string | null;
+  area?: string | null;
   transaction_date: string;
   transaction_type: string;
   created_at: string;
   updated_at: string;
   customers?: {
     id: string;
-    client_name: string;
-    branch: string;
+    dealer_name: string;
+    area: string;
   };
 }
 
@@ -80,8 +80,8 @@ export interface TransportExpense {
   expense_date: string;
   expense_group: string | null;
   client_id?: string | null;
-  client_name?: string | null;
-  branch?: string | null;
+  dealer_name?: string | null;
+  area?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -146,20 +146,20 @@ export interface SaleForm {
   sku: string;
   description: string;
   transaction_date: string;
-  branch: string;
+  area: string;
 }
 
 export interface PaymentForm {
   customer_id: string;
-  branch: string;
+  area: string;
   amount: string;
   description: string;
   transaction_date: string;
 }
 
 export interface CustomerForm {
-  client_name: string;
-  branch: string;
+  dealer_name: string;
+  area: string;
   sku: string;
   price_per_case: string;
   price_per_bottle: string;
@@ -184,7 +184,7 @@ export interface TransportExpenseForm {
   description: string;
   amount: string;
   client_id: string;
-  branch: string;
+  area: string;
   sku?: string;
   no_of_cases?: string;
 }

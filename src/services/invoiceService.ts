@@ -24,8 +24,8 @@ export interface InvoiceData {
   companyPhone: string;
   companyEmail: string;
   companyGSTIN?: string;
-  clientName: string;
-  branch: string | null;
+  dealerName: string;
+  area: string | null;
   clientAddress?: string;
   clientPhone?: string;
   clientEmail?: string;
@@ -275,8 +275,8 @@ export function prepareInvoiceData(
     companyPhone: companyConfig.phone,
     companyEmail: companyConfig.email,
     companyGSTIN: companyConfig.gstin,
-    clientName: customer.client_name,
-    branch: customer.branch,
+    dealerName: customer.dealer_name,
+    area: customer.area,
     clientAddress: undefined, // Not in current schema
     clientPhone: undefined,   // Not in current schema
     clientEmail: undefined,   // Not in current schema

@@ -23,7 +23,7 @@ const TransportExpenses = () => {
     description: "",
     amount: "",
     client_id: "",
-    branch: "",
+    area: "",
     sku: "",
     no_of_cases: ""
   });
@@ -35,7 +35,7 @@ const TransportExpenses = () => {
     description: "",
     amount: "",
     client_id: "",
-    branch: "",
+    area: "",
     sku: "",
     no_of_cases: ""
   });
@@ -48,7 +48,7 @@ const TransportExpenses = () => {
     group: "",
     amount: "",
     client: "",
-    branch: "",
+    area: "",
     sku: "",
     no_of_cases: ""
   });
@@ -58,7 +58,7 @@ const TransportExpenses = () => {
     group: null,
     amount: null,
     client: null,
-    branch: null,
+    area: null,
     sku: null,
     no_of_cases: null
   });
@@ -74,7 +74,7 @@ const TransportExpenses = () => {
         .from("customers")
         .select("*")
         .eq("is_active", true)
-        .order("client_name", { ascending: true });
+        .order("dealer_name", { ascending: true });
       return data || [];
     },
   });
@@ -88,8 +88,8 @@ const TransportExpenses = () => {
           *,
           customers (
             id,
-            client_name,
-            branch
+            dealer_name,
+            area
           )
         `)
         .order("created_at", { ascending: false });
@@ -97,17 +97,17 @@ const TransportExpenses = () => {
       if (!data || data.length === 0) return [];
       
       // OPTIMIZED: Batch query instead of N+1 queries
-      // Collect all unique client_id + branch pairs
-      const clientBranchPairs = data
-        .filter((e: { client_id?: string; branch?: string }) => e.client_id && e.branch)
-        .map((e: { client_id: string; branch: string }) => ({
+      // Collect all unique client_id + area pairs
+      const clientAreaPairs = data
+        .filter((e: { client_id?: string; area?: string }) => e.client_id && e.area)
+        .map((e: { client_id: string; area: string }) => ({
           customer_id: e.client_id,
-          branch: e.branch
+          area: e.area
         }));
       
       // Remove duplicates
       const uniquePairs = Array.from(
-        new Map(clientBranchPairs.map(p => [`${p.customer_id}_${p.branch}`, p])).values()
+        new Map(clientAreaPairs.map(p => [`${p.customer_id}_${p.area}`, p])).values()
       );
       
       const salesMap = new Map<string, { sku: string; quantity: number }>();
@@ -116,13 +116,13 @@ const TransportExpenses = () => {
         // Try to use RPC function for batch query (more efficient)
         try {
           const { data: recentSales, error: rpcError } = await supabase
-            .rpc('get_latest_sales_by_client_branch', {
-              client_branch_pairs: uniquePairs
+            .rpc('get_latest_sales_by_client_area', {
+              client_area_pairs: uniquePairs
             });
           
           if (!rpcError && recentSales) {
-            recentSales.forEach((sale: { customer_id: string; branch: string; sku?: string; quantity?: number }) => {
-              const key = `${sale.customer_id}_${sale.branch}`;
+            recentSales.forEach((sale: { customer_id: string; area: string; sku?: string; quantity?: number }) => {
+              const key = `${sale.customer_id}_${sale.area}`;
               salesMap.set(key, {
                 sku: sale.sku || '',
                 quantity: sale.quantity || 0
@@ -131,21 +131,21 @@ const TransportExpenses = () => {
           } else {
             // Fallback: Single query with IN clause (still better than N+1)
             const customerIds = [...new Set(uniquePairs.map(p => p.customer_id))];
-            const branches = [...new Set(uniquePairs.map(p => p.branch))];
+            const areaes = [...new Set(uniquePairs.map(p => p.area))];
             
             const { data: allSales } = await supabase
               .from("sales_transactions")
-              .select("customer_id, branch, sku, quantity, transaction_date")
+              .select("customer_id, area, sku, quantity, transaction_date")
               .in("customer_id", customerIds)
-              .in("branch", branches)
+              .in("area", areaes)
               .eq("transaction_type", "sale")
               .order("transaction_date", { ascending: false })
               .order("created_at", { ascending: false });
             
-            // Group by customer_id + branch and get latest
-            const salesByKey = new Map<string, { customer_id: string; branch: string; sku?: string; quantity?: number }>();
-            allSales?.forEach((sale: { customer_id: string; branch: string; sku?: string; quantity?: number }) => {
-              const key = `${sale.customer_id}_${sale.branch}`;
+            // Group by customer_id + area and get latest
+            const salesByKey = new Map<string, { customer_id: string; area: string; sku?: string; quantity?: number }>();
+            allSales?.forEach((sale: { customer_id: string; area: string; sku?: string; quantity?: number }) => {
+              const key = `${sale.customer_id}_${sale.area}`;
               if (!salesByKey.has(key)) {
                 salesByKey.set(key, sale);
               }
@@ -164,9 +164,9 @@ const TransportExpenses = () => {
       }
       
       // Enrich expenses with sales data
-      return data.map((expense: { client_id?: string; branch?: string; sku?: string }) => {
-        if (expense.client_id && expense.branch) {
-          const key = `${expense.client_id}_${expense.branch}`;
+      return data.map((expense: { client_id?: string; area?: string; sku?: string }) => {
+        if (expense.client_id && expense.area) {
+          const key = `${expense.client_id}_${expense.area}`;
           const saleData = salesMap.get(key);
           return {
             ...expense,
@@ -195,7 +195,7 @@ const TransportExpenses = () => {
           amount: parseFloat(data.amount),
           description: data.description || "",
           client_id: data.client_id,
-          branch: data.branch,
+          area: data.area,
           sku: data.sku || null,
           no_of_cases: data.no_of_cases ? parseInt(data.no_of_cases) : null
         });
@@ -213,7 +213,7 @@ const TransportExpenses = () => {
         description: "",
         amount: "",
         client_id: "",
-        branch: "",
+        area: "",
         sku: "",
         no_of_cases: ""
       });
@@ -238,7 +238,7 @@ const TransportExpenses = () => {
           amount: data.amount ? parseFloat(data.amount) : undefined,
           description: data.description || "",
           client_id: data.client_id,
-          branch: data.branch,
+          area: data.area,
           sku: data.sku || null,
           no_of_cases: data.no_of_cases ? parseInt(data.no_of_cases) : null
         })
@@ -306,7 +306,7 @@ const TransportExpenses = () => {
       description: expense.description || "",
       amount: expense.amount?.toString() || "",
       client_id: expense.client_id || "",
-      branch: expense.branch || "",
+      area: expense.area || "",
       sku: expense.sku || "",
       no_of_cases: expense.no_of_cases?.toString() || ""
     });
@@ -342,8 +342,8 @@ const TransportExpenses = () => {
     const uniqueCustomers: typeof customers = [];
     
     customers.forEach(customer => {
-      if (customer.client_name && customer.client_name.trim() !== '') {
-        const trimmedName = customer.client_name.trim();
+      if (customer.dealer_name && customer.dealer_name.trim() !== '') {
+        const trimmedName = customer.dealer_name.trim();
         const lowerCaseName = trimmedName.toLowerCase();
         
         // Only add if we haven't seen this customer name (case-insensitive) before
@@ -354,25 +354,25 @@ const TransportExpenses = () => {
       }
     });
     
-    return uniqueCustomers.sort((a, b) => a.client_name.localeCompare(b.client_name));
+    return uniqueCustomers.sort((a, b) => a.dealer_name.localeCompare(b.dealer_name));
   };
 
-  // Get available branches for a selected customer
-  const getAvailableBranches = (customerId: string) => {
+  // Get available areaes for a selected customer
+  const getAvailableAreas = (customerId: string) => {
     if (!customers) return [];
-    return customers.filter(c => c.id === customerId).map(c => c.branch).filter(Boolean);
+    return customers.filter(c => c.id === customerId).map(c => c.area).filter(Boolean);
   };
 
-  // Auto-populate SKU and No of cases from sales_transactions when client_id and branch are selected
+  // Auto-populate SKU and No of cases from sales_transactions when client_id and area are selected
   useEffect(() => {
     const autoPopulateFromSales = async () => {
-      if (form.client_id && form.branch) {
-        // Find the most recent sale transaction for this client_id and branch
+      if (form.client_id && form.area) {
+        // Find the most recent sale transaction for this client_id and area
         const { data: saleTransaction } = await supabase
           .from("sales_transactions")
           .select("sku, quantity")
           .eq("customer_id", form.client_id)
-          .eq("branch", form.branch)
+          .eq("area", form.area)
           .eq("transaction_type", "sale")
           .order("transaction_date", { ascending: false })
           .order("created_at", { ascending: false })
@@ -390,18 +390,18 @@ const TransportExpenses = () => {
     };
 
     autoPopulateFromSales();
-  }, [form.client_id, form.branch]);
+  }, [form.client_id, form.area]);
 
   // Auto-populate SKU and No of cases for edit form
   useEffect(() => {
     const autoPopulateFromSalesEdit = async () => {
-      if (editForm.client_id && editForm.branch) {
-        // Find the most recent sale transaction for this client_id and branch
+      if (editForm.client_id && editForm.area) {
+        // Find the most recent sale transaction for this client_id and area
         const { data: saleTransaction } = await supabase
           .from("sales_transactions")
           .select("sku, quantity")
           .eq("customer_id", editForm.client_id)
-          .eq("branch", editForm.branch)
+          .eq("area", editForm.area)
           .eq("transaction_type", "sale")
           .order("transaction_date", { ascending: false })
           .order("created_at", { ascending: false })
@@ -419,7 +419,7 @@ const TransportExpenses = () => {
     };
 
     autoPopulateFromSalesEdit();
-  }, [editForm.client_id, editForm.branch]);
+  }, [editForm.client_id, editForm.area]);
 
   // Memoized unique groups list for dropdown options
   const uniqueGroups = useMemo(() => {
@@ -463,9 +463,9 @@ const TransportExpenses = () => {
     const noOfCases = expense.no_of_cases?.toString() || '';
     const description = expense.description || '';
     
-    // Get client and branch names for filtering
-    const clientName = expense.client_name?.toLowerCase() || '';
-    const branchName = expense.branch?.toLowerCase() || '';
+    // Get client and area names for filtering
+    const clientName = expense.dealer_name?.toLowerCase() || '';
+    const areaName = expense.area?.toLowerCase() || '';
     
     // Global search filter (using debounced value)
     if (debouncedSearchTerm) {
@@ -476,7 +476,7 @@ const TransportExpenses = () => {
         amount.includes(searchLower) ||
         date.includes(searchLower) ||
         clientName.includes(searchLower) ||
-        branchName.includes(searchLower) ||
+        areaName.includes(searchLower) ||
         sku.toLowerCase().includes(searchLower) ||
         noOfCases.includes(searchLower)
       );
@@ -489,7 +489,7 @@ const TransportExpenses = () => {
     if (columnFilters.group && !expenseGroup.toLowerCase().includes(columnFilters.group.toLowerCase())) return false;
     if (columnFilters.amount && !amount.includes(columnFilters.amount)) return false;
     if (columnFilters.client && !clientName.includes(columnFilters.client.toLowerCase())) return false;
-    if (columnFilters.branch && !branchName.includes(columnFilters.branch.toLowerCase())) return false;
+    if (columnFilters.area && !areaName.includes(columnFilters.area.toLowerCase())) return false;
     if (columnFilters.sku && !sku.toLowerCase().includes(columnFilters.sku.toLowerCase())) return false;
     if (columnFilters.no_of_cases && !noOfCases.includes(columnFilters.no_of_cases)) return false;
     
@@ -520,12 +520,12 @@ const TransportExpenses = () => {
         valueB = b.amount || 0;
         break;
       case 'client':
-        valueA = a.client_name || '';
-        valueB = b.client_name || '';
+        valueA = a.dealer_name || '';
+        valueB = b.dealer_name || '';
         break;
-      case 'branch':
-        valueA = a.branch || '';
-        valueB = b.branch || '';
+      case 'area':
+        valueA = a.area || '';
+        valueB = b.area || '';
         break;
       default:
         return 0;
@@ -547,8 +547,8 @@ const TransportExpenses = () => {
     const exportData = filteredAndSortedExpenses.map((expense) => {
       return {
         'Date': new Date(expense.expense_date).toLocaleDateString(),
-        'Client': expense.client_name || '',
-        'Branch': expense.branch || '',
+        'Client': expense.dealer_name || '',
+        'Area': expense.area || '',
         'SKU': expense.sku || '',
         'No of Cases': expense.no_of_cases || 0,
         'Group': expense.expense_group || '',
@@ -580,7 +580,7 @@ const TransportExpenses = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* First Row: Date, Client, Branch */}
+        {/* First Row: Date, Client, Area */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="expense-date">Date</Label>
@@ -594,14 +594,14 @@ const TransportExpenses = () => {
           
           <div className="space-y-2">
             <Label htmlFor="client">Client</Label>
-            <Select value={form.client_id || ""} onValueChange={(value) => setForm({ ...form, client_id: value, branch: "" })}>
+            <Select value={form.client_id || ""} onValueChange={(value) => setForm({ ...form, client_id: value, area: "" })}>
               <SelectTrigger>
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
               <SelectContent>
                 {getUniqueCustomers().map((customer) => (
                   <SelectItem key={customer.id} value={customer.id}>
-                    {customer.client_name}
+                    {customer.dealer_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -609,15 +609,15 @@ const TransportExpenses = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="branch">Branch</Label>
-            <Select value={form.branch || ""} onValueChange={(value) => setForm({ ...form, branch: value })} disabled={!form.client_id}>
+            <Label htmlFor="area">Branch</Label>
+            <Select value={form.area || ""} onValueChange={(value) => setForm({ ...form, area: value })} disabled={!form.client_id}>
               <SelectTrigger>
-                <SelectValue placeholder="Select branch" />
+                <SelectValue placeholder="Select area" />
               </SelectTrigger>
               <SelectContent>
-                {getAvailableBranches(form.client_id).map((branch, index) => (
-                  <SelectItem key={index} value={branch}>
-                    {branch}
+                {getAvailableAreas(form.client_id).map((area, index) => (
+                  <SelectItem key={index} value={area}>
+                    {area}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -715,7 +715,7 @@ const TransportExpenses = () => {
         {/* Search Filter */}
         <div className="flex items-center space-x-2">
           <Input
-            placeholder="Search transactions by client, branch, group, amount, or date..."
+            placeholder="Search transactions by client, area, group, amount, or date..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
@@ -729,14 +729,14 @@ const TransportExpenses = () => {
                 setColumnFilters({
                   date: "",
                   client: "",
-                  branch: "",
+                  area: "",
                   group: "",
                   amount: ""
                 });
                 setColumnSorts({
                   date: null,
                   client: null,
-                  branch: null,
+                  area: null,
                   group: null,
                   amount: null
                 });
@@ -784,15 +784,15 @@ const TransportExpenses = () => {
             </TableHead>
             <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-left border-r border-slate-200/50">
               <div className="flex items-center justify-between">
-                <span>Branch</span>
+                <span>Area</span>
                 <ColumnFilter
-                  columnKey="branch"
-                  columnName="Branch"
-                  filterValue={columnFilters.branch || ""}
-                  onFilterChange={(value) => handleColumnFilterChange('branch', value)}
-                  onClearFilter={() => handleClearColumnFilter('branch')}
-                  sortDirection={columnSorts.branch || null}
-                  onSortChange={(direction) => handleColumnSortChange('branch', direction)}
+                  columnKey="area"
+                  columnName="Area"
+                  filterValue={columnFilters.area || ""}
+                  onFilterChange={(value) => handleColumnFilterChange('area', value)}
+                  onClearFilter={() => handleClearColumnFilter('area')}
+                  sortDirection={columnSorts.area || null}
+                  onSortChange={(direction) => handleColumnSortChange('area', direction)}
                   dataType="text"
                 />
               </div>
@@ -883,8 +883,8 @@ const TransportExpenses = () => {
             filteredAndSortedExpenses.map((expense) => (
               <TableRow key={expense.id}>
                 <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
-                <TableCell>{expense.client_name || 'N/A'}</TableCell>
-                <TableCell>{expense.branch || 'N/A'}</TableCell>
+                <TableCell>{expense.dealer_name || 'N/A'}</TableCell>
+                <TableCell>{expense.area || 'N/A'}</TableCell>
                 <TableCell>{expense.sku || 'N/A'}</TableCell>
                 <TableCell className="text-center">{expense.no_of_cases || 0}</TableCell>
                 <TableCell>{expense.expense_group || 'N/A'}</TableCell>
@@ -968,14 +968,14 @@ const TransportExpenses = () => {
               
               <div className="space-y-2">
                 <Label htmlFor="edit-client">Client</Label>
-                <Select value={editForm.client_id || ""} onValueChange={(value) => setEditForm({ ...editForm, client_id: value, branch: "" })}>
+                <Select value={editForm.client_id || ""} onValueChange={(value) => setEditForm({ ...editForm, client_id: value, area: "" })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
                     {getUniqueCustomers().map((customer) => (
                       <SelectItem key={customer.id} value={customer.id}>
-                        {customer.client_name}
+                        {customer.dealer_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -983,15 +983,15 @@ const TransportExpenses = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-branch">Branch</Label>
-                <Select value={editForm.branch || ""} onValueChange={(value) => setEditForm({ ...editForm, branch: value })} disabled={!editForm.client_id}>
+                <Label htmlFor="edit-area">Area</Label>
+                <Select value={editForm.area || ""} onValueChange={(value) => setEditForm({ ...editForm, area: value })} disabled={!editForm.client_id}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select branch" />
+                    <SelectValue placeholder="Select area" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAvailableBranches(editForm.client_id).map((branch, index) => (
-                      <SelectItem key={index} value={branch}>
-                        {branch}
+                    {getAvailableAreas(editForm.client_id).map((area, index) => (
+                      <SelectItem key={index} value={area}>
+                        {area}
                       </SelectItem>
                     ))}
                   </SelectContent>

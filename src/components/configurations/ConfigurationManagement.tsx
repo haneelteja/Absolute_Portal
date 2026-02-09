@@ -26,8 +26,8 @@ import * as XLSX from 'xlsx';
 
 const ConfigurationManagement = () => {
   const [customerForm, setCustomerForm] = useState({
-    client_name: "",
-    branch: "",
+    dealer_name: "",
+    area: "",
     sku: "",
     price_per_case: "",
     price_per_bottle: "",
@@ -50,8 +50,8 @@ const ConfigurationManagement = () => {
   
   // Additional state for advanced customer management
   const [editForm, setEditForm] = useState({
-    client_name: "",
-    branch: "",
+    dealer_name: "",
+    area: "",
     sku: "",
     price_per_case: "",
     price_per_bottle: "",
@@ -62,16 +62,16 @@ const ConfigurationManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   const [columnFilters, setColumnFilters] = useState({
-    client_name: "",
-    branch: "",
+    dealer_name: "",
+    area: "",
     sku: "",
     pricing_date: "",
     price_per_case: "",
     price_per_bottle: ""
   });
   const [columnSorts, setColumnSorts] = useState<Record<string, "asc" | "desc" | null>>({
-    client_name: null,
-    branch: null,
+    dealer_name: null,
+    area: null,
     sku: null,
     pricing_date: null,
     price_per_case: null,
@@ -112,7 +112,7 @@ const ConfigurationManagement = () => {
         const { data, error } = await supabase
           .from("customers")
           .select("*")
-          .order("client_name", { ascending: true });
+          .order("dealer_name", { ascending: true });
         
         if (error) {
           console.error('Error fetching customers:', error);
@@ -213,13 +213,13 @@ const ConfigurationManagement = () => {
 
   const customerMutation = useMutation({
     mutationFn: async (data: Omit<Customer, 'id' | 'created_at' | 'updated_at'> & { pricing_date: string }) => {
-      // Check for duplicate (client_name, branch, sku) combination
-      if (data.client_name && data.branch && data.sku) {
+      // Check for duplicate (dealer_name, area, sku) combination
+      if (data.dealer_name && data.area && data.sku) {
         const { data: existingCustomers, error: checkError } = await supabase
           .from("customers")
           .select("id")
-          .eq("client_name", data.client_name)
-          .eq("branch", data.branch)
+          .eq("dealer_name", data.dealer_name)
+          .eq("area", data.area)
           .eq("sku", data.sku)
           .eq("is_active", true) // Only check active customers
           .limit(1);
@@ -227,7 +227,7 @@ const ConfigurationManagement = () => {
         if (checkError) {
           console.error('Error checking for duplicates:', checkError);
         } else if (existingCustomers && existingCustomers.length > 0) {
-          throw new Error(`A customer with Client Name "${data.client_name}", Branch "${data.branch}", and SKU "${data.sku}" already exists. Please use different values.`);
+          throw new Error(`A customer with Dealer Name "${data.dealer_name}", Area "${data.area}", and SKU "${data.sku}" already exists. Please use different values.`);
         }
       }
 
@@ -244,7 +244,7 @@ const ConfigurationManagement = () => {
       if (error) {
         // Handle unique constraint violation
         if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
-          throw new Error(`A customer with Client Name "${data.client_name}", Branch "${data.branch}", and SKU "${data.sku}" already exists.`);
+          throw new Error(`A customer with Dealer Name "${data.dealer_name}", Area "${data.area}", and SKU "${data.sku}" already exists.`);
         }
         throw error;
       }
@@ -252,8 +252,8 @@ const ConfigurationManagement = () => {
     onSuccess: () => {
       toast({ title: "Success", description: "Customer added successfully!" });
       setCustomerForm({
-        client_name: "",
-        branch: "",
+        dealer_name: "",
+        area: "",
         sku: "",
         price_per_case: "",
         price_per_bottle: "",
@@ -275,26 +275,26 @@ const ConfigurationManagement = () => {
   // Update customer mutation
   const updateCustomerMutation = useMutation({
     mutationFn: async (data: { id: string } & typeof customerForm) => {
-      // First, check if updating client_name or branch would create a duplicate
-      if (data.client_name && data.branch) {
+      // First, check if updating dealer_name or area would create a duplicate
+      if (data.dealer_name && data.area) {
         const { data: existingCustomers, error: checkError } = await supabase
           .from("customers")
           .select("id")
-          .eq("client_name", data.client_name)
-          .eq("branch", data.branch)
+          .eq("dealer_name", data.dealer_name)
+          .eq("area", data.area)
           .neq("id", data.id)
           .limit(1);
 
         if (checkError) {
           console.error('Error checking for duplicates:', checkError);
         } else if (existingCustomers && existingCustomers.length > 0) {
-          throw new Error(`A customer with Client Name "${data.client_name}" and Branch "${data.branch}" already exists. Please use different values.`);
+          throw new Error(`A customer with Dealer Name "${data.dealer_name}" and Area "${data.area}" already exists. Please use different values.`);
         }
       }
 
       const updateData: Partial<{
-        client_name: string;
-        branch: string;
+        dealer_name: string;
+        area: string;
         sku: string | null;
         price_per_case: number | null;
         price_per_bottle: number | null;
@@ -303,8 +303,8 @@ const ConfigurationManagement = () => {
       }> = {};
       
       // Only include fields that are provided
-      if (data.client_name) updateData.client_name = data.client_name;
-      if (data.branch !== undefined) updateData.branch = data.branch;
+      if (data.dealer_name) updateData.dealer_name = data.dealer_name;
+      if (data.area !== undefined) updateData.area = data.area;
       if (data.sku !== undefined) updateData.sku = data.sku;
       if (data.price_per_case !== undefined) {
         updateData.price_per_case = data.price_per_case ? parseFloat(data.price_per_case) : null;
@@ -331,7 +331,7 @@ const ConfigurationManagement = () => {
         
         // Handle 409 conflict (unique constraint violation)
         if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
-          throw new Error(`A customer with Client Name "${data.client_name}" and Branch "${data.branch}" already exists. Please use different values.`);
+          throw new Error(`A customer with Dealer Name "${data.dealer_name}" and Area "${data.area}" already exists. Please use different values.`);
         }
         
         throw error;
@@ -595,8 +595,8 @@ const ConfigurationManagement = () => {
     if (!customers) return [];
     
     return customers.filter((customer) => {
-    const clientName = customer.client_name || '';
-    const branch = customer.branch || '';
+    const clientName = customer.dealer_name || '';
+    const area = customer.area || '';
     const sku = customer.sku || '';
     const pricingDate = customer.pricing_date ? new Date(customer.pricing_date).toLocaleDateString() : '';
     const pricePerCase = customer.price_per_case?.toString() || '';
@@ -608,7 +608,7 @@ const ConfigurationManagement = () => {
       const searchLower = debouncedSearchTerm.toLowerCase();
       const matchesGlobalSearch = (
         clientName.toLowerCase().includes(searchLower) ||
-        branch.toLowerCase().includes(searchLower) ||
+        area.toLowerCase().includes(searchLower) ||
         sku.toLowerCase().includes(searchLower) ||
         pricingDate.includes(searchLower) ||
         pricePerCase.includes(searchLower) ||
@@ -619,8 +619,8 @@ const ConfigurationManagement = () => {
     }
     
     // Column-specific filters
-    if (columnFilters.client_name && !clientName.toLowerCase().includes(columnFilters.client_name.toLowerCase())) return false;
-    if (columnFilters.branch && !branch.toLowerCase().includes(columnFilters.branch.toLowerCase())) return false;
+    if (columnFilters.dealer_name && !clientName.toLowerCase().includes(columnFilters.dealer_name.toLowerCase())) return false;
+    if (columnFilters.area && !area.toLowerCase().includes(columnFilters.area.toLowerCase())) return false;
     if (columnFilters.sku && !sku.toLowerCase().includes(columnFilters.sku.toLowerCase())) return false;
     if (columnFilters.pricing_date && pricingDate !== columnFilters.pricing_date) return false;
     if (columnFilters.price_per_case && !pricePerCase.includes(columnFilters.price_per_case)) return false;
@@ -628,7 +628,7 @@ const ConfigurationManagement = () => {
     
     return true;
   }).sort((a, b) => {
-    // Default sorting: Active first, then Client Name → Branch → SKU → Pricing Date
+    // Default sorting: Active first, then Dealer Name → Area → SKU → Pricing Date
     const activeSort = Object.entries(columnSorts).find(([_, direction]) => direction !== null);
     
     // If no manual sort is applied, use default sorting
@@ -638,18 +638,18 @@ const ConfigurationManagement = () => {
         return a.is_active ? -1 : 1; // Active customers first
       }
       
-      // 2. Sort by client_name
-      const clientNameA = (a.client_name || '').toLowerCase();
-      const clientNameB = (b.client_name || '').toLowerCase();
+      // 2. Sort by dealer_name
+      const clientNameA = (a.dealer_name || '').toLowerCase();
+      const clientNameB = (b.dealer_name || '').toLowerCase();
       if (clientNameA !== clientNameB) {
         return clientNameA < clientNameB ? -1 : 1;
       }
       
-      // 3. Sort by branch
-      const branchA = (a.branch || '').toLowerCase();
-      const branchB = (b.branch || '').toLowerCase();
-      if (branchA !== branchB) {
-        return branchA < branchB ? -1 : 1;
+      // 3. Sort by area
+      const areaA = (a.area || '').toLowerCase();
+      const areaB = (b.area || '').toLowerCase();
+      if (areaA !== areaB) {
+        return areaA < areaB ? -1 : 1;
       }
       
       // 4. Sort by SKU
@@ -670,13 +670,13 @@ const ConfigurationManagement = () => {
     let valueA: string | number, valueB: string | number;
 
     switch (columnKey) {
-      case 'client_name':
-        valueA = (a.client_name || '').toLowerCase();
-        valueB = (b.client_name || '').toLowerCase();
+      case 'dealer_name':
+        valueA = (a.dealer_name || '').toLowerCase();
+        valueB = (b.dealer_name || '').toLowerCase();
         break;
-      case 'branch':
-        valueA = (a.branch || '').toLowerCase();
-        valueB = (b.branch || '').toLowerCase();
+      case 'area':
+        valueA = (a.area || '').toLowerCase();
+        valueB = (b.area || '').toLowerCase();
         break;
       case 'sku':
         valueA = (a.sku || '').toLowerCase();
@@ -735,16 +735,16 @@ const ConfigurationManagement = () => {
   const clearAllFilters = () => {
     setSearchTerm("");
     setColumnFilters({
-      client_name: "",
-      branch: "",
+      dealer_name: "",
+      area: "",
       sku: "",
       pricing_date: "",
       price_per_case: "",
       price_per_bottle: ""
     });
     setColumnSorts({
-      client_name: null,
-      branch: null,
+      dealer_name: null,
+      area: null,
       sku: null,
       pricing_date: null,
       price_per_case: null,
@@ -756,8 +756,8 @@ const ConfigurationManagement = () => {
   // Export filtered data to Excel
   const exportCustomersToExcel = () => {
     const exportData = filteredAndSortedCustomers?.map((customer) => ({
-      'Client Name': customer.client_name || '',
-      'Branch': customer.branch || '',
+      'Dealer Name': customer.dealer_name || '',
+      'Area': customer.area || '',
       'SKU': customer.sku || '',
       'Pricing Date': customer.pricing_date ? new Date(customer.pricing_date).toLocaleDateString() : '',
       'Price per Case': customer.price_per_case ? `₹${customer.price_per_case}` : '',
@@ -950,10 +950,10 @@ const ConfigurationManagement = () => {
 
   const handleCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerForm.client_name || !customerForm.branch || !customerForm.pricing_date) {
+    if (!customerForm.dealer_name || !customerForm.area || !customerForm.pricing_date) {
       toast({ 
         title: "Error", 
-        description: "Client Name, Branch, and Pricing Date are required",
+        description: "Dealer Name, Area, and Pricing Date are required",
         variant: "destructive"
       });
       return;
@@ -1013,8 +1013,8 @@ const ConfigurationManagement = () => {
   const handleEditClick = (customer: Customer) => {
     setEditingCustomer(customer);
     setEditForm({
-      client_name: customer.client_name || "",
-      branch: customer.branch || "",
+      dealer_name: customer.dealer_name || "",
+      area: customer.area || "",
       sku: customer.sku || "",
       price_per_case: customer.price_per_case?.toString() || "",
       price_per_bottle: customer.price_per_bottle?.toString() || "",
@@ -1029,8 +1029,8 @@ const ConfigurationManagement = () => {
     
     updateCustomerMutation.mutate({
       id: editingCustomer.id,
-      client_name: editForm.client_name,
-      branch: editForm.branch,
+      dealer_name: editForm.dealer_name,
+      area: editForm.area,
       sku: editForm.sku,
       price_per_case: editForm.price_per_case,
       price_per_bottle: editForm.price_per_bottle,
@@ -1073,22 +1073,22 @@ const ConfigurationManagement = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="client-name" className="text-xs mb-1 block">Client Name *</Label>
+                    <Label htmlFor="client-name" className="text-xs mb-1 block">Dealer Name *</Label>
                     <Input
                       id="client-name"
-                      value={customerForm.client_name}
-                      onChange={(e) => setCustomerForm({...customerForm, client_name: e.target.value})}
-                      placeholder="Client Name"
+                      value={customerForm.dealer_name}
+                      onChange={(e) => setCustomerForm({...customerForm, dealer_name: e.target.value})}
+                      placeholder="Dealer Name"
                       className="h-9"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="branch" className="text-xs mb-1 block">Branch *</Label>
+                    <Label htmlFor="area" className="text-xs mb-1 block">Area *</Label>
                     <Input
-                      id="branch"
-                      value={customerForm.branch}
-                      onChange={(e) => setCustomerForm({...customerForm, branch: e.target.value})}
-                      placeholder="Branch"
+                      id="area"
+                      value={customerForm.area}
+                      onChange={(e) => setCustomerForm({...customerForm, area: e.target.value})}
+                      placeholder="Area"
                       className="h-9"
                     />
                   </div>
@@ -1178,7 +1178,7 @@ const ConfigurationManagement = () => {
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
                     <Input
-                      placeholder="Search customers by name, branch, SKU, pricing date, or amount..."
+                      placeholder="Search customers by name, area, SKU, pricing date, or amount..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="max-w-sm"
@@ -1200,26 +1200,26 @@ const ConfigurationManagement = () => {
                     <TableRow>
                       <TableHead>
                         <div className="flex items-center gap-2">
-                          Client Name
+                          Dealer Name
                         <ColumnFilter
-                          columnKey="client_name"
-                          columnName="Client Name"
-                          filterValue={columnFilters.client_name}
-                          onFilterChange={(value) => handleColumnFilterChange('client_name', value)}
-                          onSortChange={(direction) => handleColumnSortChange('client_name', direction)}
+                          columnKey="dealer_name"
+                          columnName="Dealer Name"
+                          filterValue={columnFilters.dealer_name}
+                          onFilterChange={(value) => handleColumnFilterChange('dealer_name', value)}
+                          onSortChange={(direction) => handleColumnSortChange('dealer_name', direction)}
                           dataType="text"
                         />
                       </div>
                       </TableHead>
                       <TableHead>
                         <div className="flex items-center gap-2">
-                          Branch
+                          Area
                         <ColumnFilter
-                          columnKey="branch"
-                          columnName="Branch"
-                          filterValue={columnFilters.branch}
-                          onFilterChange={(value) => handleColumnFilterChange('branch', value)}
-                          onSortChange={(direction) => handleColumnSortChange('branch', direction)}
+                          columnKey="area"
+                          columnName="Area"
+                          filterValue={columnFilters.area}
+                          onFilterChange={(value) => handleColumnFilterChange('area', value)}
+                          onSortChange={(direction) => handleColumnSortChange('area', direction)}
                           dataType="text"
                         />
                       </div>
@@ -1301,8 +1301,8 @@ const ConfigurationManagement = () => {
                     {filteredAndSortedCustomers?.length > 0 ? (
                       filteredAndSortedCustomers.map((customer) => (
                       <TableRow key={customer.id}>
-                        <TableCell className="font-medium">{customer.client_name}</TableCell>
-                        <TableCell>{customer.branch}</TableCell>
+                        <TableCell className="font-medium">{customer.dealer_name}</TableCell>
+                        <TableCell>{customer.area}</TableCell>
                         <TableCell>{customer.sku || '-'}</TableCell>
                         <TableCell>{customer.pricing_date ? new Date(customer.pricing_date).toLocaleDateString() : '-'}</TableCell>
                         <TableCell className="text-right">
@@ -1674,21 +1674,21 @@ const ConfigurationManagement = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-client-name">Client Name *</Label>
+              <Label htmlFor="edit-client-name">Dealer Name *</Label>
               <Input
                 id="edit-client-name"
-                value={editingCustomer?.client_name || ""}
-                onChange={(e) => setEditingCustomer({...editingCustomer, client_name: e.target.value})}
+                value={editingCustomer?.dealer_name || ""}
+                onChange={(e) => setEditingCustomer({...editingCustomer, dealer_name: e.target.value})}
                 placeholder="Customer company name"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-branch">Branch</Label>
+              <Label htmlFor="edit-area">Area</Label>
               <Input
-                id="edit-branch"
-                value={editingCustomer?.branch || ""}
-                onChange={(e) => setEditingCustomer({...editingCustomer, branch: e.target.value})}
-                placeholder="Branch or location"
+                id="edit-area"
+                value={editingCustomer?.area || ""}
+                onChange={(e) => setEditingCustomer({...editingCustomer, area: e.target.value})}
+                placeholder="Area or location"
               />
             </div>
             <div className="space-y-2">
@@ -1834,22 +1834,22 @@ const ConfigurationManagement = () => {
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-client-name">Client Name *</Label>
+                <Label htmlFor="edit-client-name">Dealer Name *</Label>
                 <Input
                   id="edit-client-name"
-                  value={editForm.client_name}
-                  onChange={(e) => setEditForm({...editForm, client_name: e.target.value})}
+                  value={editForm.dealer_name}
+                  onChange={(e) => setEditForm({...editForm, dealer_name: e.target.value})}
                   placeholder="Customer company name"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-branch">Branch</Label>
+                <Label htmlFor="edit-area">Area</Label>
                 <Input
-                  id="edit-branch"
-                  value={editForm.branch}
-                  onChange={(e) => setEditForm({...editForm, branch: e.target.value})}
-                  placeholder="Branch or location"
+                  id="edit-area"
+                  value={editForm.area}
+                  onChange={(e) => setEditForm({...editForm, area: e.target.value})}
+                  placeholder="Area or location"
                 />
               </div>
               

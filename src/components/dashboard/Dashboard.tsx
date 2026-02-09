@@ -31,7 +31,7 @@ const Dashboard = memo(() => {
   const debouncedReceivablesSearchTerm = useDebouncedValue(receivablesSearchTerm, 300);
   const [receivablesColumnFilters, setReceivablesColumnFilters] = useState({
     client: "",
-    branch: "",
+    area: "",
     totalSales: "",
     payments: "",
     outstanding: "",
@@ -41,7 +41,7 @@ const Dashboard = memo(() => {
     [key: string]: 'asc' | 'desc' | null;
   }>({
     client: null,
-    branch: null,
+    area: null,
     totalSales: null,
     payments: null,
     outstanding: null,
@@ -118,8 +118,8 @@ const Dashboard = memo(() => {
           created_at,
           customers (
             id,
-            client_name,
-            branch
+            dealer_name,
+            area
           )
         `)
         .gte("created_at", ninetyDaysAgo.toISOString())
@@ -269,7 +269,7 @@ const Dashboard = memo(() => {
     setReceivablesSearchTerm("");
     setReceivablesColumnFilters({
       client: "",
-      branch: "",
+      area: "",
       totalSales: "",
       payments: "",
       outstanding: "",
@@ -277,7 +277,7 @@ const Dashboard = memo(() => {
     });
     setReceivablesColumnSorts({
       client: null,
-      branch: null,
+      area: null,
       totalSales: null,
       payments: null,
       outstanding: null,
@@ -294,8 +294,8 @@ const Dashboard = memo(() => {
       if (debouncedReceivablesSearchTerm) {
         const searchLower = debouncedReceivablesSearchTerm.toLowerCase();
         const matchesGlobalSearch = (
-          receivable.customer.client_name?.toLowerCase().includes(searchLower) ||
-          receivable.customer.branch?.toLowerCase().includes(searchLower) ||
+          receivable.customer.dealer_name?.toLowerCase().includes(searchLower) ||
+          receivable.customer.area?.toLowerCase().includes(searchLower) ||
           receivable.totalSales?.toString().includes(searchLower) ||
           receivable.totalPayments?.toString().includes(searchLower) ||
           receivable.outstanding?.toString().includes(searchLower) ||
@@ -305,8 +305,8 @@ const Dashboard = memo(() => {
       }
 
       // Column filters
-      if (receivablesColumnFilters.client && !receivable.customer.client_name?.toLowerCase().includes(receivablesColumnFilters.client.toLowerCase())) return false;
-      if (receivablesColumnFilters.branch && !receivable.customer.branch?.toLowerCase().includes(receivablesColumnFilters.branch.toLowerCase())) return false;
+      if (receivablesColumnFilters.client && !receivable.customer.dealer_name?.toLowerCase().includes(receivablesColumnFilters.client.toLowerCase())) return false;
+      if (receivablesColumnFilters.area && !receivable.customer.area?.toLowerCase().includes(receivablesColumnFilters.area.toLowerCase())) return false;
       if (receivablesColumnFilters.totalSales && receivable.totalSales?.toString() !== receivablesColumnFilters.totalSales) return false;
       if (receivablesColumnFilters.payments && receivable.totalPayments?.toString() !== receivablesColumnFilters.payments) return false;
       if (receivablesColumnFilters.outstanding && receivable.outstanding?.toString() !== receivablesColumnFilters.outstanding) return false;
@@ -329,12 +329,12 @@ const Dashboard = memo(() => {
 
       switch (columnKey) {
         case 'client':
-          aValue = a.customer.client_name || '';
-          bValue = b.customer.client_name || '';
+          aValue = a.customer.dealer_name || '';
+          bValue = b.customer.dealer_name || '';
           break;
-        case 'branch':
-          aValue = a.customer.branch || '';
-          bValue = b.customer.branch || '';
+        case 'area':
+          aValue = a.customer.area || '';
+          bValue = b.customer.area || '';
           break;
         case 'totalSales':
           aValue = a.totalSales || 0;
@@ -388,8 +388,8 @@ const Dashboard = memo(() => {
     }
 
     const exportData = filteredAndSortedReceivables.map(receivable => ({
-      'Client': receivable.customer.client_name || '',
-      'Branch': receivable.customer.branch || 'N/A',
+      'Client': receivable.customer.dealer_name || '',
+      'Branch': receivable.customer.area || 'N/A',
       'Total Sales': receivable.totalSales || 0,
       'Payments': receivable.totalPayments || 0,
       'Outstanding': receivable.outstanding || 0,
@@ -607,13 +607,13 @@ const Dashboard = memo(() => {
                     <div className="flex items-center gap-2">
                       Branch
                       <ColumnFilter
-                        columnKey="branch"
+                        columnKey="area"
                         columnName="Branch"
-                        filterValue={receivablesColumnFilters.branch}
-                        onFilterChange={(value) => handleReceivablesColumnFilterChange('branch', value as string)}
-                        onClearFilter={() => handleReceivablesColumnFilterChange('branch', '')}
-                        sortDirection={receivablesColumnSorts.branch}
-                        onSortChange={(direction) => handleReceivablesColumnSortChange('branch', direction)}
+                        filterValue={receivablesColumnFilters.area}
+                        onFilterChange={(value) => handleReceivablesColumnFilterChange('area', value as string)}
+                        onClearFilter={() => handleReceivablesColumnFilterChange('area', '')}
+                        sortDirection={receivablesColumnSorts.area}
+                        onSortChange={(direction) => handleReceivablesColumnSortChange('area', direction)}
                         dataType="text"
                       />
                     </div>
@@ -690,10 +690,10 @@ const Dashboard = memo(() => {
                     }`}
                   >
                     <TableCell className="font-semibold text-slate-800 py-4 px-6">
-                      {receivable.customer.client_name}
+                      {receivable.customer.dealer_name}
                     </TableCell>
                     <TableCell className="text-slate-600 py-4 px-6">
-                      {receivable.customer.branch || 'N/A'}
+                      {receivable.customer.area || 'N/A'}
                     </TableCell>
                     <TableCell className="text-right font-semibold text-green-600 py-4 px-6">
                       ₹{receivable.totalSales.toLocaleString()}

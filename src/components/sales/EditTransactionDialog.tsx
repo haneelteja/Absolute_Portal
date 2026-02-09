@@ -22,11 +22,11 @@ interface EditTransactionDialogProps {
     sku: string;
     description: string;
     transaction_date: string;
-    branch: string;
+    area: string;
   };
   customers?: Customer[];
   getUniqueCustomers: string[];
-  getAvailableBranchesForEdit: () => string[];
+  getAvailableAreasForEdit: () => string[];
   getPricePerCaseForEdit: () => string;
   isOpen: boolean;
   isUpdating: boolean;
@@ -42,7 +42,7 @@ export const EditTransactionDialog = memo(({
   editForm,
   customers,
   getUniqueCustomers,
-  getAvailableBranchesForEdit,
+  getAvailableAreasForEdit,
   getPricePerCaseForEdit,
   isOpen,
   isUpdating,
@@ -68,7 +68,7 @@ export const EditTransactionDialog = memo(({
           <DialogTitle>Edit Transaction</DialogTitle>
         </DialogHeader>
         <form onSubmit={onEditSubmit} className="space-y-6">
-          {/* First Row: Date, Customer, Branch */}
+          {/* First Row: Date, Customer, Area */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-date">Date *</Label>
@@ -83,7 +83,7 @@ export const EditTransactionDialog = memo(({
             <div className="space-y-2">
               <Label htmlFor="edit-customer">Customer</Label>
               <Select 
-                value={customers?.find(c => c.id === editForm.customer_id)?.client_name || ""} 
+                value={customers?.find(c => c.id === editForm.customer_id)?.dealer_name || ""} 
                 onValueChange={onCustomerChange}
               >
                 <SelectTrigger id="edit-customer">
@@ -100,19 +100,19 @@ export const EditTransactionDialog = memo(({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-branch">Branch</Label>
+              <Label htmlFor="edit-area">Area</Label>
               <Select 
-                value={editForm.branch} 
-                onValueChange={(value) => onFormChange({ branch: value })}
+                value={editForm.area} 
+                onValueChange={(value) => onFormChange({ area: value })}
                 disabled={!editForm.customer_id}
               >
-                <SelectTrigger id="edit-branch">
-                  <SelectValue placeholder={editForm.customer_id ? "Select branch" : "Select customer first"} />
+                <SelectTrigger id="edit-area">
+                  <SelectValue placeholder={editForm.customer_id ? "Select area" : "Select customer first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {getAvailableBranchesForEdit().map((branch) => (
-                    <SelectItem key={branch} value={branch}>
-                      {branch}
+                  {getAvailableAreasForEdit().map((area) => (
+                    <SelectItem key={area} value={area}>
+                      {area}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -150,7 +150,7 @@ export const EditTransactionDialog = memo(({
                 value={getPricePerCaseForEdit()}
                 readOnly
                 className="bg-gray-50"
-                placeholder="Select customer and branch first"
+                placeholder="Select customer and area first"
               />
             </div>
           </div>

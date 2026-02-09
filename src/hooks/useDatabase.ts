@@ -37,9 +37,9 @@ export const useCustomers = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, client_name, branch, sku, price_per_case, price_per_bottle, contact_person, phone, email, address, is_active, created_at, updated_at")
+        .select("id, dealer_name, area, sku, price_per_case, price_per_bottle, contact_person, phone, email, address, is_active, created_at, updated_at")
         .eq("is_active", true)
-        .order("client_name", { ascending: true });
+        .order("dealer_name", { ascending: true });
       
       if (error) throw error;
       return data as Customer[];
@@ -65,14 +65,14 @@ export const useSalesTransactions = () => {
           sku,
           description,
           transaction_date,
-          branch,
+          area,
           total_amount,
           created_at,
           updated_at,
           customers (
             id,
-            client_name,
-            branch
+            dealer_name,
+            area
           )
         `)
         .order("created_at", { ascending: false });
@@ -108,7 +108,7 @@ export const useTransportExpenses = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transport_expenses")
-        .select("id, client_id, branch, expense_date, amount, expense_group, description, sku, cases, created_at, updated_at")
+        .select("id, client_id, area, expense_date, amount, expense_group, description, sku, cases, created_at, updated_at")
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -125,7 +125,7 @@ export const useLabelPurchases = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("label_purchases")
-        .select("id, client_name, sku, quantity, unit_price, total_amount, purchase_date, vendor_id, created_at, updated_at")
+        .select("id, dealer_name, sku, quantity, unit_price, total_amount, purchase_date, vendor_id, created_at, updated_at")
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -159,7 +159,7 @@ export const useOrders = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, client_name, branch, sku, quantity, status, tentative_delivery_date, tentative_delivery_time, created_at, updated_at")
+        .select("id, dealer_name, area, sku, quantity, status, tentative_delivery_date, tentative_delivery_time, created_at, updated_at")
         .order("created_at", { ascending: false });
       
       if (error) throw error;
@@ -176,7 +176,7 @@ export const useUserManagement = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_management")
-        .select("id, user_id, username, email, associated_clients, associated_branches, status, role, created_by, last_login, created_at, updated_at")
+        .select("id, user_id, username, email, associated_clients, associated_areaes, status, role, created_by, last_login, created_at, updated_at")
         .order("created_at", { ascending: false });
       
       if (error) {

@@ -17,7 +17,7 @@
  *   pageSize: 50,
  *   orderBy: { column: 'created_at', ascending: false },
  *   select: 'id, customer_id, transaction_date, amount',
- *   relationships: 'customers (client_name, branch)'
+ *   relationships: 'customers (dealer_name, area)'
  * });
  */
 

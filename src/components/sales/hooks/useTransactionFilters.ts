@@ -10,7 +10,7 @@ export interface FilterState {
   columnFilters: {
     date: string | string[];
     customer: string | string[];
-    branch: string | string[];
+    area: string | string[];
     type: string | string[];
     sku: string | string[];
     amount: string | string[];
@@ -36,7 +36,7 @@ const initialState: FilterState = {
   columnFilters: {
     date: '',
     customer: '',
-    branch: '',
+    area: '',
     type: '',
     sku: '',
     amount: '',
@@ -44,7 +44,7 @@ const initialState: FilterState = {
   columnSorts: {
     date: null,
     customer: null,
-    branch: null,
+    area: null,
     type: null,
     sku: null,
     amount: null,

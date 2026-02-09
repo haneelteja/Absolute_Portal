@@ -297,8 +297,8 @@ export class SearchService {
     // This would ideally come from the search config
     const commonTextFields: Record<SearchModule, string[]> = {
       sales_transactions: ['sku', 'description'],
-      orders: ['client', 'branch', 'sku'],
-      customers: ['client_name', 'branch', 'contact_person', 'email', 'phone'],
+      orders: ['client', 'area', 'sku'],
+      customers: ['dealer_name', 'area', 'contact_person', 'email', 'phone'],
       user_management: ['username', 'email'],
       factory_payables: ['description', 'sku'],
       transport_expenses: ['expense_group', 'description'],

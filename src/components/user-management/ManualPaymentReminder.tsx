@@ -45,7 +45,7 @@ export const ManualPaymentReminder: React.FC = () => {
         .from('customers')
         .select('*')
         .eq('is_active', true)
-        .order('client_name');
+        .order('dealer_name');
       
       if (error) throw error;
       return (data || []) as Customer[];
@@ -136,7 +136,7 @@ export const ManualPaymentReminder: React.FC = () => {
 
       // Prepare placeholders for payment reminder template
       const placeholders: Record<string, string> = {
-        customerName: selectedCustomer.customer.client_name,
+        customerName: selectedCustomer.customer.dealer_name,
         outstandingAmount: outstandingAmount,
         invoiceCount: selectedCustomer.invoiceCount.toString(),
         daysOverdue: daysOverdue > 0 ? daysOverdue.toString() : '0',
@@ -224,8 +224,8 @@ export const ManualPaymentReminder: React.FC = () => {
               ) : receivables && receivables.length > 0 ? (
                 receivables.map((receivable) => (
                   <SelectItem key={receivable.customer.id} value={receivable.customer.id}>
-                    {receivable.customer.client_name}
-                    {receivable.customer.branch && ` - ${receivable.customer.branch}`}
+                    {receivable.customer.dealer_name}
+                    {receivable.customer.area && ` - ${receivable.customer.area}`}
                     {' '}
                     <span className="text-muted-foreground">
                       (Outstanding: ₹{receivable.outstanding.toLocaleString('en-IN')})
@@ -246,12 +246,12 @@ export const ManualPaymentReminder: React.FC = () => {
           <div className="p-4 bg-muted rounded-lg space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Customer:</span>
-              <span className="text-sm">{selectedCustomer.customer.client_name}</span>
+              <span className="text-sm">{selectedCustomer.customer.dealer_name}</span>
             </div>
-            {selectedCustomer.customer.branch && (
+            {selectedCustomer.customer.area && (
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Branch:</span>
-                <span className="text-sm">{selectedCustomer.customer.branch}</span>
+                <span className="text-sm">{selectedCustomer.customer.area}</span>
               </div>
             )}
             <div className="flex items-center justify-between">

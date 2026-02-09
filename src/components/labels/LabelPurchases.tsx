@@ -72,7 +72,7 @@ const LabelPurchases = () => {
         .from("customers")
         .select("*")
         .eq("is_active", true)
-        .order("client_name", { ascending: true });
+        .order("dealer_name", { ascending: true });
       return data || [];
     },
   });
@@ -86,7 +86,7 @@ const LabelPurchases = () => {
     
     // Filter customers by the selected customer name to get available SKUs
     const customerSKUs = customers?.filter(c => 
-      c.client_name === selectedCustomer.client_name &&
+      c.dealer_name === selectedCustomer.dealer_name &&
       c.sku && 
       c.sku.trim() !== ''
     ) || [];
@@ -94,8 +94,8 @@ const LabelPurchases = () => {
     // Return unique SKUs for this client
     const uniqueSKUs = customerSKUs.map(customer => ({
       sku: customer.sku,
-      client_name: customer.client_name,
-      branch: customer.branch
+      dealer_name: customer.dealer_name,
+      area: customer.area
     }));
     return uniqueSKUs;
   };
@@ -109,7 +109,7 @@ const LabelPurchases = () => {
     
     // Filter customers by the selected customer name to get available SKUs
     const customerSKUs = customers?.filter(c => 
-      c.client_name === selectedCustomer.client_name &&
+      c.dealer_name === selectedCustomer.dealer_name &&
       c.sku && 
       c.sku.trim() !== ''
     ) || [];
@@ -117,8 +117,8 @@ const LabelPurchases = () => {
     // Return unique SKUs for this client
     const uniqueSKUs = customerSKUs.map(customer => ({
       sku: customer.sku,
-      client_name: customer.client_name,
-      branch: customer.branch
+      dealer_name: customer.dealer_name,
+      area: customer.area
     }));
     
     return uniqueSKUs;
@@ -380,8 +380,8 @@ const LabelPurchases = () => {
     const uniqueCustomers: typeof customers = [];
     
     customers.forEach(customer => {
-      if (customer.client_name && customer.client_name.trim() !== '') {
-        const trimmedName = customer.client_name.trim();
+      if (customer.dealer_name && customer.dealer_name.trim() !== '') {
+        const trimmedName = customer.dealer_name.trim();
         const lowerCaseName = trimmedName.toLowerCase();
         
         // Only add if we haven't seen this customer name (case-insensitive) before
@@ -392,7 +392,7 @@ const LabelPurchases = () => {
       }
     });
     
-    const result = uniqueCustomers.sort((a, b) => a.client_name.localeCompare(b.client_name));
+    const result = uniqueCustomers.sort((a, b) => a.dealer_name.localeCompare(b.dealer_name));
     return result;
   };
 
@@ -406,7 +406,7 @@ const LabelPurchases = () => {
       // Global search (using debounced value)
       if (debouncedSearchTerm) {
         const searchLower = debouncedSearchTerm.toLowerCase();
-        const clientName = customers?.find(c => c.id === purchase.client_id)?.client_name?.toLowerCase() || '';
+        const clientName = customers?.find(c => c.id === purchase.client_id)?.dealer_name?.toLowerCase() || '';
         const vendorName = purchase.vendor_id?.toLowerCase() || '';
         const sku = purchase.sku?.toLowerCase() || '';
         const description = purchase.description?.toLowerCase() || '';
@@ -427,7 +427,7 @@ const LabelPurchases = () => {
       }
 
       if (columnFilters.client) {
-        const clientName = customers?.find(c => c.id === purchase.client_id)?.client_name?.toLowerCase() || '';
+        const clientName = customers?.find(c => c.id === purchase.client_id)?.dealer_name?.toLowerCase() || '';
         if (!clientName.includes(columnFilters.client.toLowerCase())) return false;
       }
 
@@ -474,8 +474,8 @@ const LabelPurchases = () => {
             bValue = b.vendor_id || '';
             break;
           case 'client':
-            aValue = customers?.find(c => c.id === a.client_id)?.client_name || '';
-            bValue = customers?.find(c => c.id === b.client_id)?.client_name || '';
+            aValue = customers?.find(c => c.id === a.client_id)?.dealer_name || '';
+            bValue = customers?.find(c => c.id === b.client_id)?.dealer_name || '';
             break;
           case 'sku':
             aValue = a.sku || '';
@@ -566,7 +566,7 @@ const LabelPurchases = () => {
     const exportData = filteredAndSortedPurchases.map(purchase => ({
       'Purchase Date': new Date(purchase.purchase_date).toLocaleDateString(),
       'Vendor': purchase.vendor_id || 'N/A',
-      'Client': customers?.find(c => c.id === purchase.client_id)?.client_name || 'N/A',
+      'Client': customers?.find(c => c.id === purchase.client_id)?.dealer_name || 'N/A',
       'SKU': purchase.sku || 'N/A',
       'Quantity': purchase.quantity,
       'Cost per Label': purchase.cost_per_label,
@@ -598,7 +598,7 @@ const LabelPurchases = () => {
               <SelectContent>
                 {getUniqueCustomers().map((customer) => (
                   <SelectItem key={customer.id} value={customer.id}>
-                    {customer.client_name}
+                    {customer.dealer_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -901,7 +901,7 @@ const LabelPurchases = () => {
                       {purchase.vendor_id || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {customers?.find(c => c.id === purchase.client_id)?.client_name || 'N/A'}
+                      {customers?.find(c => c.id === purchase.client_id)?.dealer_name || 'N/A'}
                     </TableCell>
                     <TableCell>
                       {purchase.sku || 'N/A'}
@@ -937,7 +937,7 @@ const LabelPurchases = () => {
                                     <SelectContent>
                                       {getUniqueCustomers().map((customer) => (
                                         <SelectItem key={customer.id} value={customer.id}>
-                                          {customer.client_name}
+                                          {customer.dealer_name}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>

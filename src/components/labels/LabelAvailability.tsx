@@ -10,8 +10,8 @@ import * as XLSX from 'xlsx';
 
 interface ClientLabelSummary {
   client_id: string;
-  client_name: string;
-  branch: string;
+  dealer_name: string;
+  area: string;
   sku: string;
   total_labels_purchased: number;
   labels_used: number;
@@ -24,7 +24,7 @@ const LabelAvailability = () => {
   // State for filtering and sorting
   const [searchTerm, setSearchTerm] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
-  const [sortField, setSortField] = React.useState<keyof ClientLabelSummary>("client_name");
+  const [sortField, setSortField] = React.useState<keyof ClientLabelSummary>("dealer_name");
   const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">("asc");
 
   // Fetch all label purchases
@@ -53,7 +53,7 @@ const LabelAvailability = () => {
         .from("customers")
         .select("*")
         .eq("is_active", true)
-        .order("client_name", { ascending: true });
+        .order("dealer_name", { ascending: true });
       
       if (error) {
         console.error("Error fetching customers:", error);
@@ -115,19 +115,19 @@ const LabelAvailability = () => {
     
     // Get all unique SKUs from customers table
     const seenSKUs = new Set<string>();
-    const uniqueSKUs: { sku: string; client_name: string; branch: string }[] = [];
+    const uniqueSKUs: { sku: string; dealer_name: string; area: string }[] = [];
     
     customers.forEach(customer => {
       if (customer.sku && customer.sku.trim() !== '') {
         const trimmedSKU = customer.sku.trim();
-        const skuKey = `${customer.client_name}_${customer.branch}_${trimmedSKU}`;
+        const skuKey = `${customer.dealer_name}_${customer.area}_${trimmedSKU}`;
         
         if (!seenSKUs.has(skuKey)) {
           seenSKUs.add(skuKey);
           uniqueSKUs.push({
             sku: trimmedSKU,
-            client_name: customer.client_name,
-            branch: customer.branch || ''
+            dealer_name: customer.dealer_name,
+            area: customer.area || ''
           });
         }
       }
@@ -146,14 +146,14 @@ const LabelAvailability = () => {
 
     const summaryMap = new Map<string, ClientLabelSummary>();
 
-    // Process label purchases - group by client_name and sku (ignoring branch)
+    // Process label purchases - group by dealer_name and sku (ignoring area)
     labelPurchases.forEach((purchase) => {
       if (purchase.client_id && purchase.sku) {
         const customer = customers?.find(c => c.id === purchase.client_id);
         
         if (customer) {
-          // Group by client_name and sku only (ignoring branch)
-          const clientSkuKey = `${customer.client_name}_${purchase.sku}`;
+          // Group by dealer_name and sku only (ignoring area)
+          const clientSkuKey = `${customer.dealer_name}_${purchase.sku}`;
           const existing = summaryMap.get(clientSkuKey);
 
           if (existing) {
@@ -169,8 +169,8 @@ const LabelAvailability = () => {
             // Create new summary
             summaryMap.set(clientSkuKey, {
               client_id: purchase.client_id,
-              client_name: customer.client_name,
-              branch: customer.branch,
+              dealer_name: customer.dealer_name,
+              area: customer.area,
               sku: purchase.sku,
               total_labels_purchased: purchase.quantity || 0,
               labels_used: 0, // Will be calculated below
@@ -191,14 +191,14 @@ const LabelAvailability = () => {
         if (sale.customer_id && sale.sku) {
           const customer = customers?.find(c => c.id === sale.customer_id);
           if (customer) {
-            // Group by client_name and sku only (ignoring branch)
-            const clientSkuKey = `${customer.client_name}_${sale.sku}`;
+            // Group by dealer_name and sku only (ignoring area)
+            const clientSkuKey = `${customer.dealer_name}_${sale.sku}`;
             const existing = summaryMap.get(clientSkuKey);
             
             // Find the SKU configuration from customers table
             const skuData = availableSKUs.find(sku => 
               sku.sku === sale.sku && 
-              sku.client_name === customer.client_name
+              sku.dealer_name === customer.dealer_name
             );
             
             // Get bottles per case from factory_pricing table
@@ -219,8 +219,8 @@ const LabelAvailability = () => {
               
               summaryMap.set(clientSkuKey, {
                 client_id: sale.customer_id,
-                client_name: customer.client_name,
-                branch: customer.branch,
+                dealer_name: customer.dealer_name,
+                area: customer.area,
                 sku: sale.sku,
                 total_labels_purchased: 0,
                 labels_used: labelsUsed,
@@ -242,7 +242,7 @@ const LabelAvailability = () => {
 
     const sortedSummaries = summaries.sort((a, b) => {
       // Sort by client name first, then by SKU
-      const clientCompare = a.client_name.localeCompare(b.client_name);
+      const clientCompare = a.dealer_name.localeCompare(b.dealer_name);
       return clientCompare !== 0 ? clientCompare : a.sku.localeCompare(b.sku);
     });
 
@@ -254,7 +254,7 @@ const LabelAvailability = () => {
     const filtered = clientSummaries.filter((summary) => {
       // Search filter
       const matchesSearch = 
-        summary.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        summary.dealer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         summary.sku.toLowerCase().includes(searchTerm.toLowerCase());
       
       // Status filter
@@ -303,7 +303,7 @@ const LabelAvailability = () => {
   // Export to Excel
   const handleExport = () => {
     const exportData = filteredAndSortedData.map(item => ({
-      'Client': item.client_name,
+      'Client': item.dealer_name,
       'SKU': item.sku,
       'Labels Purchased': item.total_labels_purchased,
       'Labels Used': item.labels_used,
@@ -379,11 +379,11 @@ const LabelAvailability = () => {
               <TableRow>
                 <TableHead 
                   className="bg-slate-50 border-slate-200 text-slate-700 py-3 px-4 cursor-pointer hover:bg-slate-100"
-                  onClick={() => handleSort('client_name')}
+                  onClick={() => handleSort('dealer_name')}
                 >
                   <div className="flex items-center gap-2">
                     Client
-                    {sortField === 'client_name' && (
+                    {sortField === 'dealer_name' && (
                       <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </div>
@@ -449,9 +449,9 @@ const LabelAvailability = () => {
             <TableBody>
               {filteredAndSortedData.length > 0 ? (
                 filteredAndSortedData.map((summary, index) => (
-                    <TableRow key={`${summary.client_name}_${summary.sku}_${index}`}>
+                    <TableRow key={`${summary.dealer_name}_${summary.sku}_${index}`}>
                       <TableCell className="font-medium">
-                        {summary.client_name}
+                        {summary.dealer_name}
                       </TableCell>
                       <TableCell className="font-medium">
                         {summary.sku}

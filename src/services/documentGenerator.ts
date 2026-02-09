@@ -67,8 +67,8 @@ export async function generateWordDocument(
       companyGSTIN: data.companyGSTIN || '',
       
       // Client details
-      clientName: data.clientName,
-      branch: data.branch || '',
+      dealerName: data.dealerName,
+      area: data.area || '',
       clientAddress: data.clientAddress || '',
       clientPhone: data.clientPhone || '',
       clientEmail: data.clientEmail || '',
@@ -158,8 +158,8 @@ function replaceTemplatePlaceholders(template: string, data: InvoiceData): strin
   const replacements: Record<string, string> = {
     companyName: data.companyName,
     companyAddress: data.companyAddress.replace(/\n/g, '<br>'),
-    clientName: data.clientName,
-    branch: data.branch || '',
+    dealerName: data.dealerName,
+    area: data.area || '',
     invoiceNumber: data.invoiceNumber,
     invoiceDate: formatDate(data.invoiceDate),
     sku: data.sku,

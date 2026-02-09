@@ -24,8 +24,8 @@ interface UserManagementRecord {
   user_id: string;
   username: string;
   email: string;
-  associated_clients: string[];
-  associated_branches: string[];
+  associated_dealers: string[];
+  associated_areas: string[];
   status: 'active' | 'inactive' | 'pending';
   role: 'admin' | 'manager' | 'client';
   created_by: string;
@@ -37,7 +37,7 @@ interface UserManagementRecord {
 interface UserForm {
   username: string;
   email: string;
-  associated_client_branches: string[]; // Changed to client-branch combinations
+  associated_dealer_areas: string[]; // Changed to client-area combinations
   role: 'admin' | 'manager' | 'client';
 }
 
@@ -46,13 +46,13 @@ const UserManagement = () => {
   const [userForm, setUserForm] = useState<UserForm>({
     username: '',
     email: '',
-    associated_client_branches: [],
+    associated_dealer_areas: [],
     role: 'client'
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [clientBranchSearch, setClientBranchSearch] = useState('');
+  const [dealerAreaSearch, setClientBranchSearch] = useState('');
 
   // Auto-save form data to prevent data loss
   const { loadData, clearSavedData } = useAutoSave({
@@ -122,38 +122,38 @@ const UserManagement = () => {
     },
   });
 
-  // Fetch available clients and branches
+  // Fetch available clients and areas
   const { data: customers } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("client_name, branch")
+        .select("dealer_name, area")
         .eq("is_active", true)
-        .order("client_name", { ascending: true });
+        .order("dealer_name", { ascending: true });
       
       if (error) throw error;
       return data;
     },
   });
 
-  // Get unique client-branch combinations
-  const getUniqueClientBranches = () => {
+  // Get unique client-area combinations
+  const getUniqueDealerAreas = () => {
     if (!customers) return [];
     const combinations = customers
-      .filter(c => c.client_name && c.branch)
-      .map(c => `${c.client_name} - ${c.branch}`)
+      .filter(c => c.dealer_name && c.area)
+      .map(c => `${c.dealer_name} - ${c.area}`)
       .filter(Boolean);
     return [...new Set(combinations)].sort();
   };
 
-  // Get filtered client-branch combinations based on search
-  const getFilteredClientBranches = () => {
-    const allCombinations = getUniqueClientBranches();
-    if (!clientBranchSearch.trim()) return allCombinations;
+  // Get filtered client-area combinations based on search
+  const getFilteredDealerAreas = () => {
+    const allCombinations = getUniqueDealerAreas();
+    if (!dealerAreaSearch.trim()) return allCombinations;
     
     return allCombinations.filter(combination => 
-      combination.toLowerCase().includes(clientBranchSearch.toLowerCase())
+      combination.toLowerCase().includes(dealerAreaSearch.toLowerCase())
     );
   };
 
@@ -249,15 +249,15 @@ const UserManagement = () => {
       let associatedBranches: string[];
 
       if (formData.role === 'admin' || formData.role === 'manager') {
-        // Get all clients and branches for admin/manager roles
+        // Get all clients and areas for admin/manager roles
         try {
           const { data: allClients, error: clientsError } = await supabase
             .from('customers')
-            .select('client_name, branch')
-            .not('client_name', 'is', null)
-            .not('client_name', 'eq', '')
-            .not('branch', 'is', null)
-            .not('branch', 'eq', '');
+            .select('dealer_name, area')
+            .not('dealer_name', 'is', null)
+            .not('dealer_name', 'eq', '')
+            .not('area', 'is', null)
+            .not('area', 'eq', '');
 
           if (clientsError) {
             console.warn('Error fetching all clients for admin/manager:', clientsError);
@@ -265,8 +265,8 @@ const UserManagement = () => {
             associatedClients = [];
             associatedBranches = [];
           } else if (allClients && allClients.length > 0) {
-            associatedClients = [...new Set(allClients.map(c => c.client_name).filter(Boolean))];
-            associatedBranches = [...new Set(allClients.map(c => c.branch).filter(Boolean))];
+            associatedClients = [...new Set(allClients.map(c => c.dealer_name).filter(Boolean))];
+            associatedBranches = [...new Set(allClients.map(c => c.area).filter(Boolean))];
             console.log('Found clients for admin/manager:', associatedClients.length, 'clients');
           } else {
             console.log('No clients found in database - admin/manager will have empty access initially');
@@ -281,19 +281,19 @@ const UserManagement = () => {
           associatedBranches = [];
         }
       } else {
-        // For client roles, use the selected client-branch combinations
-        // Parse "Client - Branch" format safely
-        associatedClients = formData.associated_client_branches
+        // For client roles, use the selected client-area combinations
+        // Parse "Dealer - Area" format safely
+        associatedClients = formData.associated_dealer_areas
           .map(combo => {
             const parts = combo.split(' - ');
             return parts[0]?.trim() || '';
           })
           .filter(Boolean);
         
-        associatedBranches = formData.associated_client_branches
+        associatedBranches = formData.associated_dealer_areas
           .map(combo => {
             const parts = combo.split(' - ');
-            return parts[1]?.trim() || 'All Branches';
+            return parts[1]?.trim() || 'All Areas';
           })
           .filter(Boolean);
         
@@ -303,7 +303,7 @@ const UserManagement = () => {
           associatedClients.push('');
         }
         while (associatedBranches.length < maxLength) {
-          associatedBranches.push('All Branches');
+          associatedBranches.push('All Areas');
         }
       }
 
@@ -340,7 +340,7 @@ const UserManagement = () => {
       console.log('Role type:', typeof formData.role);
       console.log('Role value:', JSON.stringify(formData.role));
       console.log('Associated clients:', associatedClients);
-      console.log('Associated branches:', associatedBranches);
+      console.log('Associated areas:', associatedBranches);
 
       // Validate role before sending
       if (!formData.role || !['admin', 'manager', 'client'].includes(formData.role)) {
@@ -417,7 +417,7 @@ const UserManagement = () => {
       setUserForm({
         username: '',
         email: '',
-        associated_client_branches: [],
+        associated_dealer_areas: [],
         role: 'client'
       });
       clearSavedData(); // Clear auto-saved data after successful submission
@@ -620,49 +620,49 @@ const UserManagement = () => {
       username, 
       email, 
       role, 
-      associated_client_branches 
+      associated_dealer_areas 
     }: { 
       userId: string; 
       username: string; 
       email: string; 
       role: string; 
-      associated_client_branches: string[] 
+      associated_dealer_areas: string[] 
     }) => {
       // For admin/manager roles, automatically assign all clients
       let associatedClients: string[];
       let associatedBranches: string[];
 
       if (role === 'admin' || role === 'manager') {
-        // Get all clients and branches for admin/manager roles
+        // Get all clients and areas for admin/manager roles
         const { data: allClients } = await supabase
           .from('customers')
-          .select('client_name, branch')
-          .not('client_name', 'is', null)
-          .not('client_name', 'eq', '')
-          .not('branch', 'is', null)
-          .not('branch', 'eq', '');
+          .select('dealer_name, area')
+          .not('dealer_name', 'is', null)
+          .not('dealer_name', 'eq', '')
+          .not('area', 'is', null)
+          .not('area', 'eq', '');
 
         if (allClients) {
-          associatedClients = [...new Set(allClients.map(c => c.client_name).filter(Boolean))];
-          associatedBranches = [...new Set(allClients.map(c => c.branch).filter(Boolean))];
+          associatedClients = [...new Set(allClients.map(c => c.dealer_name).filter(Boolean))];
+          associatedBranches = [...new Set(allClients.map(c => c.area).filter(Boolean))];
         } else {
           associatedClients = [];
           associatedBranches = [];
         }
       } else {
-        // For client roles, use the selected client-branch combinations
-        // Parse "Client - Branch" format safely
-        associatedClients = associated_client_branches
+        // For client roles, use the selected client-area combinations
+        // Parse "Dealer - Area" format safely
+        associatedClients = associated_dealer_areas
           .map(combo => {
             const parts = combo.split(' - ');
             return parts[0]?.trim() || '';
           })
           .filter(Boolean);
         
-        associatedBranches = associated_client_branches
+        associatedBranches = associated_dealer_areas
           .map(combo => {
             const parts = combo.split(' - ');
-            return parts[1]?.trim() || 'All Branches';
+            return parts[1]?.trim() || 'All Areas';
           })
           .filter(Boolean);
         
@@ -672,7 +672,7 @@ const UserManagement = () => {
           associatedClients.push('');
         }
         while (associatedBranches.length < maxLength) {
-          associatedBranches.push('All Branches');
+          associatedBranches.push('All Areas');
         }
       }
 
@@ -682,8 +682,8 @@ const UserManagement = () => {
           username,
           email,
           role,
-          associated_clients: associatedClients,
-          associated_branches: associatedBranches,
+          associated_dealers: associatedClients,
+          associated_areas: associatedBranches,
           updated_at: new Date().toISOString()
         })
         .eq("user_id", userId);
@@ -745,7 +745,7 @@ const UserManagement = () => {
           username: userForm.username,
           email: userForm.email,
           role: userForm.role,
-          associated_client_branches: userForm.associated_client_branches
+          associated_dealer_areas: userForm.associated_dealer_areas
         });
         setEditingUserId(null);
         console.log('User updated successfully');
@@ -760,7 +760,7 @@ const UserManagement = () => {
       setUserForm({
         username: '',
         email: '',
-        associated_client_branches: [],
+        associated_dealer_areas: [],
         role: 'client'
       });
       clearSavedData(); // Clear auto-saved data after successful submission
@@ -777,27 +777,27 @@ const UserManagement = () => {
   const handleClientBranchToggle = (clientBranch: string) => {
     setUserForm(prev => ({
       ...prev,
-      associated_client_branches: prev.associated_client_branches.includes(clientBranch)
-        ? prev.associated_client_branches.filter(cb => cb !== clientBranch)
-        : [...prev.associated_client_branches, clientBranch]
+      associated_dealer_areas: prev.associated_dealer_areas.includes(clientBranch)
+        ? prev.associated_dealer_areas.filter(cb => cb !== clientBranch)
+        : [...prev.associated_dealer_areas, clientBranch]
     }));
   };
 
   const handleSelectAllFiltered = () => {
-    const filteredCombinations = getFilteredClientBranches();
-    const newSelections = [...new Set([...userForm.associated_client_branches, ...filteredCombinations])];
+    const filteredCombinations = getFilteredDealerAreas();
+    const newSelections = [...new Set([...userForm.associated_dealer_areas, ...filteredCombinations])];
     setUserForm(prev => ({
       ...prev,
-      associated_client_branches: newSelections
+      associated_dealer_areas: newSelections
     }));
   };
 
   const handleDeselectAllFiltered = () => {
-    const filteredCombinations = getFilteredClientBranches();
-    const newSelections = userForm.associated_client_branches.filter(cb => !filteredCombinations.includes(cb));
+    const filteredCombinations = getFilteredDealerAreas();
+    const newSelections = userForm.associated_dealer_areas.filter(cb => !filteredCombinations.includes(cb));
     setUserForm(prev => ({
       ...prev,
-      associated_client_branches: newSelections
+      associated_dealer_areas: newSelections
     }));
   };
 
@@ -809,10 +809,10 @@ const UserManagement = () => {
       Username: record.username,
       Email: record.email,
       Role: record.role,
-      'Client-Branch Access': record.associated_clients && record.associated_clients.length > 0 ? 
-        record.associated_clients.map((client, idx) => {
-          const branch = record.associated_branches && record.associated_branches[idx] ? record.associated_branches[idx] : 'All Branches';
-          return `${client} - ${branch}`;
+      'Dealer-Area Access': record.associated_dealers && record.associated_dealers.length > 0 ? 
+        record.associated_dealers.map((client, idx) => {
+          const area = record.associated_areas && record.associated_areas[idx] ? record.associated_areas[idx] : 'All Areas';
+          return `${client} - ${area}`;
         }).join('; ') : 'No access assigned',
       Status: record.status,
       'Created On': record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A',
@@ -851,11 +851,11 @@ const UserManagement = () => {
     // For admin/manager roles, show "All Clients" if they have access to all
     if (user.role === 'admin' || user.role === 'manager') {
       // Check if they have all available clients (or a large number indicating all access)
-      const allClientBranches = getUniqueClientBranches();
-      const hasAllAccess = allClientBranches.length > 0 && 
-        (user.associated_clients?.length || 0) >= allClientBranches.length;
+      const allDealerAreas = getUniqueDealerAreas();
+      const hasAllAccess = allDealerAreas.length > 0 && 
+        (user.associated_dealers?.length || 0) >= allDealerAreas.length;
       
-      if (hasAllAccess || (user.associated_clients?.length || 0) > 5) {
+      if (hasAllAccess || (user.associated_dealers?.length || 0) > 5) {
         return (
           <Badge variant="secondary" className="text-xs px-1 py-0 bg-blue-100 text-blue-800">
             All Clients & Branches
@@ -864,10 +864,10 @@ const UserManagement = () => {
       }
     }
     
-    const clientBranches = user.associated_clients && user.associated_clients.length > 0 ? 
-      user.associated_clients.map((client, idx) => {
-        const branch = user.associated_branches && user.associated_branches[idx] ? user.associated_branches[idx] : 'All';
-        return `${client}-${branch}`;
+    const clientBranches = user.associated_dealers && user.associated_dealers.length > 0 ? 
+      user.associated_dealers.map((client, idx) => {
+        const area = user.associated_areas && user.associated_areas[idx] ? user.associated_areas[idx] : 'All';
+        return `${client}-${area}`;
       }) : [];
 
     if (clientBranches.length === 0) {
@@ -950,7 +950,7 @@ const UserManagement = () => {
             <span>{editingUserId ? 'Edit User' : 'Create New User'}</span>
           </CardTitle>
           <CardDescription>
-            {editingUserId ? 'Update user account and access permissions' : 'Create a new user account with specific client and branch access. Login credentials will be sent via email.'}
+            {editingUserId ? 'Update user account and access permissions' : 'Create a new user account with specific client and area access. Login credentials will be sent via email.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1019,9 +1019,9 @@ const UserManagement = () => {
                     setUserForm(prev => {
                       const updated = { ...prev, role: value };
                       console.log('Updated userForm with role:', updated);
-                      // Clear client-branch selections when switching to admin/manager
+                      // Clear client-area selections when switching to admin/manager
                       if (value === 'admin' || value === 'manager') {
-                        updated.associated_client_branches = [];
+                        updated.associated_dealer_areas = [];
                       }
                       return updated;
                     });
@@ -1062,7 +1062,7 @@ const UserManagement = () => {
                       Automatic Access Assignment
                     </h4>
                     <p className="text-sm text-blue-700 mt-1">
-                      {userForm.role === 'admin' ? 'Admin' : 'Manager'} users automatically get access to ALL clients and branches. 
+                      {userForm.role === 'admin' ? 'Admin' : 'Manager'} users automatically get access to ALL clients and areas. 
                       This access will be updated automatically when new clients are added to the system.
                     </p>
                   </div>
@@ -1073,11 +1073,11 @@ const UserManagement = () => {
             <div className="space-y-4">
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Label className="text-base font-medium">Client-Branch Access *</Label>
+                  <Label className="text-base font-medium">Dealer-Area Access *</Label>
                   <span className="text-sm text-gray-500">
                     {userForm.role === 'admin' || userForm.role === 'manager' 
-                      ? 'Admin/Manager users automatically get access to all clients and branches'
-                      : 'Select specific client-branch combinations this user can access'
+                      ? 'Admin/Manager users automatically get access to all clients and areas'
+                      : 'Select specific client-area combinations this user can access'
                     }
                   </span>
                 </div>
@@ -1088,13 +1088,13 @@ const UserManagement = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
                       type="text"
-                      placeholder="Search client-branch combinations..."
-                      value={clientBranchSearch}
+                      placeholder="Search client-area combinations..."
+                      value={dealerAreaSearch}
                       onChange={(e) => setClientBranchSearch(e.target.value)}
                       className="pl-10"
                     />
                   </div>
-                  {clientBranchSearch && (
+                  {dealerAreaSearch && (
                     <Button
                       type="button"
                       variant="outline"
@@ -1108,7 +1108,7 @@ const UserManagement = () => {
                 </div>
 
                 {/* Select All / Deselect All buttons */}
-                {getFilteredClientBranches().length > 0 && (
+                {getFilteredDealerAreas().length > 0 && (
                   <div className="mb-3 flex gap-2">
                     <Button
                       type="button"
@@ -1130,30 +1130,30 @@ const UserManagement = () => {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto border rounded-md p-3">
-                  {getFilteredClientBranches().length > 0 ? (
-                    getFilteredClientBranches().map((clientBranch) => (
+                  {getFilteredDealerAreas().length > 0 ? (
+                    getFilteredDealerAreas().map((clientBranch) => (
                       <div key={clientBranch} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`client-branch-${clientBranch}`}
-                          checked={userForm.associated_client_branches.includes(clientBranch)}
+                          id={`client-area-${clientBranch}`}
+                          checked={userForm.associated_dealer_areas.includes(clientBranch)}
                           onCheckedChange={() => handleClientBranchToggle(clientBranch)}
                         />
-                        <Label htmlFor={`client-branch-${clientBranch}`} className="text-sm">
+                        <Label htmlFor={`client-area-${clientBranch}`} className="text-sm">
                           {clientBranch}
                         </Label>
                       </div>
                     ))
                   ) : (
                     <div className="col-span-2 text-center text-gray-500 py-4">
-                      {clientBranchSearch ? 'No matching client-branch combinations found' : 'No client-branch combinations available'}
+                      {dealerAreaSearch ? 'No matching client-area combinations found' : 'No client-area combinations available'}
                     </div>
                   )}
                 </div>
                 
                 {/* Show selected count */}
-                {userForm.associated_client_branches.length > 0 && (
+                {userForm.associated_dealer_areas.length > 0 && (
                   <div className="mt-2 text-sm text-blue-600">
-                    {userForm.associated_client_branches.length} client-branch combination(s) selected
+                    {userForm.associated_dealer_areas.length} client-area combination(s) selected
                   </div>
                 )}
               </div>
@@ -1189,7 +1189,7 @@ const UserManagement = () => {
                     setUserForm({
                       username: '',
                       email: '',
-                      associated_client_branches: [],
+                      associated_dealer_areas: [],
                       role: 'client'
                     });
                   }}
@@ -1338,11 +1338,11 @@ const UserManagement = () => {
                     </TableHead>
                     <TableHead 
                       className="font-semibold text-blue-800 text-xs uppercase tracking-widest py-3 px-3 text-left border-r border-blue-200/50 w-64 cursor-pointer hover:bg-blue-100 transition-colors"
-                      onClick={() => handleSort('associated_clients')}
+                      onClick={() => handleSort('associated_dealers')}
                     >
                       <div className="flex items-center space-x-1">
-                        <span>Client-Branch Access</span>
-                        {sortField === 'associated_clients' && (
+                        <span>Dealer-Area Access</span>
+                        {sortField === 'associated_dealers' && (
                           <span className="text-blue-600">
                             {sortDirection === 'asc' ? '↑' : '↓'}
                           </span>
@@ -1460,32 +1460,32 @@ const UserManagement = () => {
                             variant="outline"
                             onClick={() => {
                               // Set form data for editing
-                              // For admin/manager roles, get all available client-branch combinations
+                              // For admin/manager roles, get all available client-area combinations
                               // For client roles, use the user's assigned combinations
                               let clientBranches: string[] = [];
                               
                               if (user.role === 'admin' || user.role === 'manager') {
                                 // For admin/manager, get all available combinations
-                                clientBranches = getUniqueClientBranches();
+                                clientBranches = getUniqueDealerAreas();
                               } else {
                                 // For client role, map the arrays to combinations
                                 // Handle cases where arrays might be different lengths
                                 const maxLength = Math.max(
-                                  user.associated_clients?.length || 0,
-                                  user.associated_branches?.length || 0
+                                  user.associated_dealers?.length || 0,
+                                  user.associated_areas?.length || 0
                                 );
                                 
                                 clientBranches = Array.from({ length: maxLength }, (_, idx) => {
-                                  const client = user.associated_clients?.[idx] || '';
-                                  const branch = user.associated_branches?.[idx] || 'All Branches';
-                                  return `${client} - ${branch}`;
+                                  const client = user.associated_dealers?.[idx] || '';
+                                  const area = user.associated_areas?.[idx] || 'All Areas';
+                                  return `${client} - ${area}`;
                                 }).filter(cb => cb.trim() !== ' - ' && cb.trim() !== '');
                               }
                               
                               setUserForm({
                                 username: user.username,
                                 email: user.email,
-                                associated_client_branches: clientBranches,
+                                associated_dealer_areas: clientBranches,
                                 role: user.role
                               });
                               setEditingUserId(user.user_id);

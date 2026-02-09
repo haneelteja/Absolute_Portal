@@ -143,7 +143,7 @@ export const SEARCH_CONFIGS: Record<SearchModule, SearchConfig> = {
     module: 'orders',
     fields: [
       { name: 'client', label: 'Client', type: 'text', searchable: true, filterable: true },
-      { name: 'branch', label: 'Branch', type: 'text', searchable: true, filterable: true },
+      { name: 'area', label: 'Area', type: 'text', searchable: true, filterable: true },
       { name: 'sku', label: 'SKU', type: 'text', searchable: true, filterable: true },
       { name: 'status', label: 'Status', type: 'select', searchable: false, filterable: true,
         options: [{ label: 'Pending', value: 'pending' }, { label: 'Dispatched', value: 'dispatched' }] },
@@ -156,14 +156,14 @@ export const SEARCH_CONFIGS: Record<SearchModule, SearchConfig> = {
   customers: {
     module: 'customers',
     fields: [
-      { name: 'client_name', label: 'Client Name', type: 'text', searchable: true, filterable: true },
-      { name: 'branch', label: 'Branch', type: 'text', searchable: true, filterable: true },
+      { name: 'dealer_name', label: 'Dealer Name', type: 'text', searchable: true, filterable: true },
+      { name: 'area', label: 'Area', type: 'text', searchable: true, filterable: true },
       { name: 'contact_person', label: 'Contact Person', type: 'text', searchable: true, filterable: true },
       { name: 'email', label: 'Email', type: 'text', searchable: true, filterable: true },
       { name: 'phone', label: 'Phone', type: 'text', searchable: true, filterable: true },
       { name: 'is_active', label: 'Active', type: 'boolean', searchable: false, filterable: true },
     ],
-    defaultSort: { field: 'client_name', order: 'asc' },
+    defaultSort: { field: 'dealer_name', order: 'asc' },
     enableFullTextSearch: true,
   },
   user_management: {

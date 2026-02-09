@@ -14,7 +14,7 @@ import { Search, Filter, Download, Eye } from 'lucide-react';
 interface ReceivableTransaction {
   id: string;
   customer_name: string;
-  branch: string;
+  area: string;
   sku: string;
   quantity: number;
   total_amount: number;
@@ -33,8 +33,8 @@ const Receivables = () => {
   // Transform sales transactions into receivables
   const receivables: ReceivableTransaction[] = salesTransactions?.map(transaction => ({
     id: transaction.id,
-    customer_name: transaction.customers?.client_name || 'Unknown Customer',
-    branch: transaction.customers?.branch || 'Unknown Branch',
+    customer_name: transaction.customers?.dealer_name || 'Unknown Customer',
+    area: transaction.customers?.area || 'Unknown Branch',
     sku: transaction.sku,
     quantity: transaction.quantity,
     total_amount: transaction.total_amount,
@@ -46,7 +46,7 @@ const Receivables = () => {
   const filteredReceivables = useMemo(() => {
     return receivables.filter(receivable => {
       const matchesSearch = receivable.customer_name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-                           receivable.branch.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                           receivable.area.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
                            receivable.sku.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || receivable.status === statusFilter;
@@ -229,7 +229,7 @@ const Receivables = () => {
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
-                  placeholder="Search by customer, branch, or SKU..."
+                  placeholder="Search by customer, area, or SKU..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -293,7 +293,7 @@ const Receivables = () => {
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
                       <p className="font-medium">{receivable.customer_name}</p>
-                      <p className="text-sm text-muted-foreground">{receivable.branch}</p>
+                      <p className="text-sm text-muted-foreground">{receivable.area}</p>
                     </div>
                     <div>
                       <p className="font-medium">{receivable.sku}</p>
