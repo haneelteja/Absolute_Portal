@@ -176,7 +176,7 @@ export const useUserManagement = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_management")
-        .select("id, user_id, username, email, associated_clients, associated_areaes, status, role, created_by, last_login, created_at, updated_at")
+        .select("id, user_id, username, email, associated_dealers, associated_areas, status, role, created_by, last_login, created_at, updated_at")
         .order("created_at", { ascending: false });
       
       if (error) {
