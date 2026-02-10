@@ -24,6 +24,7 @@ import { BackupLogsDialog } from './BackupLogsDialog';
 import { EditBackupFolderDialog } from './EditBackupFolderDialog';
 import { EditBackupTimeDialog } from './EditBackupTimeDialog';
 import { EditNotificationEmailDialog } from './EditNotificationEmailDialog';
+import { EditSkusAvailableDialog } from './EditSkusAvailableDialog';
 import { triggerManualBackup, getBackupConfig, type BackupConfig } from '@/services/backupService';
 import { Database, Play } from 'lucide-react';
 
@@ -35,6 +36,7 @@ const ApplicationConfigurationTab: React.FC = () => {
   const [isBackupFolderDialogOpen, setIsBackupFolderDialogOpen] = useState(false);
   const [isBackupTimeDialogOpen, setIsBackupTimeDialogOpen] = useState(false);
   const [isNotificationEmailDialogOpen, setIsNotificationEmailDialogOpen] = useState(false);
+  const [isSkusAvailableDialogOpen, setIsSkusAvailableDialogOpen] = useState(false);
   const [isRunningBackup, setIsRunningBackup] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -335,6 +337,29 @@ const ApplicationConfigurationTab: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ))}
+                  <TableRow
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setIsSkusAvailableDialogOpen(true)}
+                  >
+                    <TableCell className="text-center font-medium">
+                      {filteredConfigurations.length + 1}
+                    </TableCell>
+                    <TableCell>SKU&apos;s available in the plant</TableCell>
+                    <TableCell className="text-center align-middle">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsSkusAvailableDialogOpen(true);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
@@ -449,6 +474,12 @@ const ApplicationConfigurationTab: React.FC = () => {
           onSuccess={handleBackupConfigRefresh}
         />
       )}
+
+      {/* SKU's available in the plant Dialog */}
+      <EditSkusAvailableDialog
+        open={isSkusAvailableDialogOpen}
+        onOpenChange={setIsSkusAvailableDialogOpen}
+      />
     </div>
   );
 };
