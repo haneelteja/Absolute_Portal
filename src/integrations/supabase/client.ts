@@ -17,11 +17,14 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   );
 }
 
-// Clear cached auth from any previous Supabase project to avoid mixing sessions
+// Clear cached auth from OLD Supabase projects only (never the current project).
+// This prevents mixing sessions when switching projects, while preserving session on normal refresh.
 if (typeof window !== 'undefined') {
-  localStorage.removeItem('supabase.auth.token');
-  localStorage.removeItem('supabase.auth.refresh_token');
-  ['yltbknkksjgtexluhtau', 'qkvmdrtfhpcvwvqjuyuu', 'ksfkgzlwgvwijjkaoaqq'].forEach((ref) => {
+  const currentRef = SUPABASE_URL.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ?? '';
+  const oldProjectRefs = ['yltbknkksjgtexluhtau', 'qkvmdrtfhpcvwvqjuyuu', 'ksfkgzlwgvwijjkaoaqq'].filter(
+    (ref) => ref !== currentRef
+  );
+  oldProjectRefs.forEach((ref) => {
     localStorage.removeItem(`sb-${ref}-auth-token`);
     localStorage.removeItem(`sb-${ref}-auth-refresh-token`);
   });
