@@ -9,7 +9,7 @@ import { Shield, Loader2 } from "lucide-react";
 // Lazy load route components for code splitting
 const Dashboard = lazy(() => import("@/components/dashboard/Dashboard"));
 const SalesEntry = lazy(() => import("@/components/sales/SalesEntry"));
-const FactoryPayables = lazy(() => import("@/components/factory/FactoryPayables"));
+const Production = lazy(() => import("@/components/production/Production"));
 const TransportExpenses = lazy(() => import("@/components/transport/TransportExpenses"));
 const Labels = lazy(() => import("@/components/labels/Labels"));
 const ConfigurationManagement = lazy(() => import("@/components/configurations/ConfigurationManagement"));
@@ -52,10 +52,10 @@ const Index = () => {
             <SalesEntry />
           </Suspense>
         );
-      case "factory":
+      case "production":
         return (
           <Suspense fallback={<RouteLoader />}>
-            <FactoryPayables />
+            <Production />
           </Suspense>
         );
       case "transport":

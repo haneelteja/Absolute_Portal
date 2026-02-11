@@ -52,8 +52,7 @@ const ConfigurationManagement = () => {
     sku: null,
     pricing_date: null,
     price_per_case: null,
-    price_per_bottle: null,
-    created_at: null
+    price_per_bottle: null
   });
 
   const { toast } = useToast();
@@ -364,10 +363,6 @@ const ConfigurationManagement = () => {
         valueA = a.price_per_bottle || 0;
         valueB = b.price_per_bottle || 0;
         break;
-      case 'created_at':
-        valueA = new Date(a.created_at).getTime();
-        valueB = new Date(b.created_at).getTime();
-        break;
       default:
         return 0;
     }
@@ -418,8 +413,7 @@ const ConfigurationManagement = () => {
       sku: null,
       pricing_date: null,
       price_per_case: null,
-      price_per_bottle: null,
-      created_at: null
+      price_per_bottle: null
     });
   };
 
@@ -431,8 +425,7 @@ const ConfigurationManagement = () => {
       'SKU': customer.sku || '',
       'Pricing Date': customer.pricing_date ? new Date(customer.pricing_date).toLocaleDateString() : '',
       'Price per Case': customer.price_per_case ? `₹${customer.price_per_case}` : '',
-      'Price per Bottle': customer.price_per_bottle ? `₹${customer.price_per_bottle}` : '',
-      'Created': new Date(customer.created_at).toLocaleDateString()
+      'Price per Bottle': customer.price_per_bottle ? `₹${customer.price_per_bottle}` : ''
     })) || [];
 
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -623,19 +616,6 @@ const ConfigurationManagement = () => {
                           Status
                         </div>
                       </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          Created
-                        <ColumnFilter
-                          columnKey="created_at"
-                          columnName="Created"
-                          filterValue=""
-                          onFilterChange={() => {}}
-                          onSortChange={(direction) => handleColumnSortChange('created_at', direction)}
-                          dataType="date"
-                        />
-                      </div>
-                      </TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -658,7 +638,6 @@ const ConfigurationManagement = () => {
                             {customer.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
-                        <TableCell>{new Date(customer.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -695,7 +674,7 @@ const ConfigurationManagement = () => {
                     ))
                   ) : (
                     <TableRow key="no-customers">
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         {searchTerm || Object.values(columnFilters).some(filter => filter !== '') 
                           ? "No customers found matching your filters" 
                           : "No customers found"}

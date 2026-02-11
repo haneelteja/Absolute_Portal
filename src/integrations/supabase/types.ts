@@ -136,6 +136,30 @@ export type Database = {
           }
         ]
       }
+      production: {
+        Row: {
+          id: string
+          production_date: string
+          sku: string
+          no_of_cases: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          production_date: string
+          sku: string
+          no_of_cases: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          production_date?: string
+          sku?: string
+          no_of_cases?: number
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       factory_pricing: {
         Row: {
           bottles_per_case: number
