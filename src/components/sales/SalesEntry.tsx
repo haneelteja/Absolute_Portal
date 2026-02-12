@@ -585,12 +585,11 @@ const SalesEntry = () => {
         
         const transportData = {
           amount: 0,
-          description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Client-Branch Transport',
+          description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
           expense_date: saleForm.transaction_date,
           expense_group: "Client Sale Transport",
           client_id: saleForm.customer_id,
-          dealer_name: selectedCustomer?.dealer_name || 'N/A',
-          area: selectedCustomer?.area || 'N/A'
+          area: selectedCustomer?.area || null
         };
         
         // Transport transaction data prepared
@@ -1361,7 +1360,7 @@ const SalesEntry = () => {
       const customer = customers?.find(c => c.id === transaction.customer_id);
       return {
         'Date': new Date(transaction.transaction_date).toLocaleDateString(),
-        'Customer': transaction.customers?.dealer_name || 'N/A',
+        'Dealer': transaction.customers?.dealer_name || 'N/A',
         'Branch': transaction.customers?.area || 'N/A',
         'Type': transaction.transaction_type || '',
         'SKU': transaction.sku || '',
@@ -1566,12 +1565,11 @@ const SalesEntry = () => {
       
       const transportData = {
         amount: 0,
-        description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Client-Branch Transport',
+        description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
         expense_date: data.transaction_date,
         expense_group: "Client Sale Transport",
         client_id: data.customer_id,
-        dealer_name: selectedCustomer?.dealer_name || 'N/A',
-        area: selectedCustomer?.area || 'N/A'
+        area: selectedCustomer?.area || null
       };
       
       // Transport transaction data prepared
@@ -1828,10 +1826,9 @@ const SalesEntry = () => {
           .from("transport_expenses")
           .update({
             expense_date: data.transaction_date,
-            description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Client-Branch Transport',
+            description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
             client_id: data.customer_id,
-            dealer_name: selectedCustomer?.dealer_name || 'N/A',
-            area: selectedCustomer?.area || 'N/A'
+            area: selectedCustomer?.area || null
           })
           .eq("expense_group", "Client Sale Transport")
           .eq("client_id", originalCustomerId)
@@ -2024,7 +2021,7 @@ const SalesEntry = () => {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sale">Record Sale</TabsTrigger>
-          <TabsTrigger value="payment">Record Customer Payment</TabsTrigger>
+          <TabsTrigger value="payment">Record Dealer Payment</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sale" className="space-y-6">
@@ -2063,14 +2060,14 @@ const SalesEntry = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="sale-customer">Customer *</Label>
+                    <Label htmlFor="sale-customer">Dealer *</Label>
                     <Select 
-                      value={saleForm.customer_id ? (customers?.find(c => c.id === saleForm.customer_id)?.dealer_name || undefined) : undefined}
+                      value={saleForm.customer_id ? (customers?.find(c => c.id === saleForm.customer_id)?.dealer_name ?? "") : ""}
                       onValueChange={handleCustomerChange}
                       disabled={customersLoading}
                     >
                       <SelectTrigger id="sale-customer">
-                        <SelectValue placeholder={customersLoading ? "Loading customers..." : "Select customer"} />
+                        <SelectValue placeholder={customersLoading ? "Loading dealers..." : "Select dealer"} />
                       </SelectTrigger>
                       <SelectContent>
                         {customersLoading ? (
@@ -2087,14 +2084,14 @@ const SalesEntry = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="sale-area">Branch *</Label>
+                    <Label htmlFor="sale-area">Area *</Label>
                     <Select 
-                      value={saleForm.area || undefined}
+                      value={saleForm.area ?? ""}
                       onValueChange={(value) => setSaleForm({...saleForm, area: value})}
                       disabled={!saleForm.customer_id}
                     >
                       <SelectTrigger id="sale-area">
-                        <SelectValue placeholder={saleForm.customer_id ? "Select area" : "Select customer first"} />
+                        <SelectValue placeholder={saleForm.customer_id ? "Select area" : "Select dealer first"} />
                       </SelectTrigger>
                       <SelectContent>
                         {getAvailableAreas().map((area) => (
@@ -2213,7 +2210,7 @@ const SalesEntry = () => {
                                 <div className="space-y-2">
                                   <Label htmlFor="item-sku">SKU *</Label>
                                   <Select 
-                                    value={currentItem.sku} 
+                                    value={currentItem.sku ?? ""} 
                                     onValueChange={handleCurrentItemSKUChange}
                                   >
                                     <SelectTrigger id="item-sku">
@@ -2389,25 +2386,25 @@ const SalesEntry = () => {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="mb-0">Record Customer Payment</CardTitle>
-                <CardDescription className="mb-0">Record a payment received from customer</CardDescription>
+                <CardTitle className="mb-0">Record Dealer Payment</CardTitle>
+                <CardDescription className="mb-0">Record a payment received from dealer</CardDescription>
               </div>
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                {/* First Row: Customer, Branch, Amount */}
+                {/* First Row: Dealer, Area, Amount */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="payment-customer">Customer *</Label>
+                    <Label htmlFor="payment-customer">Dealer *</Label>
                     <Select 
-                      value={paymentForm.customer_id ? (customers?.find(c => c.id === paymentForm.customer_id)?.dealer_name || undefined) : undefined}
+                      value={paymentForm.customer_id ? (customers?.find(c => c.id === paymentForm.customer_id)?.dealer_name ?? "") : ""}
                       onValueChange={(customerName) => {
                         const selectedCustomer = customers?.find(c => c.dealer_name === customerName);
                         setPaymentForm({...paymentForm, customer_id: selectedCustomer?.id || "", area: ""});
                       }}
                     >
                       <SelectTrigger id="payment-customer">
-                        <SelectValue placeholder="Select customer" />
+                        <SelectValue placeholder="Select dealer" />
                       </SelectTrigger>
                       <SelectContent>
                         {getUniqueCustomers.map((customerName) => (
@@ -2420,14 +2417,14 @@ const SalesEntry = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="payment-area">Branch *</Label>
+                    <Label htmlFor="payment-area">Area *</Label>
                     <Select 
-                      value={paymentForm.area || undefined}
+                      value={paymentForm.area ?? ""}
                       onValueChange={(area) => setPaymentForm({...paymentForm, area})}
                       disabled={!paymentForm.customer_id}
                     >
                       <SelectTrigger id="payment-area">
-                        <SelectValue placeholder={paymentForm.customer_id ? "Select area" : "Select customer first"} />
+                        <SelectValue placeholder={paymentForm.customer_id ? "Select area" : "Select dealer first"} />
                       </SelectTrigger>
                       <SelectContent>
                         {paymentForm.customer_id && getBranchesForCustomer(paymentForm.customer_id).map((area) => (
@@ -2558,10 +2555,10 @@ const SalesEntry = () => {
                 </TableHead>
                 <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
                   <div className="flex items-center justify-between">
-                    <span>Customer</span>
+                    <span>Dealer</span>
                     <ColumnFilter
                       columnKey="customer"
-                      columnName="Customer"
+                      columnName="Dealer"
                       filterValue={columnFilters.customer}
                       onFilterChange={(value) => handleColumnFilterChange('customer', value)}
                       onClearFilter={() => handleClearColumnFilter('customer')}
@@ -2642,7 +2639,7 @@ const SalesEntry = () => {
                   Invoice #
                 </TableHead>
                 <TableHead className="text-right font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 border-r border-emerald-200/50">
-                  Customer Outstanding
+                  Dealer Outstanding
                 </TableHead>
                 <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
                   Description

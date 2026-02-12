@@ -46,7 +46,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { id: "dashboard", title: "Dashboard", icon: BarChart3 },
   { id: "order-management", title: "Orders Management", icon: ShoppingCart },
-  { id: "client-transactions", title: "Client Transactions", icon: DollarSign },
+  { id: "client-transactions", title: "Sale Transactions", icon: DollarSign },
   { id: "production", title: "Production", icon: Factory },
   { id: "transport", title: "Transport", icon: Truck },
   { id: "labels", title: "Labels", icon: Tag },

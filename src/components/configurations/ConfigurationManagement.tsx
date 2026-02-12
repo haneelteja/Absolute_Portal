@@ -693,11 +693,12 @@ const ConfigurationManagement = () => {
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ["customers-management"] })}
       />
 
-      {/* Edit Customer Dialog */}
+      {/* Edit Dealer Dialog */}
       <Dialog open={isEditCustomerOpen} onOpenChange={setIsEditCustomerOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" aria-describedby="edit-dealer-desc">
           <DialogHeader>
-            <DialogTitle>Edit Customer</DialogTitle>
+            <DialogTitle>Edit Dealer</DialogTitle>
+            <DialogDescription id="edit-dealer-desc">Update dealer details and pricing.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

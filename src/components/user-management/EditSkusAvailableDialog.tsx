@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -106,6 +107,8 @@ export const EditSkusAvailableDialog: React.FC<EditSkusAvailableDialogProps> = (
     mutationFn: async (rowsToSave: SkuRow[]) => {
       const toInsert: { sku: string; bottles_per_case: number }[] = [];
       const toUpdate: { id: string; sku: string; bottles_per_case: number }[] = [];
+      const keptIds = new Set(rowsToSave.filter((r) => r.id && !r.isNew).map((r) => r.id as string));
+      const toDelete = (initialRows ?? []).filter((r) => r.id && !keptIds.has(r.id)).map((r) => r.id as string);
 
       for (const row of rowsToSave) {
         const sku = row.sku.trim();
@@ -120,6 +123,11 @@ export const EditSkusAvailableDialog: React.FC<EditSkusAvailableDialogProps> = (
       }
 
       const errors: string[] = [];
+
+      for (const id of toDelete) {
+        const { error } = await supabase.from('sku_configurations').delete().eq('id', id);
+        if (error) errors.push(`Delete: ${error.message}`);
+      }
 
       for (const row of toUpdate) {
         const { error } = await supabase
@@ -168,9 +176,10 @@ export const EditSkusAvailableDialog: React.FC<EditSkusAvailableDialogProps> = (
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col" aria-describedby="skus-plant-desc">
         <DialogHeader>
           <DialogTitle>SKU&apos;s available in the plant</DialogTitle>
+          <DialogDescription id="skus-plant-desc">Add, edit, or remove SKUs. Deleted rows will be removed when you save.</DialogDescription>
         </DialogHeader>
 
         {isLoadingRows ? (

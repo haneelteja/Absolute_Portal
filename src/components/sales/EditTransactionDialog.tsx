@@ -63,12 +63,13 @@ export const EditTransactionDialog = memo(({
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent aria-describedby="edit-transaction-desc">
         <DialogHeader>
           <DialogTitle>Edit Transaction</DialogTitle>
+          <DialogDescription id="edit-transaction-desc">Update sale transaction details.</DialogDescription>
         </DialogHeader>
         <form onSubmit={onEditSubmit} className="space-y-6">
-          {/* First Row: Date, Customer, Area */}
+          {/* First Row: Date, Dealer, Area */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-date">Date *</Label>
@@ -81,13 +82,13 @@ export const EditTransactionDialog = memo(({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="edit-customer">Customer</Label>
+              <Label htmlFor="edit-customer">Dealer</Label>
               <Select 
-                value={customers?.find(c => c.id === editForm.customer_id)?.dealer_name || ""} 
+                value={customers?.find(c => c.id === editForm.customer_id)?.dealer_name ?? ""} 
                 onValueChange={onCustomerChange}
               >
                 <SelectTrigger id="edit-customer">
-                  <SelectValue placeholder="Select customer" />
+                  <SelectValue placeholder="Select dealer" />
                 </SelectTrigger>
                 <SelectContent>
                   {getUniqueCustomers.map((customerName) => (
@@ -102,12 +103,12 @@ export const EditTransactionDialog = memo(({
             <div className="space-y-2">
               <Label htmlFor="edit-area">Area</Label>
               <Select 
-                value={editForm.area} 
+                value={editForm.area ?? ""} 
                 onValueChange={(value) => onFormChange({ area: value })}
                 disabled={!editForm.customer_id}
               >
                 <SelectTrigger id="edit-area">
-                  <SelectValue placeholder={editForm.customer_id ? "Select area" : "Select customer first"} />
+                  <SelectValue placeholder={editForm.customer_id ? "Select area" : "Select dealer first"} />
                 </SelectTrigger>
                 <SelectContent>
                   {getAvailableAreasForEdit().map((area) => (
