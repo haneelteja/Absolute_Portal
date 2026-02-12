@@ -1686,13 +1686,27 @@ const SalesEntry = () => {
           throw new Error('Invalid amount: must be a positive number');
         }
 
+        // Resolve customer_id for dealer+area (customers can have multiple rows per dealer+area+sku)
+        const dealerCustomer = customers?.find(c => c.id === data.customer_id);
+        const paymentCustomerId = (dealerCustomer && data.area)
+          ? customers?.find(c => c.dealer_name === dealerCustomer.dealer_name && c.area === data.area)?.id ?? data.customer_id
+          : data.customer_id;
+
+        // Build payload with only columns that exist in sales_transactions (area may not exist in older DBs)
+        const insertPayload = {
+          customer_id: paymentCustomerId,
+          transaction_type: "payment",
+          amount,
+          total_amount: amount,
+          transaction_date: data.transaction_date || new Date().toISOString().split('T')[0],
+          description: data.description || null,
+          sku: null,
+          quantity: null,
+        };
+
         const { data: paymentData, error } = await supabase
           .from("sales_transactions")
-          .insert({
-            ...data,
-            transaction_type: "payment",
-            amount: amount
-          })
+          .insert(insertPayload)
           .select()
           .single();
 
