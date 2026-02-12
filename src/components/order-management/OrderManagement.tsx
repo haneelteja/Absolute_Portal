@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Send } from "lucide-react";
+import { Trash2, Send, Plus } from "lucide-react";
 import { getWhatsAppConfig, sendWhatsAppMessage } from "@/services/whatsappService";
 import { logger } from "@/lib/logger";
 import * as XLSX from "xlsx";
@@ -49,10 +49,11 @@ const OrderManagement: React.FC = () => {
     expense_date: new Date().toISOString().split("T")[0],
     client_id: "",
     area: "",
-    sku: "",
-    number_of_cases: "",
     tentative_delivery_date: "",
   });
+  const [skuRows, setSkuRows] = useState<{ sku: string; number_of_cases: string }[]>([
+    { sku: "", number_of_cases: "" },
+  ]);
 
   // Filter and sort states for Current Orders table
   const [ordersSearchTerm, setOrdersSearchTerm] = useState("");
@@ -108,15 +109,33 @@ const OrderManagement: React.FC = () => {
       try {
         const { data, error } = await supabase.rpc("get_orders_sorted");
         if (error) {
+          // Fallback: direct select (handles schema variations)
+          const selectCols = "id, client, sku, status, created_at, updated_at";
+          const areaCol = "area";
+          const casesCol = "number_of_cases";
+          const dateCol = "tentative_delivery_date";
           const { data: fallbackData, error: fallbackError } = await supabase
             .from("orders")
             .select(
-              `id, client, area, sku, number_of_cases, tentative_delivery_date, status, created_at, updated_at`
+              `${selectCols}, ${areaCol}, ${casesCol}, ${dateCol}`
             )
             .order("status", { ascending: true })
-            .order("tentative_delivery_date", { ascending: false });
+            .order(dateCol, { ascending: false });
 
-          if (fallbackError) throw fallbackError;
+          if (fallbackError) {
+            // Try with branch/quantity if area/number_of_cases don't exist
+            const { data: altData, error: altError } = await supabase
+              .from("orders")
+              .select("id, client, branch, sku, quantity, tentative_delivery_date, status, created_at, updated_at")
+              .order("status", { ascending: true })
+              .order("tentative_delivery_date", { ascending: false });
+            if (altError) throw altError;
+            return (altData || []).map((o: any) => ({
+              ...o,
+              area: o.area ?? o.branch,
+              number_of_cases: o.number_of_cases ?? o.quantity,
+            }));
+          }
           return fallbackData || [];
         }
         return data || [];
@@ -142,22 +161,22 @@ const OrderManagement: React.FC = () => {
     },
   });
 
-  // Create order mutation
+  // Create order mutation (accepts array of orders for multiple SKUs)
   const createOrderMutation = useMutation({
-    mutationFn: async (newOrder: any) => {
+    mutationFn: async (newOrders: any[]) => {
       const { data, error } = await supabase
         .from("orders")
-        .insert([newOrder])
-        .select()
-        .single();
+        .insert(newOrders)
+        .select();
 
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      const count = variables.length;
       toast({
         title: "Success",
-        description: "Order created successfully!",
+        description: count === 1 ? "Order created successfully!" : `${count} orders created successfully!`,
       });
       invalidateRelated('orders');
       // Reset form
@@ -169,10 +188,9 @@ const OrderManagement: React.FC = () => {
         expense_date: today,
         client_id: "",
         area: "",
-        sku: "",
-        number_of_cases: "",
         tentative_delivery_date: defaultDeliveryDate.toISOString().split("T")[0],
       });
+      setSkuRows([{ sku: "", number_of_cases: "" }]);
     },
     onError: (error: any) => {
       toast({
@@ -200,10 +218,10 @@ const OrderManagement: React.FC = () => {
         .from("orders_dispatch")
         .insert([{
           client: orderData.client || orderData.dealer_name,
-          area: orderData.area,
+          area: orderData.area ?? orderData.branch,
           sku: orderData.sku,
-          cases: orderData.number_of_cases,
-          delivery_date: orderData.tentative_delivery_date,
+          cases: orderData.number_of_cases ?? orderData.quantity ?? 0,
+          delivery_date: orderData.tentative_delivery_date ?? orderData.tentative_delivery_time,
         }]);
 
       if (dispatchError) throw dispatchError;
@@ -393,10 +411,23 @@ const OrderManagement: React.FC = () => {
     e.preventDefault();
 
     // Validation: Check required fields
-    if (!orderForm.client_id || !orderForm.area || !orderForm.number_of_cases || !orderForm.tentative_delivery_date) {
+    if (!orderForm.client_id || !orderForm.area || !orderForm.tentative_delivery_date) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in dealer, area, and tentative delivery date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validation: At least one SKU row with valid SKU and cases
+    const validRows = skuRows.filter(
+      (row) => row.sku?.trim() && row.number_of_cases && parseInt(row.number_of_cases) > 0
+    );
+    if (validRows.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please add at least one SKU with number of cases",
         variant: "destructive",
       });
       return;
@@ -419,78 +450,52 @@ const OrderManagement: React.FC = () => {
     if (!selectedCustomer) {
       toast({
         title: "Error",
-        description: "Selected customer not found",
+        description: "Selected dealer not found",
         variant: "destructive",
       });
       return;
     }
 
-    const newOrder = {
+    const newOrders = validRows.map((row) => ({
       client: selectedCustomer.dealer_name,
-      dealer_name: selectedCustomer.dealer_name,
       area: orderForm.area,
-      sku: orderForm.sku || "",
-      number_of_cases: parseInt(orderForm.number_of_cases),
+      sku: row.sku.trim(),
+      number_of_cases: parseInt(row.number_of_cases),
       tentative_delivery_date: orderForm.tentative_delivery_date,
       status: "pending",
-    };
+      date: orderForm.expense_date,
+    }));
 
-    createOrderMutation.mutate(newOrder);
+    createOrderMutation.mutate(newOrders);
   };
 
-  // Handle client change - auto-populate area if single, reset SKU
+  // Handle client change - auto-populate area if single, reset SKU rows
   const handleClientChange = (clientId: string) => {
-    // If client is cleared (empty string), reset the form
     if (!clientId || clientId === "") {
-      setOrderForm({
-        ...orderForm,
-        client_id: "",
-        area: "",
-        sku: "",
-      });
+      setOrderForm({ ...orderForm, client_id: "", area: "" });
+      setSkuRows([{ sku: "", number_of_cases: "" }]);
       return;
     }
-    
     const availableAreas = getAvailableAreas(clientId);
     const autoArea = availableAreas.length === 1 ? availableAreas[0] : "";
-    
-    setOrderForm({
-      ...orderForm,
-      client_id: clientId,
-      area: autoArea,
-      sku: "", // Reset SKU when client changes
-    });
+    setOrderForm({ ...orderForm, client_id: clientId, area: autoArea });
+    setSkuRows([{ sku: "", number_of_cases: "" }]);
   };
 
-  // Handle area change - auto-populate SKU if single
+  // Handle area change - reset SKU rows
   const handleAreaChange = (areaValue: string) => {
-    const selectedCustomer = customers?.find(c => c.id === orderForm.client_id);
-    if (!selectedCustomer) {
-      setOrderForm({
-        ...orderForm,
-        area: areaValue,
-        sku: "",
-      });
-      return;
-    }
+    setOrderForm({ ...orderForm, area: areaValue });
+    setSkuRows([{ sku: "", number_of_cases: "" }]);
+  };
 
-    const availableSKUs = customers
-      ?.filter(c => 
-        c.dealer_name === selectedCustomer.dealer_name && 
-        c.area === areaValue &&
-        c.sku && 
-        c.sku.trim() !== ''
-      )
-      .map(c => c.sku)
-      .filter((sku, index, self) => self.indexOf(sku) === index) || [];
-    
-    const autoSKU = availableSKUs.length === 1 ? availableSKUs[0] : "";
-    
-    setOrderForm({
-      ...orderForm,
-      area: areaValue,
-      sku: autoSKU,
-    });
+  const addSkuRow = () => setSkuRows((prev) => [...prev, { sku: "", number_of_cases: "" }]);
+  const removeSkuRow = (index: number) => {
+    setSkuRows((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  };
+  const updateSkuRow = (index: number, field: "sku" | "number_of_cases", value: string) => {
+    setSkuRows((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
+    );
   };
 
   // Handle date change and auto-calculate delivery
@@ -720,8 +725,8 @@ const OrderManagement: React.FC = () => {
     if (!filteredAndSortedOrders.length) return;
 
     const exportData = filteredAndSortedOrders.map((order) => ({
-      Client: order.client,
-      Branch: order.area,
+      Dealer: order.client,
+      Area: order.area,
       SKU: order.sku,
       "Number of Cases": order.number_of_cases,
       "Tentative Delivery Date": order.tentative_delivery_date,
@@ -740,8 +745,8 @@ const OrderManagement: React.FC = () => {
     if (!filteredAndSortedDispatch.length) return;
 
     const exportData = filteredAndSortedDispatch.map((row) => ({
-      Client: row.client,
-      Branch: row.area,
+      Dealer: row.client,
+      Area: row.area,
       SKU: row.sku,
       Cases: row.cases,
       "Delivery Date": row.delivery_date,
@@ -827,7 +832,7 @@ const OrderManagement: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleOrderSubmit} className="space-y-4">
-            {/* First Row: Date, Client, Branch */}
+            {/* First Row: Date, Dealer, Area */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="order-date">Date *</Label>
@@ -842,10 +847,10 @@ const OrderManagement: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="order-client">Client *</Label>
+                <Label htmlFor="order-client">Dealer *</Label>
                 <Select value={orderForm.client_id || ""} onValueChange={handleClientChange}>
                   <SelectTrigger id="order-client">
-                    <SelectValue placeholder="Select client" />
+                    <SelectValue placeholder="Select dealer" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px] [&>div]:overflow-y-auto [&>div]:overflow-x-hidden [&>div::-webkit-scrollbar]:w-2 [&>div::-webkit-scrollbar-track]:bg-gray-100 [&>div::-webkit-scrollbar-thumb]:bg-gray-400 [&>div::-webkit-scrollbar-thumb]:rounded-full">
                     {getUniqueCustomers().map((customer) => (
@@ -858,7 +863,7 @@ const OrderManagement: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="order-area">Branch *</Label>
+                <Label htmlFor="order-area">Area *</Label>
                 <Select 
                   value={orderForm.area || ""} 
                   onValueChange={handleAreaChange} 
@@ -878,7 +883,7 @@ const OrderManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Second Row: Tentative Delivery Date, SKU, Number of Cases */}
+            {/* Second Row: Tentative Delivery Date */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="order-delivery">Tentative Delivery Date *</Label>
@@ -905,39 +910,60 @@ const OrderManagement: React.FC = () => {
                   required
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="order-sku">SKU</Label>
-                <Select 
-                  value={orderForm.sku || ""} 
-                  onValueChange={(value) => setOrderForm({ ...orderForm, sku: value })} 
-                  disabled={!orderForm.client_id || !orderForm.area}
-                >
-                  <SelectTrigger id="order-sku">
-                    <SelectValue placeholder="Select SKU" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px] [&>div]:overflow-y-auto [&>div]:overflow-x-hidden [&>div::-webkit-scrollbar]:w-2 [&>div::-webkit-scrollbar-track]:bg-gray-100 [&>div::-webkit-scrollbar-thumb]:bg-gray-400 [&>div::-webkit-scrollbar-thumb]:rounded-full">
-                    {getAvailableSKUs().map((sku, index) => (
-                      <SelectItem key={index} value={sku}>
-                        {sku}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="order-cases">No. of Cases *</Label>
-                <Input
-                  id="order-cases"
-                  type="number"
-                  min="1"
-                  value={orderForm.number_of_cases}
-                  onChange={(e) => setOrderForm({ ...orderForm, number_of_cases: e.target.value })}
-                  placeholder="Number of cases"
-                  required
-                />
+            {/* SKU Rows - Multiple SKUs per order */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>SKUs *</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addSkuRow}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add SKU
+                </Button>
               </div>
+              {skuRows.map((row, index) => (
+                <div key={index} className="flex flex-wrap items-end gap-2">
+                  <div className="flex-1 min-w-[140px] space-y-2">
+                    <Label className="text-xs">SKU</Label>
+                    <Select
+                      value={row.sku || ""}
+                      onValueChange={(value) => updateSkuRow(index, "sku", value)}
+                      disabled={!orderForm.client_id || !orderForm.area}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select SKU" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {getAvailableSKUs().map((sku, i) => (
+                          <SelectItem key={i} value={sku}>
+                            {sku}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-24 space-y-2">
+                    <Label className="text-xs">Cases</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={row.number_of_cases}
+                      onChange={(e) => updateSkuRow(index, "number_of_cases", e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeSkuRow(index)}
+                    disabled={skuRows.length === 1}
+                    title="Remove row"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              ))}
             </div>
 
             <div className="flex justify-end">
@@ -998,10 +1024,10 @@ const OrderManagement: React.FC = () => {
                   <TableRow className="bg-gradient-to-r from-blue-100 via-blue-50 to-blue-100 hover:from-blue-200 hover:via-blue-100 hover:to-blue-200 transition-all duration-200">
                     <TableHead className="border-b border-blue-200/50 text-gray-800 font-semibold">
                       <div className="flex items-center gap-2 text-gray-800">
-                        <span>Client</span>
+                        <span>Dealer</span>
                         <ColumnFilter
                           columnKey="client"
-                          columnName="Client"
+                          columnName="Dealer"
                           filterValue={ordersColumnFilters.client}
                           onFilterChange={(value) => handleOrdersColumnFilterChange('client', value as string)}
                           onClearFilter={() => handleOrdersColumnFilterChange('client', '')}
@@ -1015,10 +1041,10 @@ const OrderManagement: React.FC = () => {
                     </TableHead>
                     <TableHead className="border-b border-blue-200/50 text-gray-800 font-semibold">
                       <div className="flex items-center gap-2 text-gray-800">
-                        <span>Branch</span>
+                        <span>Area</span>
                         <ColumnFilter
                           columnKey="area"
-                          columnName="Branch"
+                          columnName="Area"
                           filterValue={ordersColumnFilters.area}
                           onFilterChange={(value) => handleOrdersColumnFilterChange('area', value as string)}
                           onClearFilter={() => handleOrdersColumnFilterChange('area', '')}
@@ -1202,10 +1228,10 @@ const OrderManagement: React.FC = () => {
                   <TableRow className="bg-gradient-to-r from-green-100 via-green-50 to-green-100 hover:from-green-200 hover:via-green-100 hover:to-green-200 transition-all duration-200">
                     <TableHead className="border-b border-green-200/50 text-gray-800 font-semibold">
                       <div className="flex items-center gap-2 text-gray-800">
-                        <span>Client</span>
+                        <span>Dealer</span>
                         <ColumnFilter
                           columnKey="client"
-                          columnName="Client"
+                          columnName="Dealer"
                           filterValue={dispatchColumnFilters.client}
                           onFilterChange={(value) => handleDispatchColumnFilterChange('client', value as string)}
                           onClearFilter={() => handleDispatchColumnFilterChange('client', '')}
@@ -1219,10 +1245,10 @@ const OrderManagement: React.FC = () => {
                     </TableHead>
                     <TableHead className="border-b border-green-200/50 text-gray-800 font-semibold">
                       <div className="flex items-center gap-2 text-gray-800">
-                        <span>Branch</span>
+                        <span>Area</span>
                         <ColumnFilter
                           columnKey="area"
-                          columnName="Branch"
+                          columnName="Area"
                           filterValue={dispatchColumnFilters.area}
                           onFilterChange={(value) => handleDispatchColumnFilterChange('area', value as string)}
                           onClearFilter={() => handleDispatchColumnFilterChange('area', '')}

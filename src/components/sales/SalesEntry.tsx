@@ -2501,7 +2501,7 @@ const SalesEntry = () => {
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
-            <CardTitle className="mb-0">Client Transactions</CardTitle>
+            <CardTitle className="mb-0">Dealer Transactions</CardTitle>
             <span className="text-sm text-muted-foreground whitespace-nowrap">
               Showing {paginatedTransactions.length} of {totalFilteredTransactions} filtered transactions
               {totalTransactions !== totalFilteredTransactions && ` (${totalTransactions} total)`}

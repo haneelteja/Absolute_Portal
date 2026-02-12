@@ -309,8 +309,8 @@ const Reports = memo(() => {
         <TabsContent value="clients" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Client Transactions</CardTitle>
-              <CardDescription>Sales and payments from Aamodha customers</CardDescription>
+              <CardTitle>Dealer Transactions</CardTitle>
+              <CardDescription>Sales and payments from Aamodha dealers</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
