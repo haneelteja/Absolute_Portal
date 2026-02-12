@@ -588,8 +588,6 @@ const SalesEntry = () => {
           description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
           expense_date: saleForm.transaction_date,
           expense_group: "Client Sale Transport",
-          client_id: saleForm.customer_id,
-          area: selectedCustomer?.area || null
         };
         
         // Transport transaction data prepared
@@ -1568,8 +1566,6 @@ const SalesEntry = () => {
         description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
         expense_date: data.transaction_date,
         expense_group: "Client Sale Transport",
-        client_id: data.customer_id,
-        area: selectedCustomer?.area || null
       };
       
       // Transport transaction data prepared
@@ -1820,18 +1816,20 @@ const SalesEntry = () => {
         }
       }
 
-      // Update corresponding transport transaction
-      if (selectedCustomer && originalCustomerId) {
+      // Update corresponding transport transaction (match by description + date since client_id may not exist)
+      if (selectedCustomer) {
+        const originalCustomer = customers?.find(c => c.id === originalCustomerId);
+        const originalDescription = originalCustomer ? `${originalCustomer.dealer_name}-${originalCustomer.area} Transport` : 'Dealer-Area Transport';
+        const newDescription = `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport`;
+
         const { error: transportError } = await supabase
           .from("transport_expenses")
           .update({
             expense_date: data.transaction_date,
-            description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
-            client_id: data.customer_id,
-            area: selectedCustomer?.area || null
+            description: newDescription,
           })
           .eq("expense_group", "Client Sale Transport")
-          .eq("client_id", originalCustomerId)
+          .eq("description", originalDescription)
           .eq("expense_date", originalTransactionDate);
 
         if (transportError) {
