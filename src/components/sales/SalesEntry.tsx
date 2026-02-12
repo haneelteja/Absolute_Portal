@@ -1692,7 +1692,7 @@ const SalesEntry = () => {
           ? customers?.find(c => c.dealer_name === dealerCustomer.dealer_name && c.area === data.area)?.id ?? data.customer_id
           : data.customer_id;
 
-        // Build payload with only columns that exist in sales_transactions (area may not exist in older DBs)
+        // Build payload - sku/quantity are NOT NULL in schema, use placeholders for payment
         const insertPayload = {
           customer_id: paymentCustomerId,
           transaction_type: "payment",
@@ -1700,8 +1700,8 @@ const SalesEntry = () => {
           total_amount: amount,
           transaction_date: data.transaction_date || new Date().toISOString().split('T')[0],
           description: data.description || null,
-          sku: null,
-          quantity: null,
+          sku: "Payment",
+          quantity: 0,
         };
 
         const { data: paymentData, error } = await supabase
