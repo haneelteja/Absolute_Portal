@@ -109,34 +109,27 @@ const OrderManagement: React.FC = () => {
       try {
         const { data, error } = await supabase.rpc("get_orders_sorted");
         if (error) {
-          // Fallback: direct select (handles schema variations)
-          const selectCols = "id, client, sku, status, created_at, updated_at";
-          const areaCol = "area";
-          const casesCol = "number_of_cases";
-          const dateCol = "tentative_delivery_date";
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from("orders")
-            .select(
-              `${selectCols}, ${areaCol}, ${casesCol}, ${dateCol}`
-            )
-            .order("status", { ascending: true })
-            .order(dateCol, { ascending: false });
-
-          if (fallbackError) {
-            // Try with branch/quantity if area/number_of_cases don't exist
-            const { data: altData, error: altError } = await supabase
+          // Fallback: try multiple schema variations (area/branch, number_of_cases/quantity)
+          const variations = [
+            ["id, client, area, sku, number_of_cases, tentative_delivery_date, status, created_at, updated_at"],
+            ["id, client, area, sku, quantity, tentative_delivery_date, status, created_at, updated_at"],
+            ["id, client, branch, sku, quantity, tentative_delivery_date, status, created_at, updated_at"],
+          ];
+          for (const cols of variations) {
+            const { data: d, error: e } = await supabase
               .from("orders")
-              .select("id, client, branch, sku, quantity, tentative_delivery_date, status, created_at, updated_at")
+              .select(cols[0])
               .order("status", { ascending: true })
               .order("tentative_delivery_date", { ascending: false });
-            if (altError) throw altError;
-            return (altData || []).map((o: any) => ({
-              ...o,
-              area: o.area ?? o.branch,
-              number_of_cases: o.number_of_cases ?? o.quantity,
-            }));
+            if (!e) {
+              return (d || []).map((o: any) => ({
+                ...o,
+                area: o.area ?? o.branch,
+                number_of_cases: o.number_of_cases ?? o.quantity,
+              }));
+            }
           }
-          return fallbackData || [];
+          return [];
         }
         return data || [];
       } catch {
@@ -162,15 +155,27 @@ const OrderManagement: React.FC = () => {
   });
 
   // Create order mutation (accepts array of orders for multiple SKUs)
+  // Tries multiple schema variants: number_of_cases+date (migrated) vs quantity (legacy)
   const createOrderMutation = useMutation({
     mutationFn: async (newOrders: any[]) => {
-      const { data, error } = await supabase
-        .from("orders")
-        .insert(newOrders)
-        .select();
-
-      if (error) throw error;
-      return data;
+      const base = (o: any) => ({
+        client: o.client,
+        sku: o.sku,
+        tentative_delivery_date: o.tentative_delivery_date,
+        status: o.status,
+      });
+      const payloads = [
+        newOrders.map((o) => ({ ...base(o), area: o.area, number_of_cases: o.number_of_cases, date: o.date })),
+        newOrders.map((o) => ({ ...base(o), area: o.area, quantity: o.number_of_cases })),
+        newOrders.map((o) => ({ ...base(o), branch: o.area, quantity: o.number_of_cases })),
+      ];
+      let lastError: Error | null = null;
+      for (const payload of payloads) {
+        const { data, error } = await supabase.from("orders").insert(payload).select();
+        if (!error) return data;
+        lastError = error as Error;
+      }
+      throw lastError || new Error("Failed to create order.");
     },
     onSuccess: (_, variables) => {
       const count = variables.length;
