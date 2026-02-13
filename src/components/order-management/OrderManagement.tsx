@@ -169,11 +169,11 @@ const OrderManagement: React.FC = () => {
       ];
       let lastError: Error | null = null;
       for (const payload of payloads) {
-        const { data, error } = await supabase.from("orders").insert(payload).select();
+        const { data, error } = await supabase.from("orders").insert(payload).select("id");
         if (!error) return data;
         lastError = error as Error;
       }
-      throw lastError || new Error("Failed to create order.");
+      throw lastError || new Error("Failed to create order. Run docs/migration/ORDERS_SCHEMA_FIX.sql in Supabase SQL Editor.");
     },
     onSuccess: (_, variables) => {
       const count = variables.length;
