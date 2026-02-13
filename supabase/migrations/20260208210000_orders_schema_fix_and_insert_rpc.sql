@@ -1,7 +1,7 @@
--- Run this in Supabase SQL Editor to fix orders table schema
--- This ensures the orders table has the columns the app expects
+-- Fix orders schema and add insert_orders RPC
+-- Run via: supabase db push  OR  copy to Supabase SQL Editor and run manually
 
--- 0. Create orders table if it doesn't exist (no-op if table exists)
+-- 0. Create orders table if it doesn't exist
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
@@ -22,7 +22,7 @@ BEGIN
   END IF;
 END $$;
 
--- 1. Add client if missing (copy from dealer_name if exists)
+-- 1. Add client if missing
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'client') THEN
@@ -36,7 +36,7 @@ BEGIN
   END IF;
 END $$;
 
--- 2. Add area if missing (copy from branch if exists)
+-- 2. Add area if missing
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'area') THEN
@@ -50,7 +50,7 @@ BEGIN
   END IF;
 END $$;
 
--- 3. Add number_of_cases if missing (copy from quantity if exists)
+-- 3. Add number_of_cases if missing
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'number_of_cases') THEN
@@ -95,7 +95,7 @@ BEGIN
   END IF;
 END $$;
 
--- 5c. Add tentative_delivery_date if missing (copy from tentative_delivery_time if exists)
+-- 5c. Add tentative_delivery_date if missing
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'tentative_delivery_date') THEN
@@ -109,7 +109,7 @@ BEGIN
   END IF;
 END $$;
 
--- 6. Create orders_dispatch table if it doesn't exist (for dispatch flow)
+-- 6. Create orders_dispatch if missing
 CREATE TABLE IF NOT EXISTS orders_dispatch (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   client TEXT NOT NULL,
@@ -123,7 +123,7 @@ ALTER TABLE orders_dispatch ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Enable all operations for authenticated users" ON orders_dispatch;
 CREATE POLICY "Enable all operations for authenticated users" ON orders_dispatch FOR ALL USING (auth.role() = 'authenticated');
 
--- 7. Recreate get_orders_sorted (uses only columns guaranteed by steps 0-5c)
+-- 7. Recreate get_orders_sorted
 DROP FUNCTION IF EXISTS get_orders_sorted();
 CREATE OR REPLACE FUNCTION get_orders_sorted()
 RETURNS TABLE (
@@ -161,7 +161,7 @@ $$;
 GRANT EXECUTE ON FUNCTION get_orders_sorted() TO authenticated;
 GRANT EXECUTE ON FUNCTION get_orders_sorted() TO anon;
 
--- 8. Create insert_orders RPC (bypasses PostgREST column validation; works after steps 0-5c)
+-- 8. Create insert_orders RPC
 DROP FUNCTION IF EXISTS insert_orders(jsonb);
 CREATE OR REPLACE FUNCTION insert_orders(orders_json jsonb)
 RETURNS jsonb
@@ -191,5 +191,3 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION insert_orders(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION insert_orders(jsonb) TO anon;
-
--- Done. Refresh the app; get_orders_sorted and order inserts (via insert_orders RPC) should work.

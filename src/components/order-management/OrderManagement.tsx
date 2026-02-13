@@ -147,33 +147,29 @@ const OrderManagement: React.FC = () => {
   });
 
   // Create order mutation (accepts array of orders for multiple SKUs)
-  // Tries multiple schema variants: number_of_cases+date (migrated) vs quantity (legacy)
+  // Uses insert_orders RPC - run docs/migration/ADD_INSERT_ORDERS_RPC_ONLY.sql in Supabase SQL Editor once
   const createOrderMutation = useMutation({
     mutationFn: async (newOrders: any[]) => {
-      const base = (o: any) => ({
+      const ordersJson = newOrders.map((o) => ({
         client: o.client,
+        area: o.area,
         sku: o.sku,
-        status: o.status,
+        number_of_cases: o.number_of_cases,
+        date: o.date,
+        tentative_delivery_date: o.tentative_delivery_date,
+        status: o.status ?? "pending",
+      }));
+      const { data: rpcData, error: rpcError } = await supabase.rpc("insert_orders", {
+        orders_json: ordersJson,
       });
-      const payloads = [
-        // Schema: client, area, number_of_cases, date, tentative_delivery_date (post-migration)
-        newOrders.map((o) => ({ ...base(o), area: o.area, number_of_cases: o.number_of_cases, date: o.date, tentative_delivery_date: o.tentative_delivery_date })),
-        // Schema: client, area, number_of_cases, date, tentative_delivery_time (20250103)
-        newOrders.map((o) => ({ ...base(o), area: o.area, number_of_cases: o.number_of_cases, date: o.date, tentative_delivery_time: o.tentative_delivery_date })),
-        // Schema: client, branch, number_of_cases, date, tentative_delivery_time (20250103 before rename)
-        newOrders.map((o) => ({ ...base(o), branch: o.area, number_of_cases: o.number_of_cases, date: o.date, tentative_delivery_time: o.tentative_delivery_date })),
-        // Schema: client, area, quantity, tentative_delivery_date (20250113 + rename)
-        newOrders.map((o) => ({ ...base(o), area: o.area, quantity: o.number_of_cases, tentative_delivery_date: o.tentative_delivery_date })),
-        // Schema: client, branch, quantity, tentative_delivery_date (20250113)
-        newOrders.map((o) => ({ ...base(o), branch: o.area, quantity: o.number_of_cases, tentative_delivery_date: o.tentative_delivery_date })),
-      ];
-      let lastError: Error | null = null;
-      for (const payload of payloads) {
-        const { data, error } = await supabase.from("orders").insert(payload).select("id");
-        if (!error) return data;
-        lastError = error as Error;
+      if (!rpcError && rpcData?.ids) {
+        return (rpcData.ids as string[]).map((id) => ({ id }));
       }
-      throw lastError || new Error("Failed to create order. Run docs/migration/ORDERS_SCHEMA_FIX.sql in Supabase SQL Editor.");
+      throw new Error(
+        rpcError?.message
+          ? `Order creation failed: ${rpcError.message}. Run docs/migration/ADD_INSERT_ORDERS_RPC_ONLY.sql in Supabase SQL Editor.`
+          : "Order creation failed. Run docs/migration/ADD_INSERT_ORDERS_RPC_ONLY.sql in Supabase SQL Editor."
+      );
     },
     onSuccess: (_, variables) => {
       const count = variables.length;
