@@ -109,25 +109,17 @@ const OrderManagement: React.FC = () => {
       try {
         const { data, error } = await supabase.rpc("get_orders_sorted");
         if (error) {
-          // Fallback: try multiple schema variations (area/branch, number_of_cases/quantity)
-          const variations = [
-            ["id, client, area, sku, number_of_cases, tentative_delivery_date, status, created_at, updated_at"],
-            ["id, client, area, sku, quantity, tentative_delivery_date, status, created_at, updated_at"],
-            ["id, client, branch, sku, quantity, tentative_delivery_date, status, created_at, updated_at"],
-          ];
-          for (const cols of variations) {
-            const { data: d, error: e } = await supabase
-              .from("orders")
-              .select(cols[0])
-              .order("status", { ascending: true })
-              .order("tentative_delivery_date", { ascending: false });
-            if (!e) {
-              return (d || []).map((o: any) => ({
-                ...o,
-                area: o.area ?? o.branch,
-                number_of_cases: o.number_of_cases ?? o.quantity,
-              }));
-            }
+          // Fallback: try select(*) first (works with any schema), then specific columns
+          const { data: d, error: e } = await supabase
+            .from("orders")
+            .select("*")
+            .order("created_at", { ascending: false });
+          if (!e && d) {
+            return (d as any[]).map((o) => ({
+              ...o,
+              area: o.area ?? o.branch,
+              number_of_cases: o.number_of_cases ?? o.quantity,
+            }));
           }
           return [];
         }
@@ -166,6 +158,7 @@ const OrderManagement: React.FC = () => {
       });
       const payloads = [
         newOrders.map((o) => ({ ...base(o), area: o.area, number_of_cases: o.number_of_cases, date: o.date })),
+        newOrders.map((o) => ({ ...base(o), area: o.area, number_of_cases: o.number_of_cases })),
         newOrders.map((o) => ({ ...base(o), area: o.area, quantity: o.number_of_cases })),
         newOrders.map((o) => ({ ...base(o), branch: o.area, quantity: o.number_of_cases })),
       ];
@@ -390,26 +383,27 @@ const OrderManagement: React.FC = () => {
     return areas;
   }, [customers]);
 
-  // Get available SKUs for selected customer and area
-  const getAvailableSKUs = useCallback(() => {
+  // Get available SKUs for selected customer and area (excludes SKUs already selected in other rows)
+  const getAvailableSKUsForRow = useCallback((currentRowIndex: number) => {
     if (!customers || !orderForm.client_id || !orderForm.area) return [];
-    
     const selectedCustomer = customers.find(c => c.id === orderForm.client_id);
     if (!selectedCustomer) return [];
-    
-    const skus = customers
-      .filter(c => 
-        c.dealer_name === selectedCustomer.dealer_name && 
+    const allSkus = customers
+      .filter(c =>
+        c.dealer_name === selectedCustomer.dealer_name &&
         c.area === orderForm.area &&
-        c.sku && 
-        c.sku.trim() !== ''
+        c.sku &&
+        c.sku.trim() !== ""
       )
       .map(c => c.sku)
       .filter((sku, index, self) => self.indexOf(sku) === index)
       .sort();
-    
-    return skus;
-  }, [customers, orderForm.client_id, orderForm.area]);
+    const alreadySelected = skuRows
+      .map((r, i) => (i !== currentRowIndex ? r.sku?.trim() : ""))
+      .filter(Boolean);
+    const currentRowSku = skuRows[currentRowIndex]?.sku?.trim();
+    return allSkus.filter(sku => !alreadySelected.includes(sku) || sku === currentRowSku);
+  }, [customers, orderForm.client_id, orderForm.area, skuRows]);
 
   // Handle order form submission
   const handleOrderSubmit = (e: React.FormEvent) => {
@@ -433,6 +427,16 @@ const OrderManagement: React.FC = () => {
       toast({
         title: "Validation Error",
         description: "Please add at least one SKU with number of cases",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Validation: No duplicate SKUs in the same order
+    const skuSet = new Set(validRows.map(r => r.sku.trim()));
+    if (skuSet.size !== validRows.length) {
+      toast({
+        title: "Validation Error",
+        description: "Each SKU can only be selected once per order",
         variant: "destructive",
       });
       return;
@@ -837,8 +841,8 @@ const OrderManagement: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleOrderSubmit} className="space-y-4">
-            {/* First Row: Date, Dealer, Area */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Single row: Date, Dealer *, Area *, Tentative Delivery Date * */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="order-date">Date *</Label>
                 <Input
@@ -850,7 +854,6 @@ const OrderManagement: React.FC = () => {
                   required
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="order-client">Dealer *</Label>
                 <Select value={orderForm.client_id || ""} onValueChange={handleClientChange}>
@@ -866,16 +869,15 @@ const OrderManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="order-area">Area *</Label>
-                <Select 
-                  value={orderForm.area || ""} 
-                  onValueChange={handleAreaChange} 
+                <Select
+                  value={orderForm.area || ""}
+                  onValueChange={handleAreaChange}
                   disabled={!orderForm.client_id}
                 >
                   <SelectTrigger id="order-area">
-                    <SelectValue placeholder={getAvailableAreas(orderForm.client_id).length === 0 ? "Select area" : "Select area"} />
+                    <SelectValue placeholder="Select area" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px] [&>div]:overflow-y-auto [&>div]:overflow-x-hidden [&>div::-webkit-scrollbar]:w-2 [&>div::-webkit-scrollbar-track]:bg-gray-100 [&>div::-webkit-scrollbar-thumb]:bg-gray-400 [&>div::-webkit-scrollbar-thumb]:rounded-full">
                     {getAvailableAreas(orderForm.client_id).map((area, index) => (
@@ -886,10 +888,6 @@ const OrderManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            {/* Second Row: Tentative Delivery Date */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="order-delivery">Tentative Delivery Date *</Label>
                 <Input
@@ -900,7 +898,6 @@ const OrderManagement: React.FC = () => {
                   onChange={(e) => {
                     const selectedDate = new Date(e.target.value);
                     const orderDate = new Date(orderForm.expense_date);
-                    
                     if (selectedDate <= orderDate) {
                       toast({
                         title: "Validation Error",
@@ -909,7 +906,6 @@ const OrderManagement: React.FC = () => {
                       });
                       return;
                     }
-                    
                     setOrderForm({ ...orderForm, tentative_delivery_date: e.target.value });
                   }}
                   required
@@ -939,7 +935,7 @@ const OrderManagement: React.FC = () => {
                         <SelectValue placeholder="Select SKU" />
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
-                        {getAvailableSKUs().map((sku, i) => (
+                        {getAvailableSKUsForRow(index).map((sku, i) => (
                           <SelectItem key={i} value={sku}>
                             {sku}
                           </SelectItem>
