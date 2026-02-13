@@ -153,14 +153,19 @@ const OrderManagement: React.FC = () => {
       const base = (o: any) => ({
         client: o.client,
         sku: o.sku,
-        tentative_delivery_date: o.tentative_delivery_date,
         status: o.status,
       });
       const payloads = [
-        newOrders.map((o) => ({ ...base(o), area: o.area, number_of_cases: o.number_of_cases, date: o.date })),
-        newOrders.map((o) => ({ ...base(o), area: o.area, number_of_cases: o.number_of_cases })),
-        newOrders.map((o) => ({ ...base(o), area: o.area, quantity: o.number_of_cases })),
-        newOrders.map((o) => ({ ...base(o), branch: o.area, quantity: o.number_of_cases })),
+        // Schema: client, area, number_of_cases, date, tentative_delivery_date (post-migration)
+        newOrders.map((o) => ({ ...base(o), area: o.area, number_of_cases: o.number_of_cases, date: o.date, tentative_delivery_date: o.tentative_delivery_date })),
+        // Schema: client, area, number_of_cases, date, tentative_delivery_time (20250103)
+        newOrders.map((o) => ({ ...base(o), area: o.area, number_of_cases: o.number_of_cases, date: o.date, tentative_delivery_time: o.tentative_delivery_date })),
+        // Schema: client, branch, number_of_cases, date, tentative_delivery_time (20250103 before rename)
+        newOrders.map((o) => ({ ...base(o), branch: o.area, number_of_cases: o.number_of_cases, date: o.date, tentative_delivery_time: o.tentative_delivery_date })),
+        // Schema: client, area, quantity, tentative_delivery_date (20250113 + rename)
+        newOrders.map((o) => ({ ...base(o), area: o.area, quantity: o.number_of_cases, tentative_delivery_date: o.tentative_delivery_date })),
+        // Schema: client, branch, quantity, tentative_delivery_date (20250113)
+        newOrders.map((o) => ({ ...base(o), branch: o.area, quantity: o.number_of_cases, tentative_delivery_date: o.tentative_delivery_date })),
       ];
       let lastError: Error | null = null;
       for (const payload of payloads) {
