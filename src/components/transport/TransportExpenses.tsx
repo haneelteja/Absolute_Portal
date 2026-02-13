@@ -23,9 +23,7 @@ const TransportExpenses = () => {
     description: "",
     amount: "",
     client_id: "",
-    area: "",
-    sku: "",
-    no_of_cases: ""
+    area: ""
   });
 
   const [editingExpense, setEditingExpense] = useState<TransportExpense | null>(null);
@@ -35,9 +33,7 @@ const TransportExpenses = () => {
     description: "",
     amount: "",
     client_id: "",
-    area: "",
-    sku: "",
-    no_of_cases: ""
+    area: ""
   });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,9 +44,7 @@ const TransportExpenses = () => {
     group: "",
     amount: "",
     client: "",
-    area: "",
-    sku: "",
-    no_of_cases: ""
+    area: ""
   });
   const [columnSorts, setColumnSorts] = useState<{[key: string]: 'asc' | 'desc' | null}>({
     date: null,
@@ -58,9 +52,7 @@ const TransportExpenses = () => {
     group: null,
     amount: null,
     client: null,
-    area: null,
-    sku: null,
-    no_of_cases: null
+    area: null
   });
 
   const { toast } = useToast();
@@ -213,9 +205,7 @@ const TransportExpenses = () => {
         description: "",
         amount: "",
         client_id: "",
-        area: "",
-        sku: "",
-        no_of_cases: ""
+        area: ""
       });
       invalidateRelated('transport_expenses');
     },
@@ -306,9 +296,7 @@ const TransportExpenses = () => {
       description: expense.description || "",
       amount: expense.amount?.toString() || "",
       client_id: expense.client_id || "",
-      area: expense.area || "",
-      sku: expense.sku || "",
-      no_of_cases: expense.no_of_cases?.toString() || ""
+      area: expense.area || ""
     });
     setIsEditDialogOpen(true);
   };
@@ -363,64 +351,6 @@ const TransportExpenses = () => {
     return customers.filter(c => c.id === customerId).map(c => c.area).filter(Boolean);
   };
 
-  // Auto-populate SKU and No of cases from sales_transactions when client_id and area are selected
-  useEffect(() => {
-    const autoPopulateFromSales = async () => {
-      if (form.client_id && form.area) {
-        // Find the most recent sale transaction for this client_id and area
-        const { data: saleTransaction } = await supabase
-          .from("sales_transactions")
-          .select("sku, quantity")
-          .eq("customer_id", form.client_id)
-          .eq("area", form.area)
-          .eq("transaction_type", "sale")
-          .order("transaction_date", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-        
-        if (saleTransaction) {
-          setForm(prev => ({
-            ...prev,
-            sku: saleTransaction.sku || prev.sku,
-            no_of_cases: saleTransaction.quantity?.toString() || prev.no_of_cases
-          }));
-        }
-      }
-    };
-
-    autoPopulateFromSales();
-  }, [form.client_id, form.area]);
-
-  // Auto-populate SKU and No of cases for edit form
-  useEffect(() => {
-    const autoPopulateFromSalesEdit = async () => {
-      if (editForm.client_id && editForm.area) {
-        // Find the most recent sale transaction for this client_id and area
-        const { data: saleTransaction } = await supabase
-          .from("sales_transactions")
-          .select("sku, quantity")
-          .eq("customer_id", editForm.client_id)
-          .eq("area", editForm.area)
-          .eq("transaction_type", "sale")
-          .order("transaction_date", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-        
-        if (saleTransaction) {
-          setEditForm(prev => ({
-            ...prev,
-            sku: saleTransaction.sku || prev.sku,
-            no_of_cases: saleTransaction.quantity?.toString() || prev.no_of_cases
-          }));
-        }
-      }
-    };
-
-    autoPopulateFromSalesEdit();
-  }, [editForm.client_id, editForm.area]);
-
   // Memoized unique groups list for dropdown options
   const uniqueGroups = useMemo(() => {
     if (!expenses) return [];
@@ -459,8 +389,6 @@ const TransportExpenses = () => {
     const amount = expense.amount?.toString() || '';
     const date = new Date(expense.expense_date).toLocaleDateString();
     const dateISO = expense.expense_date;
-    const sku = expense.sku || '';
-    const noOfCases = expense.no_of_cases?.toString() || '';
     const description = expense.description || '';
     
     // Get client and area names for filtering
@@ -476,9 +404,7 @@ const TransportExpenses = () => {
         amount.includes(searchLower) ||
         date.includes(searchLower) ||
         clientName.includes(searchLower) ||
-        areaName.includes(searchLower) ||
-        sku.toLowerCase().includes(searchLower) ||
-        noOfCases.includes(searchLower)
+        areaName.includes(searchLower)
       );
       if (!matchesGlobalSearch) return false;
     }
@@ -490,8 +416,6 @@ const TransportExpenses = () => {
     if (columnFilters.amount && !amount.includes(columnFilters.amount)) return false;
     if (columnFilters.client && !clientName.includes(columnFilters.client.toLowerCase())) return false;
     if (columnFilters.area && !areaName.includes(columnFilters.area.toLowerCase())) return false;
-    if (columnFilters.sku && !sku.toLowerCase().includes(columnFilters.sku.toLowerCase())) return false;
-    if (columnFilters.no_of_cases && !noOfCases.includes(columnFilters.no_of_cases)) return false;
     
     return true;
   }).sort((a, b) => {
@@ -547,10 +471,8 @@ const TransportExpenses = () => {
     const exportData = filteredAndSortedExpenses.map((expense) => {
       return {
         'Date': new Date(expense.expense_date).toLocaleDateString(),
-        'Client': expense.dealer_name || '',
+        'Dealer': expense.dealer_name || '',
         'Area': expense.area || '',
-        'SKU': expense.sku || '',
-        'No of Cases': expense.no_of_cases || 0,
         'Group': expense.expense_group || '',
         'Amount (₹)': expense.amount || 0,
         'Description': expense.description || ''
@@ -571,7 +493,7 @@ const TransportExpenses = () => {
   }, [filteredAndSortedExpenses, toast]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-blue-900">Total Transport Expenses</span>
@@ -593,10 +515,10 @@ const TransportExpenses = () => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="client">Client</Label>
+            <Label htmlFor="client">Dealer</Label>
             <Select value={form.client_id || ""} onValueChange={(value) => setForm({ ...form, client_id: value, area: "" })}>
               <SelectTrigger>
-                <SelectValue placeholder="Select client" />
+                <SelectValue placeholder="Select dealer" />
               </SelectTrigger>
               <SelectContent>
                 {getUniqueCustomers().map((customer) => (
@@ -609,7 +531,7 @@ const TransportExpenses = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="area">Branch</Label>
+            <Label htmlFor="area">Area</Label>
             <Select value={form.area || ""} onValueChange={(value) => setForm({ ...form, area: value })} disabled={!form.client_id}>
               <SelectTrigger>
                 <SelectValue placeholder="Select area" />
@@ -625,19 +547,8 @@ const TransportExpenses = () => {
           </div>
         </div>
 
-        {/* Second Row: SKU, Description, Amount */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="sku">SKU</Label>
-            <Input
-              id="sku"
-              value={form.sku}
-              onChange={(e) => setForm({...form, sku: e.target.value})}
-              placeholder="Auto-populated from client transactions"
-              readOnly
-            />
-          </div>
-
+        {/* Second Row: Description, Amount */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="expense-description">Description *</Label>
             <Input
@@ -662,20 +573,8 @@ const TransportExpenses = () => {
           </div>
         </div>
 
-        {/* Third Row: No of Cases, Expense Group */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="no_of_cases">No of Cases</Label>
-            <Input
-              id="no_of_cases"
-              type="number"
-              value={form.no_of_cases}
-              onChange={(e) => setForm({...form, no_of_cases: e.target.value})}
-              placeholder="Auto-populated from client transactions"
-              readOnly
-            />
-          </div>
-
+        {/* Third Row: Expense Group */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="expense-group">Expense Group</Label>
             <Input
@@ -731,14 +630,16 @@ const TransportExpenses = () => {
                   client: "",
                   area: "",
                   group: "",
-                  amount: ""
+                  amount: "",
+                  description: ""
                 });
                 setColumnSorts({
                   date: null,
                   client: null,
                   area: null,
                   group: null,
-                  amount: null
+                  amount: null,
+                  description: null
                 });
               }}
             >
@@ -769,10 +670,10 @@ const TransportExpenses = () => {
             </TableHead>
             <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-left border-r border-slate-200/50">
               <div className="flex items-center justify-between">
-                <span>Client</span>
+                <span>Dealer</span>
                 <ColumnFilter
                   columnKey="client"
-                  columnName="Client"
+                  columnName="Dealer"
                   filterValue={columnFilters.client || ""}
                   onFilterChange={(value) => handleColumnFilterChange('client', value)}
                   onClearFilter={() => handleClearColumnFilter('client')}
@@ -794,36 +695,6 @@ const TransportExpenses = () => {
                   sortDirection={columnSorts.area || null}
                   onSortChange={(direction) => handleColumnSortChange('area', direction)}
                   dataType="text"
-                />
-              </div>
-            </TableHead>
-            <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-left border-r border-slate-200/50">
-              <div className="flex items-center justify-between">
-                <span>SKU</span>
-                <ColumnFilter
-                  columnKey="sku"
-                  columnName="SKU"
-                  filterValue={columnFilters.sku || ""}
-                  onFilterChange={(value) => handleColumnFilterChange('sku', value)}
-                  onClearFilter={() => handleClearColumnFilter('sku')}
-                  sortDirection={columnSorts.sku || null}
-                  onSortChange={(direction) => handleColumnSortChange('sku', direction)}
-                  dataType="text"
-                />
-              </div>
-            </TableHead>
-            <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-center border-r border-slate-200/50">
-              <div className="flex items-center justify-between">
-                <span>No of Cases</span>
-                <ColumnFilter
-                  columnKey="no_of_cases"
-                  columnName="No of Cases"
-                  filterValue={columnFilters.no_of_cases || ""}
-                  onFilterChange={(value) => handleColumnFilterChange('no_of_cases', value)}
-                  onClearFilter={() => handleClearColumnFilter('no_of_cases')}
-                  sortDirection={columnSorts.no_of_cases || null}
-                  onSortChange={(direction) => handleColumnSortChange('no_of_cases', direction)}
-                  dataType="number"
                 />
               </div>
             </TableHead>
@@ -885,8 +756,6 @@ const TransportExpenses = () => {
                 <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
                 <TableCell>{expense.dealer_name || 'N/A'}</TableCell>
                 <TableCell>{expense.area || 'N/A'}</TableCell>
-                <TableCell>{expense.sku || 'N/A'}</TableCell>
-                <TableCell className="text-center">{expense.no_of_cases || 0}</TableCell>
                 <TableCell>{expense.expense_group || 'N/A'}</TableCell>
                 <TableCell className="text-right font-medium">₹{expense.amount?.toLocaleString()}</TableCell>
                 <TableCell>{expense.description || 'N/A'}</TableCell>
@@ -914,7 +783,7 @@ const TransportExpenses = () => {
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                 {searchTerm ? "No transactions found matching your search" : "No transport transactions found"}
               </TableCell>
             </TableRow>
@@ -967,10 +836,10 @@ const TransportExpenses = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-client">Client</Label>
+                <Label htmlFor="edit-client">Dealer</Label>
                 <Select value={editForm.client_id || ""} onValueChange={(value) => setEditForm({ ...editForm, client_id: value, area: "" })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select client" />
+                    <SelectValue placeholder="Select dealer" />
                   </SelectTrigger>
                   <SelectContent>
                     {getUniqueCustomers().map((customer) => (
@@ -998,28 +867,6 @@ const TransportExpenses = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit-sku">SKU</Label>
-                <Input
-                  id="edit-sku"
-                  value={editForm.sku}
-                  onChange={(e) => setEditForm({...editForm, sku: e.target.value})}
-                  placeholder="Auto-populated from client transactions"
-                  readOnly
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-no_of_cases">No of Cases</Label>
-                <Input
-                  id="edit-no_of_cases"
-                  type="number"
-                  value={editForm.no_of_cases}
-                  onChange={(e) => setEditForm({...editForm, no_of_cases: e.target.value})}
-                  placeholder="Auto-populated from client transactions"
-                  readOnly
-                />
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

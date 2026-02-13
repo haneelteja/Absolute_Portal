@@ -2029,7 +2029,7 @@ const SalesEntry = () => {
   }, [deleteMutation]); // Only recreate if deleteMutation changes
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sale">Record Sale</TabsTrigger>
@@ -2583,10 +2583,10 @@ const SalesEntry = () => {
                 </TableHead>
                 <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
                   <div className="flex items-center justify-between">
-                    <span>Branch</span>
-                    <ColumnFilter
-                      columnKey="area"
-                      columnName="Branch"
+                <span>Area</span>
+                <ColumnFilter
+                  columnKey="area"
+                  columnName="Area"
                       filterValue={columnFilters.area}
                       onFilterChange={(value) => handleColumnFilterChange('area', value)}
                       onClearFilter={() => handleClearColumnFilter('area')}

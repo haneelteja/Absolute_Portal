@@ -13,16 +13,14 @@ const Labels = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="availability" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="availability">Labels Availability</TabsTrigger>
+      {/* Labels available - displayed at top */}
+      <LabelAvailability />
+
+      <Tabs defaultValue="purchases" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="purchases">Labels Purchase</TabsTrigger>
           <TabsTrigger value="payments">Labels Payment</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="availability" className="space-y-4">
-          <LabelAvailability />
-        </TabsContent>
         
         <TabsContent value="purchases" className="space-y-4">
           <LabelPurchases />

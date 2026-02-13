@@ -19,7 +19,6 @@ import * as XLSX from 'xlsx';
 const LabelPurchases = () => {
   const [form, setForm] = useState({
     vendor_id: "",
-    client_id: "",
     sku: "",
     quantity: "",
     cost_per_label: "",
@@ -31,7 +30,6 @@ const LabelPurchases = () => {
   const [editingPurchase, setEditingPurchase] = useState<LabelPurchase | null>(null);
   const [editForm, setEditForm] = useState({
     vendor_id: "",
-    client_id: "",
     sku: "",
     quantity: "",
     cost_per_label: "",
@@ -45,7 +43,6 @@ const LabelPurchases = () => {
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   const [columnFilters, setColumnFilters] = useState({
     vendor: "",
-    client: "",
     sku: "",
     quantity: "",
     cost_per_label: "",
@@ -55,7 +52,6 @@ const LabelPurchases = () => {
   const [columnSorts, setColumnSorts] = useState({
     purchase_date: "desc" as "asc" | "desc" | null,
     vendor: "asc" as "asc" | "desc" | null,
-    client: "asc" as "asc" | "desc" | null,
     sku: "asc" as "asc" | "desc" | null,
     quantity: "asc" as "asc" | "desc" | null,
     cost_per_label: "asc" as "asc" | "desc" | null,
@@ -77,51 +73,23 @@ const LabelPurchases = () => {
     },
   });
 
-  // Get available SKUs for the selected client
-  const getAvailableSKUs = () => {
-    if (!form.client_id) return [];
-    
-    const selectedCustomer = customers?.find(c => c.id === form.client_id);
-    if (!selectedCustomer) return [];
-    
-    // Filter customers by the selected customer name to get available SKUs
-    const customerSKUs = customers?.filter(c => 
-      c.dealer_name === selectedCustomer.dealer_name &&
-      c.sku && 
-      c.sku.trim() !== ''
-    ) || [];
-    
-    // Return unique SKUs for this client
-    const uniqueSKUs = customerSKUs.map(customer => ({
-      sku: customer.sku,
-      dealer_name: customer.dealer_name,
-      area: customer.area
-    }));
-    return uniqueSKUs;
-  };
+  const { data: skuConfigs } = useQuery({
+    queryKey: ["sku_configurations"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sku_configurations")
+        .select("sku")
+        .order("sku", { ascending: true });
+      return data || [];
+    },
+  });
 
-  // Get available SKUs for edit form
-  const getAvailableEditSKUs = () => {
-    if (!editForm.client_id) return [];
-    
-    const selectedCustomer = customers?.find(c => c.id === editForm.client_id);
-    if (!selectedCustomer) return [];
-    
-    // Filter customers by the selected customer name to get available SKUs
-    const customerSKUs = customers?.filter(c => 
-      c.dealer_name === selectedCustomer.dealer_name &&
-      c.sku && 
-      c.sku.trim() !== ''
-    ) || [];
-    
-    // Return unique SKUs for this client
-    const uniqueSKUs = customerSKUs.map(customer => ({
-      sku: customer.sku,
-      dealer_name: customer.dealer_name,
-      area: customer.area
-    }));
-    
-    return uniqueSKUs;
+  // Get all available SKUs from sku_configurations
+  const getAvailableSKUs = () => {
+    if (!skuConfigs) return [];
+    return skuConfigs
+      .filter((c: { sku?: string }) => c.sku && c.sku.trim() !== "")
+      .map((c: { sku: string }) => ({ sku: c.sku }));
   };
 
   const { data: vendors } = useQuery({
@@ -149,7 +117,7 @@ const LabelPurchases = () => {
       // Build insert data object
       const insertData: {
         vendor_id: string;
-        client_id: string;
+        client_id: string | null;
         sku: string;
         quantity: number;
         cost_per_label: number;
@@ -158,7 +126,7 @@ const LabelPurchases = () => {
         description?: string;
       } = {
         vendor_id: data.vendor_id, // Store vendor name as text (database expects TEXT)
-        client_id: data.client_id,
+        client_id: data.client_id || null,
         sku: data.sku,
         quantity: parseInt(data.quantity),
         cost_per_label: parseFloat(data.cost_per_label),
@@ -184,7 +152,6 @@ const LabelPurchases = () => {
       toast({ title: "Success", description: "Label purchase recorded!" });
       setForm({
         vendor_id: "",
-        client_id: "",
         sku: "",
         quantity: "",
         cost_per_label: "",
@@ -212,7 +179,7 @@ const LabelPurchases = () => {
       // Build update data object
       const updateData: {
         vendor_id: string;
-        client_id: string;
+        client_id: string | null;
         sku: string;
         quantity: number;
         cost_per_label: number;
@@ -221,7 +188,7 @@ const LabelPurchases = () => {
         description?: string;
       } = {
         vendor_id: data.vendor_id, // Store vendor name as text (database expects TEXT)
-        client_id: data.client_id,
+        client_id: data.client_id || null,
         sku: data.sku,
         quantity: parseInt(data.quantity),
         cost_per_label: parseFloat(data.cost_per_label),
@@ -247,7 +214,6 @@ const LabelPurchases = () => {
       toast({ title: "Success", description: "Label purchase updated!" });
       setEditingPurchase(null);
       setEditForm({
-        client_id: "",
         vendor_id: "",
         sku: "",
         quantity: "",
@@ -303,10 +269,10 @@ const LabelPurchases = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!form.vendor_id || !form.client_id || !form.sku || !form.quantity || !form.cost_per_label) {
+    if (!form.vendor_id || !form.sku || !form.quantity || !form.cost_per_label) {
       toast({ 
         title: "Error", 
-        description: "Vendor, Client, SKU, Quantity, and Cost per Label are required",
+        description: "Vendor, SKU, Quantity, and Cost per Label are required",
         variant: "destructive"
       });
       return;
@@ -337,7 +303,6 @@ const LabelPurchases = () => {
     setEditingPurchase(purchase);
     setEditForm({
       vendor_id: purchase.vendor_id || "",
-      client_id: purchase.client_id || "",
       sku: purchase.sku || "",
       quantity: purchase.quantity.toString(),
       cost_per_label: purchase.cost_per_label.toString(),
@@ -351,10 +316,10 @@ const LabelPurchases = () => {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!editForm.vendor_id || !editForm.client_id || !editForm.sku || !editForm.quantity || !editForm.cost_per_label) {
+    if (!editForm.vendor_id || !editForm.sku || !editForm.quantity || !editForm.cost_per_label) {
       toast({ 
         title: "Error", 
-        description: "Vendor, Client, SKU, Quantity, and Cost per Label are required",
+        description: "Vendor, SKU, Quantity, and Cost per Label are required",
         variant: "destructive"
       });
       return;
@@ -406,13 +371,11 @@ const LabelPurchases = () => {
       // Global search (using debounced value)
       if (debouncedSearchTerm) {
         const searchLower = debouncedSearchTerm.toLowerCase();
-        const clientName = customers?.find(c => c.id === purchase.client_id)?.dealer_name?.toLowerCase() || '';
         const vendorName = purchase.vendor_id?.toLowerCase() || '';
         const sku = purchase.sku?.toLowerCase() || '';
         const description = purchase.description?.toLowerCase() || '';
         
-        if (!clientName.includes(searchLower) && 
-            !vendorName.includes(searchLower) && 
+        if (!vendorName.includes(searchLower) && 
             !sku.includes(searchLower) && 
             !description.includes(searchLower)) {
           return false;
@@ -424,11 +387,6 @@ const LabelPurchases = () => {
       if (columnFilters.vendor) {
         const vendorName = purchase.vendor_id?.toLowerCase() || '';
         if (!vendorName.includes(columnFilters.vendor.toLowerCase())) return false;
-      }
-
-      if (columnFilters.client) {
-        const clientName = customers?.find(c => c.id === purchase.client_id)?.dealer_name?.toLowerCase() || '';
-        if (!clientName.includes(columnFilters.client.toLowerCase())) return false;
       }
 
       if (columnFilters.sku) {
@@ -472,10 +430,6 @@ const LabelPurchases = () => {
           case 'vendor':
             aValue = a.vendor_id || '';
             bValue = b.vendor_id || '';
-            break;
-          case 'client':
-            aValue = customers?.find(c => c.id === a.client_id)?.dealer_name || '';
-            bValue = customers?.find(c => c.id === b.client_id)?.dealer_name || '';
             break;
           case 'sku':
             aValue = a.sku || '';
@@ -542,7 +496,6 @@ const LabelPurchases = () => {
   const clearAllFilters = useCallback(() => {
     setSearchTerm("");
     setColumnFilters({
-      client: "",
       sku: "",
       vendor: "",
       quantity: "",
@@ -552,7 +505,6 @@ const LabelPurchases = () => {
     });
     setColumnSorts({
       purchase_date: "desc",
-      client: null,
       sku: null,
       vendor: null,
       quantity: null,
@@ -566,7 +518,6 @@ const LabelPurchases = () => {
     const exportData = filteredAndSortedPurchases.map(purchase => ({
       'Purchase Date': new Date(purchase.purchase_date).toLocaleDateString(),
       'Vendor': purchase.vendor_id || 'N/A',
-      'Client': customers?.find(c => c.id === purchase.client_id)?.dealer_name || 'N/A',
       'SKU': purchase.sku || 'N/A',
       'Quantity': purchase.quantity,
       'Cost per Label': purchase.cost_per_label,
@@ -585,24 +536,16 @@ const LabelPurchases = () => {
     <div className="space-y-6">
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* First Row: Client, SKU, Vendor */}
+        {/* First Row: Purchase Date, SKU, Vendor */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="client">Client *</Label>
-            <Select value={form.client_id} onValueChange={(value) => {
-              setForm({ ...form, client_id: value, sku: "" });
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select client" />
-              </SelectTrigger>
-              <SelectContent>
-                {getUniqueCustomers().map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customer.dealer_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="purchase-date">Purchase Date *</Label>
+            <Input
+              id="purchase-date"
+              type="date"
+              value={form.purchase_date}
+              onChange={(e) => setForm({...form, purchase_date: e.target.value})}
+            />
           </div>
 
           <div className="space-y-2">
@@ -620,7 +563,7 @@ const LabelPurchases = () => {
                   ))
                 ) : (
                   <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                    {form.client_id ? "No SKU configured for this client" : "Select a client first"}
+                    No SKU configured. Add SKUs in Application Configuration.
                   </div>
                 )}
               </SelectContent>
@@ -677,27 +620,17 @@ const LabelPurchases = () => {
           </div>
         </div>
 
-        {/* Third Row: Purchase Date and Description */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="purchase-date">Purchase Date</Label>
-            <Input
-              id="purchase-date"
-              type="date"
-              value={form.purchase_date}
-              onChange={(e) => setForm({...form, purchase_date: e.target.value})}
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              value={form.description}
-              onChange={(e) => setForm({...form, description: e.target.value})}
-              placeholder="Purchase details..."
-            />
-          </div>
+        {/* Third Row: Description (textarea, 2-3 lines visible) */}
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={form.description}
+            onChange={(e) => setForm({...form, description: e.target.value})}
+            placeholder="Purchase details (multiple lines allowed)..."
+            className="min-h-[4.5rem] resize-y"
+            rows={3}
+          />
         </div>
         
         <div className="flex justify-end">
@@ -783,26 +716,6 @@ const LabelPurchases = () => {
                       columnName="Vendor"
                       filterValue={columnFilters.vendor}
                       onFilterChange={(value) => handleColumnFilterChange('vendor', value)}
-                      dataType="text"
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="bg-slate-50 border-slate-200 text-slate-700 py-3 px-4">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleColumnSortChange('client')}
-                      className="h-6 w-6 p-0"
-                    >
-                      <ArrowUpDown className="h-4 w-4" />
-                    </Button>
-                    Client
-                    <ColumnFilter
-                      columnKey="client"
-                      columnName="Client"
-                      filterValue={columnFilters.client}
-                      onFilterChange={(value) => handleColumnFilterChange('client', value)}
                       dataType="text"
                     />
                   </div>
@@ -901,9 +814,6 @@ const LabelPurchases = () => {
                       {purchase.vendor_id || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {customers?.find(c => c.id === purchase.client_id)?.dealer_name || 'N/A'}
-                    </TableCell>
-                    <TableCell>
                       {purchase.sku || 'N/A'}
                     </TableCell>
               <TableCell className="text-right">{purchase.quantity?.toLocaleString()}</TableCell>
@@ -926,22 +836,16 @@ const LabelPurchases = () => {
                               <DialogTitle>Edit Label Purchase</DialogTitle>
                             </DialogHeader>
                             <form onSubmit={handleEditSubmit} className="space-y-4">
-                              {/* First Row: Client, SKU, Vendor */}
+                              {/* First Row: Purchase Date, SKU, Vendor */}
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                  <Label htmlFor="edit-client">Client *</Label>
-                                  <Select value={editForm.client_id} onValueChange={(value) => setEditForm({ ...editForm, client_id: value, sku: "" })}>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select client" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {getUniqueCustomers().map((customer) => (
-                                        <SelectItem key={customer.id} value={customer.id}>
-                                          {customer.dealer_name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                  <Label htmlFor="edit-purchase-date">Purchase Date *</Label>
+                                  <Input
+                                    id="edit-purchase-date"
+                                    type="date"
+                                    value={editForm.purchase_date}
+                                    onChange={(e) => setEditForm({...editForm, purchase_date: e.target.value})}
+                                  />
                                 </div>
 
                                 <div className="space-y-2">
@@ -951,15 +855,15 @@ const LabelPurchases = () => {
                                       <SelectValue placeholder="Select SKU" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {getAvailableEditSKUs().length > 0 ? (
-                                        getAvailableEditSKUs().map((skuData) => (
+                                      {getAvailableSKUs().length > 0 ? (
+                                        getAvailableSKUs().map((skuData) => (
                                           <SelectItem key={skuData.sku} value={skuData.sku}>
                                             {skuData.sku}
                                           </SelectItem>
                                         ))
                                       ) : (
                                         <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                                          {editForm.client_id ? "No SKU configured for this client" : "Select a client first"}
+                                          No SKU configured
                                         </div>
                                       )}
                                     </SelectContent>
@@ -1014,27 +918,18 @@ const LabelPurchases = () => {
                                     placeholder="Auto-calculated"
                                   />
                                 </div>
-                                
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-purchase-date">Purchase Date</Label>
-                                  <Input
-                                    id="edit-purchase-date"
-                                    type="date"
-                                    value={editForm.purchase_date}
-                                    onChange={(e) => setEditForm({...editForm, purchase_date: e.target.value})}
-                                  />
-                                </div>
-                                
-                                <div className="space-y-2 md:col-span-2">
-                                  <Label htmlFor="edit-description">Description</Label>
-                                  <Textarea
-                                    id="edit-description"
-                                    value={editForm.description}
-                                    onChange={(e) => setEditForm({...editForm, description: e.target.value})}
-                                    placeholder="Purchase details..."
-                                    className="min-h-[100px]"
-                                  />
-                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="edit-description">Description</Label>
+                                <Textarea
+                                  id="edit-description"
+                                  value={editForm.description}
+                                  onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                                  placeholder="Purchase details (multiple lines allowed)..."
+                                  className="min-h-[4.5rem] resize-y"
+                                  rows={3}
+                                />
                               </div>
                               <div className="flex justify-end gap-2">
                                 <Button
@@ -1082,7 +977,7 @@ const LabelPurchases = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No label purchases found
                   </TableCell>
             </TableRow>

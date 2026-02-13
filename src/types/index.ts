@@ -193,7 +193,7 @@ export interface TransportExpenseForm {
 
 export interface LabelPurchaseForm {
   vendor_id: string; // This will contain vendor name as text
-  client_id: string;
+  client_id?: string; // Optional - removed from form
   sku: string;
   quantity: string;
   cost_per_label: string;

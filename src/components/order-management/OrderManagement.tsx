@@ -828,7 +828,7 @@ const OrderManagement: React.FC = () => {
   const maxDate = new Date().toISOString().split("T")[0];
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Order Management</h2>
@@ -914,19 +914,13 @@ const OrderManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* SKU Rows - Multiple SKUs per order */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>SKUs *</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addSkuRow}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add SKU
-                </Button>
-              </div>
+            {/* SKU Rows - SKU, Select SKU, Cases, Delete, Add SKU in single line */}
+            <div className="space-y-2">
+              <Label>SKUs *</Label>
               {skuRows.map((row, index) => (
-                <div key={index} className="flex flex-wrap items-end gap-2">
-                  <div className="flex-1 min-w-[140px] space-y-2">
-                    <Label className="text-xs">SKU</Label>
+                <div key={index} className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-muted-foreground w-8">{index + 1}.</span>
+                  <div className="flex-1 min-w-[140px]">
                     <Select
                       value={row.sku || ""}
                       onValueChange={(value) => updateSkuRow(index, "sku", value)}
@@ -944,14 +938,13 @@ const OrderManagement: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="w-24 space-y-2">
-                    <Label className="text-xs">Cases</Label>
+                  <div className="w-20">
                     <Input
                       type="number"
                       min="1"
                       value={row.number_of_cases}
                       onChange={(e) => updateSkuRow(index, "number_of_cases", e.target.value)}
-                      placeholder="0"
+                      placeholder="Cases"
                     />
                   </div>
                   <Button
@@ -964,6 +957,18 @@ const OrderManagement: React.FC = () => {
                   >
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
+                  {index === 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addSkuRow}
+                      className="shrink-0"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add SKU
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

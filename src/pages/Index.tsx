@@ -158,7 +158,7 @@ const Index = () => {
               </h1>
             </div>
           </header>
-          <main className="flex-1 p-4 bg-background">
+          <main className="flex-1 p-4 bg-background min-w-0 overflow-x-hidden">
             {renderContent()}
           </main>
         </div>
