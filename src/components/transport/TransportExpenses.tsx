@@ -3,6 +3,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCacheInvalidation } from "@/hooks/useCacheInvalidation";
+import { getListConfig } from "@/services/invoiceConfigService";
 import type { TransportExpense, TransportExpenseForm } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,8 @@ const TransportExpenses = () => {
     description: "",
     amount: "",
     client_id: "",
-    area: ""
+    area: "",
+    transport_vendor: ""
   });
 
   const [editingExpense, setEditingExpense] = useState<TransportExpense | null>(null);
@@ -33,7 +35,8 @@ const TransportExpenses = () => {
     description: "",
     amount: "",
     client_id: "",
-    area: ""
+    area: "",
+    transport_vendor: ""
   });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,6 +72,16 @@ const TransportExpenses = () => {
         .order("dealer_name", { ascending: true });
       return data || [];
     },
+  });
+
+  const { data: transportVendors = [] } = useQuery({
+    queryKey: ["transport-vendors-config"],
+    queryFn: () => getListConfig("transport_vendors"),
+  });
+
+  const { data: expenseGroupsConfig = [] } = useQuery({
+    queryKey: ["expense-groups-config"],
+    queryFn: () => getListConfig("expense_groups"),
   });
 
   const { data: expenses } = useQuery({
@@ -186,10 +199,9 @@ const TransportExpenses = () => {
           expense_group: data.expense_group || null,
           amount: parseFloat(data.amount),
           description: data.description || "",
-          client_id: data.client_id,
-          area: data.area,
-          sku: data.sku || null,
-          no_of_cases: data.no_of_cases ? parseInt(data.no_of_cases) : null
+          client_id: data.client_id || null,
+          area: data.area || null,
+          transport_vendor: data.transport_vendor || null,
         });
 
       if (error) {
@@ -205,7 +217,8 @@ const TransportExpenses = () => {
         description: "",
         amount: "",
         client_id: "",
-        area: ""
+        area: "",
+        transport_vendor: ""
       });
       invalidateRelated('transport_expenses');
     },
@@ -227,10 +240,9 @@ const TransportExpenses = () => {
           expense_group: data.expense_group || null,
           amount: data.amount ? parseFloat(data.amount) : undefined,
           description: data.description || "",
-          client_id: data.client_id,
-          area: data.area,
-          sku: data.sku || null,
-          no_of_cases: data.no_of_cases ? parseInt(data.no_of_cases) : null
+          client_id: data.client_id || null,
+          area: data.area || null,
+          transport_vendor: data.transport_vendor || null,
         })
         .eq("id", data.id);
 
@@ -276,6 +288,14 @@ const TransportExpenses = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!form.transport_vendor?.trim()) {
+      toast({ 
+        title: "Error", 
+        description: "Transport Vendor is required",
+        variant: "destructive"
+      });
+      return;
+    }
     if (!form.amount || !form.description) {
       toast({ 
         title: "Error", 
@@ -296,13 +316,22 @@ const TransportExpenses = () => {
       description: expense.description || "",
       amount: expense.amount?.toString() || "",
       client_id: expense.client_id || "",
-      area: expense.area || ""
+      area: expense.area || "",
+      transport_vendor: (expense as { transport_vendor?: string }).transport_vendor || ""
     });
     setIsEditDialogOpen(true);
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editForm.transport_vendor?.trim()) {
+      toast({ 
+        title: "Error", 
+        description: "Transport Vendor is required",
+        variant: "destructive"
+      });
+      return;
+    }
     if (!editForm.amount || !editForm.description) {
       toast({ 
         title: "Error", 
@@ -351,11 +380,12 @@ const TransportExpenses = () => {
     return customers.filter(c => c.id === customerId).map(c => c.area).filter(Boolean);
   };
 
-  // Memoized unique groups list for dropdown options
+  // Expense group options: config first, then any from existing expenses
   const uniqueGroups = useMemo(() => {
-    if (!expenses) return [];
-    return [...new Set(expenses.map(e => e.expense_group).filter(Boolean))].sort();
-  }, [expenses]);
+    const fromConfig = expenseGroupsConfig || [];
+    const fromExpenses = expenses ? [...new Set(expenses.map(e => e.expense_group).filter(Boolean))] : [];
+    return [...new Set([...fromConfig, ...fromExpenses])].sort();
+  }, [expenseGroupsConfig, expenses]);
 
   // Handle column filter change (memoized)
   const handleColumnFilterChange = useCallback((column: string, value: string) => {
@@ -390,6 +420,7 @@ const TransportExpenses = () => {
     const date = new Date(expense.expense_date).toLocaleDateString();
     const dateISO = expense.expense_date;
     const description = expense.description || '';
+    const transportVendor = (expense as { transport_vendor?: string }).transport_vendor?.toLowerCase() || '';
     
     // Get client and area names for filtering
     const clientName = expense.dealer_name?.toLowerCase() || '';
@@ -404,7 +435,8 @@ const TransportExpenses = () => {
         amount.includes(searchLower) ||
         date.includes(searchLower) ||
         clientName.includes(searchLower) ||
-        areaName.includes(searchLower)
+        areaName.includes(searchLower) ||
+        transportVendor.includes(searchLower)
       );
       if (!matchesGlobalSearch) return false;
     }
@@ -416,6 +448,7 @@ const TransportExpenses = () => {
     if (columnFilters.amount && !amount.includes(columnFilters.amount)) return false;
     if (columnFilters.client && !clientName.includes(columnFilters.client.toLowerCase())) return false;
     if (columnFilters.area && !areaName.includes(columnFilters.area.toLowerCase())) return false;
+    if (columnFilters.transport_vendor && !transportVendor.includes(columnFilters.transport_vendor.toLowerCase())) return false;
     
     return true;
   }).sort((a, b) => {
@@ -471,6 +504,7 @@ const TransportExpenses = () => {
     const exportData = filteredAndSortedExpenses.map((expense) => {
       return {
         'Date': new Date(expense.expense_date).toLocaleDateString(),
+        'Transport Vendor': (expense as { transport_vendor?: string }).transport_vendor || '',
         'Dealer': expense.dealer_name || '',
         'Area': expense.area || '',
         'Group': expense.expense_group || '',
@@ -502,8 +536,8 @@ const TransportExpenses = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* First Row: Date, Client, Area */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Row 1: Date, Dealer, Area, Amount */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label htmlFor="expense-date">Date</Label>
             <Input
@@ -545,20 +579,6 @@ const TransportExpenses = () => {
               </SelectContent>
             </Select>
           </div>
-        </div>
-
-        {/* Second Row: Description, Amount */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="expense-description">Description *</Label>
-            <Input
-              id="expense-description"
-              value={form.description}
-              onChange={(e) => setForm({...form, description: e.target.value})}
-              placeholder="Enter expense description"
-              required
-            />
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="expense-amount">Amount (₹) *</Label>
@@ -573,16 +593,56 @@ const TransportExpenses = () => {
           </div>
         </div>
 
-        {/* Third Row: Expense Group */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Row 2: Transport Vendor, Description, Expense Group */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="transport-vendor">Transport Vendor *</Label>
+            <Select value={form.transport_vendor || ""} onValueChange={(value) => setForm({ ...form, transport_vendor: value })} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select transport vendor" />
+              </SelectTrigger>
+              <SelectContent>
+                {transportVendors.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {v}
+                  </SelectItem>
+                ))}
+                {transportVendors.length === 0 && (
+                  <SelectItem value="_none" disabled>Configure in Application Configuration</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="expense-description">Description *</Label>
+            <Input
+              id="expense-description"
+              value={form.description}
+              onChange={(e) => setForm({...form, description: e.target.value})}
+              placeholder="Enter expense description"
+              required
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="expense-group">Expense Group</Label>
-            <Input
-              id="expense-group"
-              value={form.expense_group}
-              onChange={(e) => setForm({...form, expense_group: e.target.value})}
-              placeholder="e.g., Delivery, Fuel, etc."
-            />
+            <Select value={form.expense_group || ""} onValueChange={(value) => setForm({ ...form, expense_group: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select expense group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {uniqueGroups.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {g}
+                  </SelectItem>
+                ))}
+                {uniqueGroups.length === 0 && (
+                  <SelectItem value="_config" disabled>Configure in Application Configuration</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         
@@ -631,7 +691,8 @@ const TransportExpenses = () => {
                   area: "",
                   group: "",
                   amount: "",
-                  description: ""
+                  description: "",
+                  transport_vendor: ""
                 });
                 setColumnSorts({
                   date: null,
@@ -639,7 +700,8 @@ const TransportExpenses = () => {
                   area: null,
                   group: null,
                   amount: null,
-                  description: null
+                  description: null,
+                  transport_vendor: null
                 });
               }}
             >
@@ -665,6 +727,21 @@ const TransportExpenses = () => {
                   sortDirection={columnSorts.date}
                   onSortChange={(direction) => handleColumnSortChange('date', direction)}
                   dataType="date"
+                />
+              </div>
+            </TableHead>
+            <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-left border-r border-slate-200/50">
+              <div className="flex items-center justify-between">
+                <span>Transport Vendor</span>
+                <ColumnFilter
+                  columnKey="transport_vendor"
+                  columnName="Transport Vendor"
+                  filterValue={columnFilters.transport_vendor || ""}
+                  onFilterChange={(value) => handleColumnFilterChange('transport_vendor', value)}
+                  onClearFilter={() => handleClearColumnFilter('transport_vendor')}
+                  sortDirection={columnSorts.transport_vendor || null}
+                  onSortChange={(direction) => handleColumnSortChange('transport_vendor', direction)}
+                  dataType="text"
                 />
               </div>
             </TableHead>
@@ -754,6 +831,7 @@ const TransportExpenses = () => {
             filteredAndSortedExpenses.map((expense) => (
               <TableRow key={expense.id}>
                 <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
+                <TableCell>{(expense as { transport_vendor?: string }).transport_vendor || 'N/A'}</TableCell>
                 <TableCell>{expense.dealer_name || 'N/A'}</TableCell>
                 <TableCell>{expense.area || 'N/A'}</TableCell>
                 <TableCell>{expense.expense_group || 'N/A'}</TableCell>
@@ -783,7 +861,7 @@ const TransportExpenses = () => {
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                 {searchTerm ? "No transactions found matching your search" : "No transport transactions found"}
               </TableCell>
             </TableRow>
@@ -823,7 +901,23 @@ const TransportExpenses = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-transport-vendor">Transport Vendor *</Label>
+                <Select value={editForm.transport_vendor || ""} onValueChange={(value) => setEditForm({ ...editForm, transport_vendor: value })} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select transport vendor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {transportVendors.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="edit-description">Description *</Label>
                 <Input
@@ -835,6 +929,25 @@ const TransportExpenses = () => {
                 />
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="edit-expense-group">Expense Group</Label>
+                <Select value={editForm.expense_group || ""} onValueChange={(value) => setEditForm({ ...editForm, expense_group: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select expense group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {uniqueGroups.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-client">Dealer</Label>
                 <Select value={editForm.client_id || ""} onValueChange={(value) => setEditForm({ ...editForm, client_id: value, area: "" })}>
@@ -865,19 +978,6 @@ const TransportExpenses = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-expense-group">Expense Group</Label>
-                <Input
-                  id="edit-expense-group"
-                  value={editForm.expense_group}
-                  onChange={(e) => setEditForm({...editForm, expense_group: e.target.value})}
-                  placeholder="e.g., Delivery, Fuel, etc."
-                />
               </div>
             </div>
             

@@ -181,3 +181,47 @@ export function validateFolderPath(path: string): { valid: boolean; error?: stri
 
   return { valid: true };
 }
+
+/**
+ * Get a JSON array config value (e.g. transport_vendors, expense_groups)
+ */
+export async function getListConfig(configKey: string): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('invoice_configurations')
+      .select('config_value')
+      .eq('config_key', configKey)
+      .single();
+
+    if (error || !data) return [];
+
+    try {
+      const parsed = JSON.parse(data.config_value || '[]');
+      return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+    } catch {
+      return [];
+    }
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get tentative delivery days from config (default 5)
+ */
+export async function getTentativeDeliveryDays(): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('invoice_configurations')
+      .select('config_value')
+      .eq('config_key', 'tentative_delivery_days')
+      .single();
+
+    if (error || !data) return 5;
+
+    const num = parseInt(String(data.config_value || '5'), 10);
+    return isNaN(num) || num < 0 ? 5 : num;
+  } catch {
+    return 5;
+  }
+}

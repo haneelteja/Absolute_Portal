@@ -11,6 +11,7 @@ const Dashboard = lazy(() => import("@/components/dashboard/Dashboard"));
 const SalesEntry = lazy(() => import("@/components/sales/SalesEntry"));
 const Production = lazy(() => import("@/components/production/Production"));
 const TransportExpenses = lazy(() => import("@/components/transport/TransportExpenses"));
+const Purchase = lazy(() => import("@/components/purchase/Purchase"));
 const Labels = lazy(() => import("@/components/labels/Labels"));
 const ConfigurationManagement = lazy(() => import("@/components/configurations/ConfigurationManagement"));
 const Reports = lazy(() => import("@/components/reports/Reports"));
@@ -62,6 +63,12 @@ const Index = () => {
         return (
           <Suspense fallback={<RouteLoader />}>
             <TransportExpenses />
+          </Suspense>
+        );
+      case "purchase":
+        return (
+          <Suspense fallback={<RouteLoader />}>
+            <Purchase />
           </Suspense>
         );
       case "labels":

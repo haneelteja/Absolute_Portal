@@ -192,6 +192,7 @@ export const AddDealerDialog: React.FC<AddDealerDialogProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers-management"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers-for-availability"] });
       toast({ title: "Success", description: "Dealer added successfully." });
       onSuccess?.();
       onOpenChange(false);

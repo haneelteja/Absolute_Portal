@@ -25,6 +25,9 @@ import { EditBackupFolderDialog } from './EditBackupFolderDialog';
 import { EditBackupTimeDialog } from './EditBackupTimeDialog';
 import { EditNotificationEmailDialog } from './EditNotificationEmailDialog';
 import { EditSkusAvailableDialog } from './EditSkusAvailableDialog';
+import { EditListConfigDialog } from './EditListConfigDialog';
+import { EditTentativeDeliveryDaysDialog } from './EditTentativeDeliveryDaysDialog';
+import { EditWhatsAppApiKeyDialog } from './EditWhatsAppApiKeyDialog';
 import { triggerManualBackup, getBackupConfig, type BackupConfig } from '@/services/backupService';
 import { Database, Play } from 'lucide-react';
 
@@ -37,6 +40,11 @@ const ApplicationConfigurationTab: React.FC = () => {
   const [isBackupTimeDialogOpen, setIsBackupTimeDialogOpen] = useState(false);
   const [isNotificationEmailDialogOpen, setIsNotificationEmailDialogOpen] = useState(false);
   const [isSkusAvailableDialogOpen, setIsSkusAvailableDialogOpen] = useState(false);
+  const [isTransportVendorsDialogOpen, setIsTransportVendorsDialogOpen] = useState(false);
+  const [isExpenseGroupsDialogOpen, setIsExpenseGroupsDialogOpen] = useState(false);
+  const [isTentativeDeliveryDaysDialogOpen, setIsTentativeDeliveryDaysDialogOpen] = useState(false);
+  const [isPurchaseItemsDialogOpen, setIsPurchaseItemsDialogOpen] = useState(false);
+  const [isWhatsAppApiKeyDialogOpen, setIsWhatsAppApiKeyDialogOpen] = useState(false);
   const [isRunningBackup, setIsRunningBackup] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -77,31 +85,94 @@ const ApplicationConfigurationTab: React.FC = () => {
 
   // Filter configurations: exclude WhatsApp; include main configs + Database Backup Folder Path + Database Backup Time
   const backupTableKeys = ['backup_folder_path', 'backup_schedule_time_ist'];
-  const mainConfigsCount = useMemo(() => {
-    if (!configurations) return 0;
-    return configurations.filter(
-      (c) =>
-        !c.config_key.startsWith('whatsapp_') &&
-        (!c.config_key.startsWith('backup_') || backupTableKeys.includes(c.config_key))
-    ).length;
-  }, [configurations]);
 
-  const filteredConfigurations = useMemo(() => {
+  // Display order: 1. SKUs, 2. Item list, 3. Auto Invoice, then rest (exclude whatsapp_ except whatsapp_api_key)
+  const orderedDisplayConfigs = useMemo(() => {
     if (!configurations) return [];
 
     const mainAndBackupConfigs = configurations.filter(
       (config) =>
-        !config.config_key.startsWith('whatsapp_') &&
+        (config.config_key === 'whatsapp_api_key' || !config.config_key.startsWith('whatsapp_')) &&
         (!config.config_key.startsWith('backup_') || backupTableKeys.includes(config.config_key))
     );
 
-    if (!searchQuery.trim()) return mainAndBackupConfigs;
+    const order: string[] = [
+      'auto_invoice_generation_enabled',
+      'invoice_folder_path',
+      'storage_provider',
+      'transport_vendors',
+      'expense_groups',
+      'tentative_delivery_days',
+      'whatsapp_api_key',
+      'backup_folder_path',
+      'backup_schedule_time_ist',
+      'backup_notification_email',
+      'invoice_number_format',
+    ];
 
+    const configMap = new Map(mainAndBackupConfigs.map((c) => [c.config_key, c]));
+    const seen = new Set<string>();
+    const result: (InvoiceConfiguration & { isCustom?: boolean; customKey?: string })[] = [];
+
+    // Row 1: SKUs (custom - not from config table)
+    result.push({
+      id: '',
+      config_key: 'sku_configurations',
+      config_value: '',
+      config_type: 'string',
+      description: "SKU's available in the plant",
+      updated_by: null,
+      updated_at: '',
+      created_at: '',
+      isCustom: true,
+      customKey: 'sku_configurations',
+    } as InvoiceConfiguration & { isCustom?: boolean; customKey?: string });
+
+    // Row 2: Item list (purchase_items)
+    const purchaseItemsConfig = configMap.get('purchase_items');
+    if (purchaseItemsConfig) {
+      result.push(purchaseItemsConfig);
+      seen.add('purchase_items');
+    } else {
+      result.push({
+        id: '',
+        config_key: 'purchase_items',
+        config_value: '[]',
+        config_type: 'string',
+        description: 'Item list for Purchase dropdown (preforms, caps, shrink)',
+        updated_by: null,
+        updated_at: '',
+        created_at: '',
+        isCustom: true,
+        customKey: 'purchase_items',
+      } as InvoiceConfiguration & { isCustom?: boolean; customKey?: string });
+    }
+
+    // Row 3+: Ordered configs
+    for (const key of order) {
+      if (seen.has(key)) continue;
+      const config = configMap.get(key);
+      if (config) {
+        result.push(config);
+        seen.add(key);
+      }
+    }
+
+    // Add any remaining configs not in order
+    for (const config of mainAndBackupConfigs) {
+      if (!seen.has(config.config_key)) {
+        result.push(config);
+      }
+    }
+
+    if (!searchQuery.trim()) return result;
     const query = searchQuery.toLowerCase();
-    return mainAndBackupConfigs.filter((config) =>
+    return result.filter((config) =>
       config.description?.toLowerCase().includes(query)
     );
   }, [configurations, searchQuery]);
+
+  const filteredConfigurations = orderedDisplayConfigs;
 
   // Handle edit button click
   const handleEdit = (config: InvoiceConfiguration) => {
@@ -273,13 +344,33 @@ const ApplicationConfigurationTab: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredConfigurations.map((config, index) => (
-                    <TableRow key={config.id}>
+                    <TableRow key={config.id || config.config_key || index}>
                       <TableCell className="text-center font-medium">
                         {index + 1}
                       </TableCell>
                       <TableCell>{config.description}</TableCell>
                       <TableCell className="text-center align-middle">
-                        {config.config_key === 'invoice_folder_path' ? (
+                        {config.config_key === 'sku_configurations' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsSkusAvailableDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'purchase_items' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsPurchaseItemsDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'invoice_folder_path' ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -333,33 +424,50 @@ const ApplicationConfigurationTab: React.FC = () => {
                             <Edit className="h-4 w-4" />
                             Edit
                           </Button>
+                        ) : config.config_key === 'transport_vendors' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsTransportVendorsDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'expense_groups' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsExpenseGroupsDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'tentative_delivery_days' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsTentativeDeliveryDaysDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'whatsapp_api_key' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsWhatsAppApiKeyDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
                         ) : null}
                       </TableCell>
                     </TableRow>
                   ))}
-                  <TableRow
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => setIsSkusAvailableDialogOpen(true)}
-                  >
-                    <TableCell className="text-center font-medium">
-                      {filteredConfigurations.length + 1}
-                    </TableCell>
-                    <TableCell>SKU&apos;s available in the plant</TableCell>
-                    <TableCell className="text-center align-middle">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsSkusAvailableDialogOpen(true);
-                        }}
-                        className="flex items-center gap-2"
-                      >
-                        <Edit className="h-4 w-4" />
-                        Edit
-                      </Button>
-                    </TableCell>
-                  </TableRow>
                 </TableBody>
               </Table>
             </div>
@@ -368,7 +476,7 @@ const ApplicationConfigurationTab: React.FC = () => {
           {/* Pagination Info - counts only configs in this section (excludes WhatsApp & Backup) */}
           {filteredConfigurations.length > 0 && (
             <div className="mt-4 text-sm text-gray-600 text-center">
-              Showing {filteredConfigurations.length} of {mainConfigsCount} configurations
+              Showing {filteredConfigurations.length} configuration{filteredConfigurations.length !== 1 ? 's' : ''}
             </div>
           )}
         </CardContent>
@@ -479,6 +587,48 @@ const ApplicationConfigurationTab: React.FC = () => {
       <EditSkusAvailableDialog
         open={isSkusAvailableDialogOpen}
         onOpenChange={setIsSkusAvailableDialogOpen}
+      />
+
+      {/* Transport Vendors Dialog */}
+      <EditListConfigDialog
+        open={isTransportVendorsDialogOpen}
+        onOpenChange={setIsTransportVendorsDialogOpen}
+        configKey="transport_vendors"
+        title="Transport Vendors"
+        description="Add or remove transport vendors. These appear in the Transport expenses dropdown."
+        placeholder="e.g. ABC Logistics"
+      />
+
+      {/* Expense Groups Dialog */}
+      <EditListConfigDialog
+        open={isExpenseGroupsDialogOpen}
+        onOpenChange={setIsExpenseGroupsDialogOpen}
+        configKey="expense_groups"
+        title="Expense Groups"
+        description="Add or remove expense groups. These appear in the Transport expenses dropdown."
+        placeholder="e.g. Delivery, Fuel"
+      />
+
+      {/* Tentative Delivery Days Dialog */}
+      <EditTentativeDeliveryDaysDialog
+        open={isTentativeDeliveryDaysDialogOpen}
+        onOpenChange={setIsTentativeDeliveryDaysDialogOpen}
+      />
+
+      {/* Purchase Items Dialog */}
+      <EditListConfigDialog
+        open={isPurchaseItemsDialogOpen}
+        onOpenChange={setIsPurchaseItemsDialogOpen}
+        configKey="purchase_items"
+        title="Item List for Purchase"
+        description="Add or remove items for the Purchase page dropdown (e.g. Preforms, Caps, Shrink)."
+        placeholder="e.g. Preforms, Caps, Shrink"
+      />
+
+      {/* WhatsApp API Key Dialog */}
+      <EditWhatsAppApiKeyDialog
+        open={isWhatsAppApiKeyDialogOpen}
+        onOpenChange={setIsWhatsAppApiKeyDialogOpen}
       />
     </div>
   );

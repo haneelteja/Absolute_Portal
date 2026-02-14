@@ -13,7 +13,8 @@ import {
   ShoppingCart,
   Shield,
   Settings,
-  MessageSquare
+  MessageSquare,
+  Package
 } from "lucide-react";
 
 import {
@@ -49,6 +50,7 @@ const menuItems: MenuItem[] = [
   { id: "client-transactions", title: "Dealer Transactions", icon: DollarSign },
   { id: "production", title: "Production", icon: Factory },
   { id: "transport", title: "Transport", icon: Truck },
+  { id: "purchase", title: "Purchase", icon: Package },
   { id: "labels", title: "Labels", icon: Tag },
   { id: "configurations", title: "Configurations", icon: Cog },
   { id: "reports", title: "Reports", icon: FileText },

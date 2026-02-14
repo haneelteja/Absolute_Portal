@@ -434,6 +434,7 @@ export type Database = {
           expense_date: string
           expense_group: string | null
           id: string
+          transport_vendor: string | null
           updated_at: string
         }
         Insert: {
@@ -445,6 +446,7 @@ export type Database = {
           expense_date?: string
           expense_group?: string | null
           id?: string
+          transport_vendor?: string | null
           updated_at?: string
         }
         Update: {
@@ -456,6 +458,46 @@ export type Database = {
           expense_date?: string
           expense_group?: string | null
           id?: string
+          transport_vendor?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      material_purchases: {
+        Row: {
+          id: string
+          item: string
+          quantity: number
+          cost_per_unit: number
+          total_amount: number
+          vendor: string | null
+          description: string | null
+          purchase_date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          item: string
+          quantity: number
+          cost_per_unit: number
+          total_amount: number
+          vendor?: string | null
+          description?: string | null
+          purchase_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          item?: string
+          quantity?: number
+          cost_per_unit?: number
+          total_amount?: number
+          vendor?: string | null
+          description?: string | null
+          purchase_date?: string
+          created_at?: string
           updated_at?: string
         }
         Relationships: []

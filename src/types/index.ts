@@ -81,6 +81,7 @@ export interface TransportExpense {
   description: string;
   expense_date: string;
   expense_group: string | null;
+  transport_vendor?: string | null;
   client_id?: string | null;
   dealer_name?: string | null;
   area?: string | null;
@@ -187,8 +188,7 @@ export interface TransportExpenseForm {
   amount: string;
   client_id: string;
   area: string;
-  sku?: string;
-  no_of_cases?: string;
+  transport_vendor: string;
 }
 
 export interface LabelPurchaseForm {

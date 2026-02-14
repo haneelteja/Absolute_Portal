@@ -254,7 +254,6 @@ const LabelAvailability = () => {
     const filtered = clientSummaries.filter((summary) => {
       // Search filter
       const matchesSearch = 
-        summary.dealer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         summary.sku.toLowerCase().includes(searchTerm.toLowerCase());
       
       // Status filter
@@ -290,7 +289,7 @@ const LabelAvailability = () => {
     return filtered;
   }, [clientSummaries, searchTerm, statusFilter, sortField, sortDirection]);
 
-  // Handle sort
+  // Handle sort (dealer_name removed from table but still in data for grouping)
   const handleSort = (field: keyof ClientLabelSummary) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -336,7 +335,7 @@ const LabelAvailability = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Search by client or SKU..."
+                placeholder="Search by SKU..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -377,17 +376,6 @@ const LabelAvailability = () => {
             <Table>
             <TableHeader>
               <TableRow>
-                <TableHead 
-                  className="bg-slate-50 border-slate-200 text-slate-700 py-3 px-4 cursor-pointer hover:bg-slate-100"
-                  onClick={() => handleSort('dealer_name')}
-                >
-                  <div className="flex items-center gap-2">
-                    Client
-                    {sortField === 'dealer_name' && (
-                      <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </TableHead>
                 <TableHead 
                   className="bg-slate-50 border-slate-200 text-slate-700 py-3 px-4 cursor-pointer hover:bg-slate-100"
                   onClick={() => handleSort('sku')}
@@ -485,7 +473,7 @@ const LabelAvailability = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     {clientSummaries.length === 0 
                       ? "No label data found. Start by recording some label purchases in the Labels Purchase tab."
                       : "No results found matching your search criteria. Try adjusting your filters."

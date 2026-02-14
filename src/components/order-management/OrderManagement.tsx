@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Send, Plus } from "lucide-react";
 import { getWhatsAppConfig, sendWhatsAppMessage } from "@/services/whatsappService";
+import { getTentativeDeliveryDays } from "@/services/invoiceConfigService";
 import { logger } from "@/lib/logger";
 import * as XLSX from "xlsx";
 import { ColumnFilter } from "@/components/ui/column-filter";
@@ -178,10 +179,10 @@ const OrderManagement: React.FC = () => {
         description: count === 1 ? "Order created successfully!" : `${count} orders created successfully!`,
       });
       invalidateRelated('orders');
-      // Reset form
+      // Reset form - use config for tentative delivery days
       const today = new Date().toISOString().split("T")[0];
       const defaultDeliveryDate = new Date();
-      defaultDeliveryDate.setDate(defaultDeliveryDate.getDate() + 5);
+      defaultDeliveryDate.setDate(defaultDeliveryDate.getDate() + tentativeDeliveryDays);
       
       setOrderForm({
         expense_date: today,
@@ -525,7 +526,7 @@ const OrderManagement: React.FC = () => {
     }
 
     const deliveryDate = new Date(selectedDate);
-    deliveryDate.setDate(deliveryDate.getDate() + 5);
+    deliveryDate.setDate(deliveryDate.getDate() + tentativeDeliveryDays);
     
     // Ensure delivery date is always set
     const newDeliveryDate = orderForm.tentative_delivery_date || deliveryDate.toISOString().split("T")[0];
@@ -547,17 +548,17 @@ const OrderManagement: React.FC = () => {
     }
   };
 
-  // Initialize tentative delivery date on component mount
+  // Initialize tentative delivery date on component mount (uses config)
   useEffect(() => {
     if (!orderForm.tentative_delivery_date) {
       const defaultDeliveryDate = new Date(orderForm.expense_date);
-      defaultDeliveryDate.setDate(defaultDeliveryDate.getDate() + 5);
+      defaultDeliveryDate.setDate(defaultDeliveryDate.getDate() + tentativeDeliveryDays);
       setOrderForm(prev => ({
         ...prev,
         tentative_delivery_date: defaultDeliveryDate.toISOString().split("T")[0],
       }));
     }
-  }, []);
+  }, [tentativeDeliveryDays]);
 
   // Get unique customers for form dropdown (by dealer_name, not by id)
   const getUniqueCustomers = useCallback(() => {
