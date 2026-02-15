@@ -363,8 +363,8 @@ serve(async (req) => {
                 // Option 2: Use proxy URL so the PDF is served with Content-Disposition filename (fixes "Untitled" in WhatsApp)
                 const proxyAccessKey = Deno.env.get('WHATSAPP_PDF_PROXY_ACCESS_KEY');
                 if (proxyAccessKey) {
-                  // Put filename in URL path so 360Messenger/WhatsApp may use it when they ignore Content-Disposition
-                  const proxyUrl = `${supabaseUrl}/functions/v1/whatsapp-pdf-proxy/${encodeURIComponent(pdfFileName)}?path=${encodeURIComponent(tempPath)}&access_key=${encodeURIComponent(proxyAccessKey)}`;
+                  // Put filename in URL path + query so 360Messenger/WhatsApp can use it (header, path, or query)
+                  const proxyUrl = `${supabaseUrl}/functions/v1/whatsapp-pdf-proxy/${encodeURIComponent(pdfFileName)}?path=${encodeURIComponent(tempPath)}&filename=${encodeURIComponent(pdfFileName)}&access_key=${encodeURIComponent(proxyAccessKey)}`;
                   documentUrlToSend = proxyUrl;
                   console.log('[WhatsApp document] Using whatsapp-pdf-proxy URL for PDF (Content-Disposition filename)');
                 } else {
@@ -395,6 +395,7 @@ serve(async (req) => {
                     text: caption,
                     '360notify-medium': 'wordpress_order_notification',
                     [param]: documentUrlToSend,
+                    filename: pdfFileName,
                   };
                   const res = await fetch(`${apiUrl}/sendMessage/${apiKey}`, {
                     method: 'POST',
@@ -418,7 +419,7 @@ serve(async (req) => {
               form.append('phonenumber', customer.whatsapp_number);
               form.append('text', caption);
               form.append('360notify-medium', 'wordpress_order_notification');
-              form.append('file', new Blob([pdfBytes], { type: 'application/pdf' }), 'invoice.pdf');
+              form.append('file', new Blob([pdfBytes], { type: 'application/pdf' }), pdfFileName);
               const uploadRes = await fetch(`${apiUrl}/sendMessage/${apiKey}`, { method: 'POST', body: form });
               if (uploadRes.ok) {
                 console.log('✅ Document (PDF) sent via /sendMessage multipart file (fallback)');
