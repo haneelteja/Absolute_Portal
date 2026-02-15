@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/use-toast";
+import ProductionInventory from "@/components/sales/ProductionInventory";
 
 const Dashboard = memo(() => {
   const { toast } = useToast();
@@ -548,6 +549,8 @@ const Dashboard = memo(() => {
           </CardContent>
         </Card>
       </div>
+
+      <ProductionInventory />
     </div>
   );
 });

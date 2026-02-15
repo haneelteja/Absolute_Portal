@@ -201,11 +201,12 @@ const TransportExpenses = () => {
 
   const mutation = useMutation({
     mutationFn: async (data: TransportExpenseForm) => {
+      const expenseGroup = (data.expense_group && data.expense_group !== "_none") ? data.expense_group : "General";
       const { error } = await supabase
         .from("transport_expenses")
         .insert({
           expense_date: data.expense_date,
-          expense_group: (data.expense_group && data.expense_group !== "_none") ? data.expense_group : null,
+          expense_group: expenseGroup,
           amount: parseFloat(data.amount),
           description: data.description || "",
           client_id: data.client_id || null,
@@ -242,11 +243,12 @@ const TransportExpenses = () => {
 
   const updateMutation = useMutation({
     mutationFn: async (data: { id: string } & Partial<TransportExpenseForm>) => {
+      const expenseGroup = (data.expense_group && data.expense_group !== "_none") ? data.expense_group : "General";
       const { error } = await supabase
         .from("transport_expenses")
         .update({
           expense_date: data.expense_date,
-          expense_group: (data.expense_group && data.expense_group !== "_none") ? data.expense_group : null,
+          expense_group: expenseGroup,
           amount: data.amount ? parseFloat(data.amount) : undefined,
           description: data.description || "",
           client_id: data.client_id || null,

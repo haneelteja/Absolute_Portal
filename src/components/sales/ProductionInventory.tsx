@@ -1,19 +1,16 @@
 /**
  * Production Inventory Summary
  * Shows inventory per SKU: total production - recorded sales
- * Replaces Label Availability in Dealer Transactions
+ * Compact display (SKU: X cases) matching Production, Order Management, Dashboard
  */
 
 import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package } from "lucide-react";
 
 interface InventoryBySku {
   sku: string;
-  production: number;
-  sales: number;
   inventory: number;
 }
 
@@ -62,55 +59,33 @@ const ProductionInventory = () => {
     return Array.from(allSkus)
       .map((sku) => ({
         sku,
-        production: productionMap.get(sku) ?? 0,
-        sales: salesMap.get(sku) ?? 0,
         inventory: (productionMap.get(sku) ?? 0) - (salesMap.get(sku) ?? 0),
       }))
       .sort((a, b) => a.sku.localeCompare(b.sku));
   }, [productionRecords, salesRecords]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Package className="h-5 w-5 text-emerald-600" />
-        <h3 className="text-lg font-semibold">Production Inventory (Production − Sales)</h3>
+        <h3 className="text-sm font-semibold">Inventory (Production − Sales)</h3>
       </div>
-      <div className="border rounded-lg overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50">
-              <TableHead className="font-semibold">SKU</TableHead>
-              <TableHead className="text-right font-semibold">Production (cases)</TableHead>
-              <TableHead className="text-right font-semibold">Sales (cases)</TableHead>
-              <TableHead className="text-right font-semibold">Inventory (cases)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {inventoryBySku.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                  No production or sales data yet
-                </TableCell>
-              </TableRow>
-            ) : (
-            inventoryBySku.map((row) => (
-              <TableRow key={row.sku}>
-                <TableCell>{row.sku}</TableCell>
-                <TableCell className="text-right">{row.production.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{row.sales.toLocaleString()}</TableCell>
-                <TableCell
-                  className={`text-right font-medium ${
-                    row.inventory < 0 ? "text-red-600" : row.inventory === 0 ? "text-amber-600" : "text-emerald-600"
-                  }`}
-                >
-                  {row.inventory.toLocaleString()}
-                </TableCell>
-              </TableRow>
-            ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {inventoryBySku.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No production or sales data yet</p>
+      ) : (
+        <div className="flex flex-wrap gap-3">
+          {inventoryBySku.map(({ sku, inventory }) => (
+            <div
+              key={sku}
+              className={`rounded-lg border px-4 py-2 text-sm font-medium ${
+                inventory < 0 ? "border-red-200 bg-red-50 text-red-700" : inventory === 0 ? "border-amber-200 bg-amber-50 text-amber-700" : "bg-muted/50"
+              }`}
+            >
+              {sku}: <span className="text-primary font-semibold">{inventory}</span> cases
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
