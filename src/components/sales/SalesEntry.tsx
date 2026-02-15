@@ -32,7 +32,7 @@ import { logger } from "@/lib/logger";
 import { EditTransactionDialog } from "@/components/sales/EditTransactionDialog";
 import { useInvoiceGeneration, useInvoice, useInvoiceDownload } from "@/hooks/useInvoiceGeneration";
 import { isAutoInvoiceEnabled } from "@/services/invoiceConfigService";
-import LabelAvailability from "@/components/labels/LabelAvailability";
+import ProductionInventory from "@/components/sales/ProductionInventory";
 
 // Invoice Actions Component
 const InvoiceActions = ({ 
@@ -615,16 +615,14 @@ const SalesEntry = () => {
         // Create corresponding transport transaction
         const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
         
-        // Transport transaction data prepared
-        
         const transportData = {
           amount: 0,
           description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
           expense_date: saleForm.transaction_date,
           expense_group: "Client Sale Transport",
+          client_id: saleForm.customer_id || null,
+          area: selectedCustomer?.area || null,
         };
-        
-        // Transport transaction data prepared
 
         const { error: transportError } = await supabase
           .from("transport_expenses")
@@ -1605,19 +1603,16 @@ const SalesEntry = () => {
       // Factory production entry created successfully
 
       // Create corresponding transport transaction
-      
       const selectedCustomer = customers?.find(c => c.id === data.customer_id);
-      
-      // Transport transaction data prepared
       
       const transportData = {
         amount: 0,
         description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
         expense_date: data.transaction_date,
         expense_group: "Client Sale Transport",
+        client_id: data.customer_id || null,
+        area: selectedCustomer?.area || null,
       };
-      
-      // Transport transaction data prepared
 
       const { error: transportError } = await supabase
         .from("transport_expenses")
@@ -2080,8 +2075,8 @@ const SalesEntry = () => {
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden min-w-0">
-      {/* SKU Inventory - top of Dealer Transactions */}
-      <LabelAvailability />
+      {/* Production Inventory (Production − Sales) - top of Dealer Transactions */}
+      <ProductionInventory />
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sale">Record Sale</TabsTrigger>

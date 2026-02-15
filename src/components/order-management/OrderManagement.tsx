@@ -375,7 +375,7 @@ const OrderManagement: React.FC = () => {
     return <Badge variant="secondary">Unknown</Badge>;
   };
 
-  // Get unique areas for selected customer
+  // Get unique areas for selected customer (exclude empty)
   const getAvailableAreas = useCallback((clientId: string) => {
     if (!customers || !clientId) return [];
     const selectedCustomer = customers.find(c => c.id === clientId);
@@ -384,11 +384,40 @@ const OrderManagement: React.FC = () => {
     const areas = customers
       .filter(c => c.dealer_name === selectedCustomer.dealer_name)
       .map(c => c.area)
+      .filter((a): a is string => !!a && String(a).trim() !== "")
       .filter((a, index, self) => self.indexOf(a) === index)
       .sort();
     
     return areas;
   }, [customers]);
+
+  // Get all available SKUs for dealer+area (no row filter - for "all selected" check)
+  const getAllAvailableSKUs = useCallback(() => {
+    if (!customers || !orderForm.client_id || !orderForm.area) return [];
+    const selectedCustomer = customers.find(c => c.id === orderForm.client_id);
+    if (!selectedCustomer) return [];
+    return customers
+      .filter(c =>
+        c.dealer_name === selectedCustomer.dealer_name &&
+        c.area === orderForm.area &&
+        c.sku &&
+        c.sku.trim() !== ""
+      )
+      .map(c => c.sku)
+      .filter((sku, index, self) => self.indexOf(sku) === index)
+      .sort();
+  }, [customers, orderForm.client_id, orderForm.area]);
+
+  // Whether all available SKUs for dealer+area are selected (disable Add SKU)
+  const allSkusSelected = useMemo(() => {
+    const allAvailable = getAllAvailableSKUs();
+    if (allAvailable.length === 0) return false;
+    const selectedSkus = skuRows.map(r => r.sku?.trim()).filter(Boolean);
+    return allAvailable.every(s => selectedSkus.includes(s));
+  }, [getAllAvailableSKUs, skuRows]);
+
+  // Single SKU mode: dealer has only one SKU - show simplified UI (cases only)
+  const singleSkuMode = useMemo(() => getAllAvailableSKUs().length === 1, [getAllAvailableSKUs]);
 
   // Get available SKUs for selected customer and area (excludes SKUs already selected in other rows)
   const getAvailableSKUsForRow = useCallback((currentRowIndex: number) => {
@@ -503,6 +532,15 @@ const OrderManagement: React.FC = () => {
     setOrderForm({ ...orderForm, area: areaValue });
     setSkuRows([{ sku: "", number_of_cases: "" }]);
   };
+
+  // Auto-populate single SKU when dealer has only one SKU for the selected area
+  useEffect(() => {
+    if (!orderForm.client_id || !orderForm.area) return;
+    const allSkus = getAllAvailableSKUs();
+    if (allSkus.length === 1) {
+      setSkuRows([{ sku: allSkus[0], number_of_cases: "" }]);
+    }
+  }, [orderForm.client_id, orderForm.area, getAllAvailableSKUs]);
 
   const addSkuRow = () => setSkuRows((prev) => [...prev, { sku: "", number_of_cases: "" }]);
   const removeSkuRow = (index: number) => {
@@ -923,27 +961,38 @@ const OrderManagement: React.FC = () => {
             {/* SKU Rows - SKU, Select SKU, Cases, Delete, Add SKU in single line */}
             <div className="space-y-2">
               <Label>SKUs *</Label>
+              {singleSkuMode && (
+                <p className="text-sm text-muted-foreground">
+                  This dealer has only one SKU. Enter the number of cases below.
+                </p>
+              )}
               {skuRows.map((row, index) => (
                 <div key={index} className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-muted-foreground w-8">{index + 1}.</span>
-                  <div className="flex-1 min-w-[140px]">
-                    <Select
-                      value={row.sku || ""}
-                      onValueChange={(value) => updateSkuRow(index, "sku", value)}
-                      disabled={!orderForm.client_id || !orderForm.area}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select SKU" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        {getAvailableSKUsForRow(index).map((sku, i) => (
-                          <SelectItem key={i} value={sku}>
-                            {sku}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {singleSkuMode ? (
+                    <span className="flex-1 min-w-[140px] text-sm font-medium py-2 px-3 rounded-md border bg-muted/50">
+                      {row.sku || getAllAvailableSKUs()[0]}
+                    </span>
+                  ) : (
+                    <div className="flex-1 min-w-[140px]">
+                      <Select
+                        value={row.sku || ""}
+                        onValueChange={(value) => updateSkuRow(index, "sku", value)}
+                        disabled={!orderForm.client_id || !orderForm.area}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select SKU" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {getAvailableSKUsForRow(index).map((sku, i) => (
+                            <SelectItem key={i} value={sku}>
+                              {sku}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="w-20">
                     <Input
                       type="number"
@@ -958,18 +1007,20 @@ const OrderManagement: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => removeSkuRow(index)}
-                    disabled={skuRows.length === 1}
-                    title="Remove row"
+                    disabled={skuRows.length === 1 || singleSkuMode}
+                    title={singleSkuMode ? "Single SKU - cannot remove" : "Remove row"}
                   >
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
-                  {index === 0 && (
+                  {index === 0 && !singleSkuMode && (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={addSkuRow}
                       className="shrink-0"
+                      disabled={allSkusSelected}
+                      title={allSkusSelected ? "All available SKUs for this dealer are already added" : "Add another SKU"}
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       Add SKU
@@ -977,6 +1028,11 @@ const OrderManagement: React.FC = () => {
                   )}
                 </div>
               ))}
+              {allSkusSelected && !singleSkuMode && (
+                <p className="text-sm text-muted-foreground">
+                  All available SKUs for this dealer have been added.
+                </p>
+              )}
             </div>
 
             <div className="flex justify-end">

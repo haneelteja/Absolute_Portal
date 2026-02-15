@@ -74,6 +74,18 @@ const TransportExpenses = () => {
     },
   });
 
+  // Fetch all customers for transport lookup (including inactive - for historical dealer/area display)
+  const { data: customersForLookup } = useQuery({
+    queryKey: ["customers-for-transport-lookup"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, dealer_name, area")
+        .order("dealer_name", { ascending: true });
+      return data || [];
+    },
+  });
+
   const { data: transportVendors = [] } = useQuery({
     queryKey: ["transport-vendors-config"],
     queryFn: () => getListConfig("transport_vendors"),
@@ -410,16 +422,21 @@ const TransportExpenses = () => {
     setColumnFilters(prev => ({ ...prev, [column]: "" }));
   }, []);
 
-  // Enrich expenses with dealer_name from customers (no DB join - lookup locally)
+  // Enrich expenses with dealer_name from customers (use customersForLookup to include inactive/historical)
   const enrichedExpenses = useMemo(() => {
-    if (!expenses || !customers) return expenses || [];
+    if (!expenses) return [];
+    const lookup = customersForLookup || customers || [];
     return expenses.map((expense) => {
       const customer = expense.client_id
-        ? customers.find((c) => c.id === expense.client_id)
+        ? lookup.find((c: { id: string }) => c.id === expense.client_id)
         : null;
-      return { ...expense, dealer_name: customer?.dealer_name ?? null };
+      return {
+        ...expense,
+        dealer_name: customer?.dealer_name ?? expense.dealer_name ?? null,
+        area: expense.area ?? customer?.area ?? null,
+      };
     });
-  }, [expenses, customers]);
+  }, [expenses, customersForLookup, customers]);
 
   // Filter and sort expenses (memoized for performance)
   const filteredAndSortedExpenses = useMemo(() => {
@@ -743,21 +760,6 @@ const TransportExpenses = () => {
             </TableHead>
             <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-left border-r border-slate-200/50">
               <div className="flex items-center justify-between">
-                <span>Transport Vendor</span>
-                <ColumnFilter
-                  columnKey="transport_vendor"
-                  columnName="Transport Vendor"
-                  filterValue={columnFilters.transport_vendor || ""}
-                  onFilterChange={(value) => handleColumnFilterChange('transport_vendor', value)}
-                  onClearFilter={() => handleClearColumnFilter('transport_vendor')}
-                  sortDirection={columnSorts.transport_vendor || null}
-                  onSortChange={(direction) => handleColumnSortChange('transport_vendor', direction)}
-                  dataType="text"
-                />
-              </div>
-            </TableHead>
-            <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-left border-r border-slate-200/50">
-              <div className="flex items-center justify-between">
                 <span>Dealer</span>
                 <ColumnFilter
                   columnKey="client"
@@ -782,6 +784,21 @@ const TransportExpenses = () => {
                   onClearFilter={() => handleClearColumnFilter('area')}
                   sortDirection={columnSorts.area || null}
                   onSortChange={(direction) => handleColumnSortChange('area', direction)}
+                  dataType="text"
+                />
+              </div>
+            </TableHead>
+            <TableHead className="font-semibold text-slate-700 text-xs uppercase tracking-widest py-3 px-4 text-left border-r border-slate-200/50">
+              <div className="flex items-center justify-between">
+                <span>Transport Vendor</span>
+                <ColumnFilter
+                  columnKey="transport_vendor"
+                  columnName="Transport Vendor"
+                  filterValue={columnFilters.transport_vendor || ""}
+                  onFilterChange={(value) => handleColumnFilterChange('transport_vendor', value)}
+                  onClearFilter={() => handleClearColumnFilter('transport_vendor')}
+                  sortDirection={columnSorts.transport_vendor || null}
+                  onSortChange={(direction) => handleColumnSortChange('transport_vendor', direction)}
                   dataType="text"
                 />
               </div>
@@ -842,9 +859,9 @@ const TransportExpenses = () => {
             filteredAndSortedExpenses.map((expense) => (
               <TableRow key={expense.id}>
                 <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
-                <TableCell>{(expense as { transport_vendor?: string }).transport_vendor || 'N/A'}</TableCell>
                 <TableCell>{expense.dealer_name || 'N/A'}</TableCell>
                 <TableCell>{expense.area || 'N/A'}</TableCell>
+                <TableCell>{(expense as { transport_vendor?: string }).transport_vendor || 'N/A'}</TableCell>
                 <TableCell>{expense.expense_group || 'N/A'}</TableCell>
                 <TableCell className="text-right font-medium">₹{expense.amount?.toLocaleString()}</TableCell>
                 <TableCell>{expense.description || 'N/A'}</TableCell>
