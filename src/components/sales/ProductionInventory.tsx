@@ -68,7 +68,7 @@ const ProductionInventory = () => {
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Package className="h-5 w-5 text-emerald-600" />
-        <h3 className="text-sm font-semibold">Inventory (Production − Sales)</h3>
+        <h3 className="text-sm font-semibold">Inventory</h3>
       </div>
       {inventoryBySku.length === 0 ? (
         <p className="text-sm text-muted-foreground">No production or sales data yet</p>

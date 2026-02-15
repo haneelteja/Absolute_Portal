@@ -566,8 +566,8 @@ const TransportExpenses = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Row 1: Date, Dealer, Area, Amount */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Row 1: Date, Dealer, Area */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="expense-date">Date</Label>
             <Input
@@ -608,18 +608,6 @@ const TransportExpenses = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="expense-amount">Amount (₹) *</Label>
-            <Input
-              id="expense-amount"
-              type="number"
-              step="0.01"
-              value={form.amount}
-              onChange={(e) => setForm({...form, amount: e.target.value})}
-              placeholder="0.00"
-            />
           </div>
         </div>
 
@@ -675,10 +663,24 @@ const TransportExpenses = () => {
             </Select>
           </div>
         </div>
-        
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Recording..." : "Record Expense"}
-        </Button>
+
+        {/* Row 3: Amount + Record Expense button */}
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-2 min-w-[140px]">
+            <Label htmlFor="expense-amount">Amount (₹) *</Label>
+            <Input
+              id="expense-amount"
+              type="number"
+              step="0.01"
+              value={form.amount}
+              onChange={(e) => setForm({...form, amount: e.target.value})}
+              placeholder="0.00"
+            />
+          </div>
+          <Button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? "Recording..." : "Record Expense"}
+          </Button>
+        </div>
       </form>
 
       {/* Transport Transactions Header */}

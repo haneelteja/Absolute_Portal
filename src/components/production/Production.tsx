@@ -4,8 +4,9 @@
  * SKUs come from sku_configurations (Application Configuration → SKU's available in the plant).
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Loader2, Package } from "lucide-react";
+import { Plus, Trash2, Loader2, Package, Download } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +47,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ColumnFilter } from "@/components/ui/column-filter";
+import * as XLSX from "xlsx";
 
 interface ProductionRecord {
   id: string;
@@ -205,6 +208,80 @@ const Production = () => {
     setRecordDialogOpen(true);
   };
 
+  // Filter and sort production records
+  const filteredAndSortedRecords = useMemo(() => {
+    if (!productionRecords.length) return [];
+    return productionRecords
+      .filter((r) => {
+        const searchLower = debouncedSearchTerm.toLowerCase();
+        if (searchLower) {
+          const match =
+            r.sku?.toLowerCase().includes(searchLower) ||
+            r.no_of_cases?.toString().includes(searchLower) ||
+            new Date(r.production_date).toLocaleDateString().includes(searchLower);
+          if (!match) return false;
+        }
+        if (columnFilters.date && !r.production_date?.startsWith(columnFilters.date)) return false;
+        if (columnFilters.sku && !r.sku?.toLowerCase().includes(columnFilters.sku.toLowerCase())) return false;
+        if (columnFilters.cases && r.no_of_cases?.toString() !== columnFilters.cases) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const sortKey = Object.keys(columnSorts).find((k) => columnSorts[k] !== null);
+        if (!sortKey) return 0;
+        const dir = columnSorts[sortKey];
+        if (!dir) return 0;
+        let cmp = 0;
+        if (sortKey === "date") {
+          cmp = new Date(a.production_date).getTime() - new Date(b.production_date).getTime();
+        } else if (sortKey === "sku") {
+          cmp = (a.sku || "").localeCompare(b.sku || "");
+        } else if (sortKey === "cases") {
+          cmp = (a.no_of_cases || 0) - (b.no_of_cases || 0);
+        }
+        return dir === "asc" ? cmp : -cmp;
+      });
+  }, [productionRecords, debouncedSearchTerm, columnFilters, columnSorts]);
+
+  const handleColumnFilterChange = useCallback((key: string, value: string) => {
+    setColumnFilters((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleColumnSortChange = useCallback((key: string, direction: "asc" | "desc" | null) => {
+    setColumnSorts((prev) => {
+      const next = { date: null, sku: null, cases: null };
+      next[key as keyof typeof next] = direction;
+      return next;
+    });
+  }, []);
+
+  const getUniqueValues = useCallback(
+    (key: "production_date" | "sku" | "no_of_cases") => {
+      const values = productionRecords
+        .map((r) => {
+          if (key === "production_date") return r.production_date?.split("T")[0];
+          if (key === "no_of_cases") return String(r.no_of_cases);
+          return r.sku;
+        })
+        .filter(Boolean);
+      return Array.from(new Set(values)).sort() as string[];
+    },
+    [productionRecords]
+  );
+
+  const exportToExcel = useCallback(() => {
+    const exportData = filteredAndSortedRecords.map((r) => ({
+      Date: new Date(r.production_date).toLocaleDateString(),
+      SKU: r.sku,
+      "No of Cases": r.no_of_cases,
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Production");
+    XLSX.writeFile(wb, `Production_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast({ title: "Export Successful", description: `Exported ${exportData.length} records` });
+  }, [filteredAndSortedRecords, toast]);
+
   return (
     <div className="space-y-6">
       {/* Header with Record Production button */}
@@ -246,8 +323,24 @@ const Production = () => {
       {/* Recent Production Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Production</CardTitle>
-          <CardDescription>Latest production entries</CardDescription>
+          <div className="flex flex-wrap items-center gap-4">
+            <div>
+              <CardTitle>Recent Production</CardTitle>
+              <CardDescription>Latest production entries</CardDescription>
+            </div>
+            <div className="flex-1 min-w-[200px] max-w-sm">
+              <Input
+                placeholder="Search by date, SKU, cases..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <Button variant="outline" size="sm" onClick={exportToExcel} disabled={!filteredAndSortedRecords.length}>
+              <Download className="h-4 w-4 mr-2" />
+              Export Excel
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {recordsLoading ? (
@@ -259,35 +352,81 @@ const Production = () => {
               No production records. Use "Record Production" to add one.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>No of Cases</TableHead>
-                  <TableHead className="w-[80px]">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {productionRecords.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell>{new Date(r.production_date).toLocaleDateString()}</TableCell>
-                    <TableCell>{r.sku}</TableCell>
-                    <TableCell>{r.no_of_cases}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeleteId(r.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+            <div className="border rounded-lg overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      <div className="flex items-center justify-between gap-2">
+                        <span>Date</span>
+                        <ColumnFilter
+                          columnKey="date"
+                          columnName="Date"
+                          filterValue={columnFilters.date}
+                          onFilterChange={(v) => handleColumnFilterChange("date", v)}
+                          onClearFilter={() => handleColumnFilterChange("date", "")}
+                          sortDirection={columnSorts.date}
+                          onSortChange={(d) => handleColumnSortChange("date", d)}
+                          dataType="date"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center justify-between gap-2">
+                        <span>SKU</span>
+                        <ColumnFilter
+                          columnKey="sku"
+                          columnName="SKU"
+                          filterValue={columnFilters.sku}
+                          onFilterChange={(v) => handleColumnFilterChange("sku", v)}
+                          onClearFilter={() => handleColumnFilterChange("sku", "")}
+                          sortDirection={columnSorts.sku}
+                          onSortChange={(d) => handleColumnSortChange("sku", d)}
+                          dataType="text"
+                          options={getUniqueValues("sku")}
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center justify-between gap-2">
+                        <span>No of Cases</span>
+                        <ColumnFilter
+                          columnKey="cases"
+                          columnName="Cases"
+                          filterValue={columnFilters.cases}
+                          onFilterChange={(v) => handleColumnFilterChange("cases", v)}
+                          onClearFilter={() => handleColumnFilterChange("cases", "")}
+                          sortDirection={columnSorts.cases}
+                          onSortChange={(d) => handleColumnSortChange("cases", d)}
+                          dataType="number"
+                          options={getUniqueValues("no_of_cases").map(String)}
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[80px]">Action</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredAndSortedRecords.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{new Date(r.production_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{r.sku}</TableCell>
+                      <TableCell>{r.no_of_cases}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteId(r.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

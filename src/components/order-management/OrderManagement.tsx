@@ -881,17 +881,17 @@ const OrderManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Order Registration Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Create New Order</CardTitle>
+      {/* Order Registration Form - Compact */}
+      <Card className="border-slate-200">
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-base">Create New Order</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleOrderSubmit} className="space-y-4">
-            {/* Single row: Date, Dealer *, Area *, Tentative Delivery Date * */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="order-date">Date *</Label>
+        <CardContent className="pt-0 px-4 pb-4">
+          <form onSubmit={handleOrderSubmit} className="space-y-3">
+            {/* Row 1: Date, Dealer, Area, Tentative Delivery Date */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="order-date" className="text-xs">Date *</Label>
                 <Input
                   id="order-date"
                   type="date"
@@ -901,8 +901,8 @@ const OrderManagement: React.FC = () => {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="order-client">Dealer *</Label>
+              <div className="space-y-1">
+                <Label htmlFor="order-client" className="text-xs">Dealer *</Label>
                 <Select value={orderForm.client_id || ""} onValueChange={handleClientChange}>
                   <SelectTrigger id="order-client">
                     <SelectValue placeholder="Select dealer" />
@@ -916,8 +916,8 @@ const OrderManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="order-area">Area *</Label>
+              <div className="space-y-1">
+                <Label htmlFor="order-area" className="text-xs">Area *</Label>
                 <Select
                   value={orderForm.area || ""}
                   onValueChange={handleAreaChange}
@@ -960,23 +960,23 @@ const OrderManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* SKU Rows - SKU, Select SKU, Cases, Delete, Add SKU in single line */}
-            <div className="space-y-2">
-              <Label>SKUs *</Label>
+            {/* SKU Rows - compact */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">SKUs *</Label>
               {singleSkuMode && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   This dealer has only one SKU. Enter the number of cases below.
                 </p>
               )}
               {skuRows.map((row, index) => (
                 <div key={index} className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-muted-foreground w-8">{index + 1}.</span>
+                  <span className="text-xs font-medium text-muted-foreground w-6">{index + 1}.</span>
                   {singleSkuMode ? (
-                    <span className="flex-1 min-w-[140px] text-sm font-medium py-2 px-3 rounded-md border bg-muted/50">
+                    <span className="flex-1 min-w-[120px] text-xs font-medium py-1.5 px-2 rounded border bg-muted/50">
                       {row.sku || getAllAvailableSKUs()[0]}
                     </span>
                   ) : (
-                    <div className="flex-1 min-w-[140px]">
+                    <div className="flex-1 min-w-[120px]">
                       <Select
                         value={row.sku || ""}
                         onValueChange={(value) => updateSkuRow(index, "sku", value)}
@@ -995,10 +995,11 @@ const OrderManagement: React.FC = () => {
                       </Select>
                     </div>
                   )}
-                  <div className="w-20">
+                  <div className="w-16">
                     <Input
                       type="number"
                       min="1"
+                      className="h-8 text-sm"
                       value={row.number_of_cases}
                       onChange={(e) => updateSkuRow(index, "number_of_cases", e.target.value)}
                       placeholder="Cases"
@@ -1031,14 +1032,14 @@ const OrderManagement: React.FC = () => {
                 </div>
               ))}
               {allSkusSelected && !singleSkuMode && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   All available SKUs for this dealer have been added.
                 </p>
               )}
             </div>
 
-            <div className="flex justify-end">
-              <Button type="submit" disabled={createOrderMutation.isPending}>
+            <div className="flex justify-end pt-1">
+              <Button type="submit" size="sm" disabled={createOrderMutation.isPending}>
                 {createOrderMutation.isPending ? "Creating..." : "Create Order"}
               </Button>
             </div>

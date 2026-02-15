@@ -167,7 +167,18 @@ const Purchase = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Row 1: Date, Item, (SKU if Preforms), Quantity, Cost per unit, Total cost (auto) */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="purchase_date">Date</Label>
+            <Input
+              id="purchase_date"
+              type="date"
+              value={form.purchase_date}
+              onChange={(e) => setForm({ ...form, purchase_date: e.target.value })}
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="item">Item *</Label>
             <Select
@@ -249,16 +260,14 @@ const Purchase = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="purchase_date">Date</Label>
-            <Input
-              id="purchase_date"
-              type="date"
-              value={form.purchase_date}
-              onChange={(e) => setForm({ ...form, purchase_date: e.target.value })}
-            />
+            <Label>Total Cost (₹)</Label>
+            <div className="h-10 px-3 flex items-center rounded-md border bg-muted/50 text-sm font-medium">
+              ₹{((parseFloat(form.quantity) || 0) * (parseFloat(form.cost_per_unit) || 0)).toLocaleString() || "0"}
+            </div>
           </div>
         </div>
 
+        {/* Row 2: Vendor, Description */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="vendor">Vendor</Label>
