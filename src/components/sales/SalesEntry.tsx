@@ -383,13 +383,20 @@ const SalesEntry = () => {
 
   // Function to handle customer selection and auto-populate SKU options
   const handleCustomerChange = (customerName: string) => {
-    // Find the first customer with this name to get the customer_id
-    const selectedCustomer = customers?.find(c => c.dealer_name === customerName);
+    const dealerCustomers = customers?.filter(c => c.dealer_name === customerName) || [];
+    const selectedCustomer = dealerCustomers[0];
+    const areas = [...new Set(dealerCustomers.map(c => c.area).filter(Boolean))];
+    
+    // If dealer has only one area, auto-select it (ensures correct customer_id for price fetch)
+    const autoArea = areas.length === 1 ? areas[0] : "";
+    const customerForArea = autoArea
+      ? dealerCustomers.find(c => c.area === autoArea)
+      : selectedCustomer;
     
     setSaleForm({
       ...saleForm, 
-      customer_id: selectedCustomer?.id || "",
-      area: "", // Reset area when customer changes
+      customer_id: customerForArea?.id || selectedCustomer?.id || "",
+      area: autoArea,
     });
     
     // Reset current item and sales items when customer changes
@@ -400,6 +407,25 @@ const SalesEntry = () => {
       amount: "",
       description: ""
     });
+    setSalesItems([]);
+  };
+
+  // When area changes, update customer_id to match dealer+area (required for correct price fetch)
+  const handleAreaChange = (area: string) => {
+    const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
+    if (selectedCustomer) {
+      const matchingCustomer = customers?.find(c =>
+        c.dealer_name === selectedCustomer.dealer_name && c.area === area
+      );
+      setSaleForm({
+        ...saleForm,
+        area,
+        customer_id: matchingCustomer?.id || saleForm.customer_id,
+      });
+    } else {
+      setSaleForm({ ...saleForm, area });
+    }
+    setCurrentItem(prev => ({ ...prev, sku: "", price_per_case: "", amount: "" }));
     setSalesItems([]);
   };
 
@@ -783,24 +809,30 @@ const SalesEntry = () => {
     return uniqueBranches;
   };
 
-  // Get price per case for selected customer and area
+  // Get price per case for selected customer and area (match by dealer_name + area for correct pricing)
   const getPricePerCase = () => {
     if (!saleForm.customer_id || !saleForm.area) return "";
     
-    const customer = customers?.find(c => 
-      c.id === saleForm.customer_id && 
+    const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
+    if (!selectedCustomer) return "";
+    
+    const customer = customers?.find(c =>
+      c.dealer_name === selectedCustomer.dealer_name &&
       c.area === saleForm.area
     );
     
     return customer?.price_per_case?.toString() || "";
   };
 
-  // Get price per case for edit form
+  // Get price per case for edit form (match by dealer_name + area)
   const getPricePerCaseForEdit = () => {
     if (!editForm.customer_id || !editForm.area) return "";
     
-    const customer = customers?.find(c => 
-      c.id === editForm.customer_id && 
+    const selectedCustomer = customers?.find(c => c.id === editForm.customer_id);
+    if (!selectedCustomer) return "";
+    
+    const customer = customers?.find(c =>
+      c.dealer_name === selectedCustomer.dealer_name &&
       c.area === editForm.area
     );
     
@@ -2029,7 +2061,7 @@ const SalesEntry = () => {
   }, [deleteMutation]); // Only recreate if deleteMutation changes
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
+    <div className="space-y-6 w-full max-w-full overflow-x-hidden min-w-0">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sale">Record Sale</TabsTrigger>
@@ -2099,7 +2131,7 @@ const SalesEntry = () => {
                     <Label htmlFor="sale-area">Area *</Label>
                     <Select 
                       value={saleForm.area ?? ""}
-                      onValueChange={(value) => setSaleForm({...saleForm, area: value})}
+                      onValueChange={handleAreaChange}
                       disabled={!saleForm.customer_id}
                     >
                       <SelectTrigger id="sale-area">
@@ -2545,12 +2577,12 @@ const SalesEntry = () => {
             )}
           </div>
         </CardHeader>
-        <CardContent className="p-0 sm:p-6">
-          <div className="w-full overflow-x-auto">
-            <Table className="min-w-full">
+        <CardContent className="p-0 sm:p-4">
+          <div className="w-full overflow-x-auto overflow-y-visible">
+            <Table className="min-w-[900px] w-full">
               <TableHeader>
               <TableRow className="bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 border-b-2 border-emerald-200 hover:bg-gradient-to-r hover:from-emerald-100 hover:via-green-100 hover:to-emerald-100 transition-all duration-200">
-                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
+                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 text-left border-r border-emerald-200/50">
                   <div className="flex items-center justify-between">
                     <span>Date</span>
                     <ColumnFilter
@@ -2565,7 +2597,7 @@ const SalesEntry = () => {
                     />
                   </div>
                 </TableHead>
-                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
+                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 text-left border-r border-emerald-200/50">
                   <div className="flex items-center justify-between">
                     <span>Dealer</span>
                     <ColumnFilter
@@ -2581,7 +2613,7 @@ const SalesEntry = () => {
                     />
                   </div>
                 </TableHead>
-                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
+                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 text-left border-r border-emerald-200/50 w-[100px]">
                   <div className="flex items-center justify-between">
                 <span>Area</span>
                 <ColumnFilter
@@ -2597,7 +2629,7 @@ const SalesEntry = () => {
                     />
                   </div>
                 </TableHead>
-                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-center border-r border-emerald-200/50">
+                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 text-center border-r border-emerald-200/50">
                   <div className="flex items-center justify-between">
                     <span>Type</span>
                     <ColumnFilter
@@ -2613,7 +2645,7 @@ const SalesEntry = () => {
                     />
                   </div>
                 </TableHead>
-                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
+                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 text-left border-r border-emerald-200/50">
                   <div className="flex items-center justify-between">
                     <span>SKU</span>
                     <ColumnFilter
@@ -2629,10 +2661,10 @@ const SalesEntry = () => {
                     />
                   </div>
                 </TableHead>
-                <TableHead className="text-right font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 border-r border-emerald-200/50">
-                  Quantity (cases)
+                <TableHead className="text-right font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 border-r border-emerald-200/50">
+                  Qty
                 </TableHead>
-                <TableHead className="text-right font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 border-r border-emerald-200/50">
+                <TableHead className="text-right font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 border-r border-emerald-200/50">
                   <div className="flex items-center justify-end">
                     <span>Amount</span>
                     <ColumnFilter
@@ -2647,16 +2679,16 @@ const SalesEntry = () => {
                     />
                   </div>
                 </TableHead>
-                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
+                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 text-left border-r border-emerald-200/50">
                   Invoice #
                 </TableHead>
-                <TableHead className="text-right font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 border-r border-emerald-200/50">
-                  Dealer Outstanding
+                <TableHead className="text-right font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 border-r border-emerald-200/50">
+                  Outstanding
                 </TableHead>
-                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6 text-left border-r border-emerald-200/50">
+                <TableHead className="font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2 text-left border-r border-emerald-200/50">
                   Description
                 </TableHead>
-                <TableHead className="text-right font-semibold text-emerald-800 text-xs uppercase tracking-widest py-6 px-6">
+                <TableHead className="text-right font-semibold text-emerald-800 text-xs uppercase tracking-widest py-3 px-2">
                   Actions
                 </TableHead>
               </TableRow>
@@ -2700,11 +2732,11 @@ const SalesEntry = () => {
                 
                 return (
                   <TableRow key={transaction.id}>
-                    <TableCell>{new Date(transaction.transaction_date).toLocaleDateString()}</TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">{new Date(transaction.transaction_date).toLocaleDateString()}</TableCell>
+                    <TableCell className="truncate max-w-[100px]">
                       {transaction.customers?.dealer_name}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="truncate max-w-[80px]">
                       {transaction.customers?.area || '-'}
                     </TableCell>
                     <TableCell>
@@ -2716,7 +2748,7 @@ const SalesEntry = () => {
                         {transaction.transaction_type}
                       </span>
                     </TableCell>
-                    <TableCell>{transaction.sku || '-'}</TableCell>
+                    <TableCell className="truncate max-w-[80px]">{transaction.sku || '-'}</TableCell>
                     <TableCell className="text-right">{transaction.quantity || '-'}</TableCell>
                     <TableCell className="text-right">₹{transaction.amount?.toLocaleString()}</TableCell>
                     <TableCell>
@@ -2725,7 +2757,7 @@ const SalesEntry = () => {
                     <TableCell className="text-right">
                       ₹{(Number((transaction as unknown as { outstanding?: number }).outstanding) || 0).toLocaleString()}
                     </TableCell>
-                    <TableCell className="truncate max-w-[150px]">
+                    <TableCell className="truncate max-w-[120px]" title={transaction.description || undefined}>
                       {transaction.description || '-'}
                     </TableCell>
                     <TableCell className="text-right">
