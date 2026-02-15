@@ -66,6 +66,14 @@ interface InventoryBySku {
 const Production = () => {
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+  const [columnFilters, setColumnFilters] = useState({ date: "", sku: "", cases: "" });
+  const [columnSorts, setColumnSorts] = useState<Record<string, "asc" | "desc" | null>>({
+    date: null,
+    sku: null,
+    cases: null,
+  });
   const [form, setForm] = useState({
     production_date: new Date().toISOString().split("T")[0],
     sku: "",
@@ -213,7 +221,7 @@ const Production = () => {
     if (!productionRecords.length) return [];
     return productionRecords
       .filter((r) => {
-        const searchLower = debouncedSearchTerm.toLowerCase();
+        const searchLower = (debouncedSearchTerm || "").toLowerCase();
         if (searchLower) {
           const match =
             r.sku?.toLowerCase().includes(searchLower) ||
