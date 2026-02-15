@@ -98,6 +98,11 @@ const OrderManagement: React.FC = () => {
     delivery_date: null,
   });
 
+  const { data: tentativeDeliveryDays = 5 } = useQuery({
+    queryKey: ["tentative-delivery-days"],
+    queryFn: getTentativeDeliveryDays,
+  });
+
   const { data: ordersData, isLoading: ordersLoading, error: ordersError } = useQuery({
     queryKey: ["orders"],
     ...getQueryConfig("orders"),
