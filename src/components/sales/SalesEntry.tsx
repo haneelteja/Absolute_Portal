@@ -32,6 +32,7 @@ import { logger } from "@/lib/logger";
 import { EditTransactionDialog } from "@/components/sales/EditTransactionDialog";
 import { useInvoiceGeneration, useInvoice, useInvoiceDownload } from "@/hooks/useInvoiceGeneration";
 import { isAutoInvoiceEnabled } from "@/services/invoiceConfigService";
+import LabelAvailability from "@/components/labels/LabelAvailability";
 
 // Invoice Actions Component
 const InvoiceActions = ({ 
@@ -114,6 +115,13 @@ const InvoiceNumberCell = ({
   const { data: invoice } = useInvoice(transactionType === 'sale' ? transactionId : null);
   if (transactionType !== 'sale') return <span className="text-muted-foreground">—</span>;
   return <span>{invoice?.invoice_number ?? '—'}</span>;
+};
+
+// Safe display for number inputs (prevents "NaN" which causes browser warnings)
+const safeNumValue = (v: string | number | undefined | null): string => {
+  if (v == null || v === "") return "";
+  const n = Number(v);
+  return isNaN(n) ? "" : String(v);
 };
 
 const SalesEntry = () => {
@@ -663,6 +671,15 @@ const SalesEntry = () => {
     }
   };
 
+  // Helper to safely compute amount (avoids NaN in inputs)
+  const safeCalculateAmount = (qty: string, price: string): string => {
+    const q = parseFloat(qty);
+    const p = parseFloat(price);
+    if (isNaN(q) || isNaN(p)) return "";
+    const result = q * p;
+    return isNaN(result) ? "" : result.toFixed(2);
+  };
+
   // Function to handle SKU selection for current item
   const handleCurrentItemSKUChange = (sku: string) => {
     setCurrentItem({...currentItem, sku, amount: "", price_per_case: ""});
@@ -671,7 +688,7 @@ const SalesEntry = () => {
     if (currentItem.quantity) {
       const pricePerCase = getPricePerCaseForCurrentItem();
       if (pricePerCase) {
-        const calculatedAmount = (parseFloat(currentItem.quantity) * parseFloat(pricePerCase)).toFixed(2);
+        const calculatedAmount = safeCalculateAmount(currentItem.quantity, pricePerCase);
         setCurrentItem({...currentItem, sku, amount: calculatedAmount, price_per_case: pricePerCase});
       }
     }
@@ -685,7 +702,7 @@ const SalesEntry = () => {
     if (currentItem.sku) {
       const pricePerCase = getPricePerCaseForCurrentItem();
       if (pricePerCase) {
-        const calculatedAmount = (parseFloat(quantity) * parseFloat(pricePerCase)).toFixed(2);
+        const calculatedAmount = safeCalculateAmount(quantity, pricePerCase);
         setCurrentItem({...currentItem, quantity, amount: calculatedAmount, price_per_case: pricePerCase});
       }
     }
@@ -1734,6 +1751,7 @@ const SalesEntry = () => {
           description: data.description || null,
           sku: "Payment",
           quantity: 0,
+          area: data.area || null,
         };
 
         const { data: paymentData, error } = await supabase
@@ -2034,7 +2052,7 @@ const SalesEntry = () => {
       sku: transaction.sku || "",
       description: transaction.description || "",
       transaction_date: transaction.transaction_date || "",
-      area: transaction.area || "",
+      area: transaction.area || transaction.customers?.area || "",
       price_per_case: ""
     });
   }, []); // Stable function - no dependencies
@@ -2062,6 +2080,8 @@ const SalesEntry = () => {
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden min-w-0">
+      {/* SKU Inventory - top of Dealer Transactions */}
+      <LabelAvailability />
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sale">Record Sale</TabsTrigger>
@@ -2191,7 +2211,7 @@ const SalesEntry = () => {
                                 <Input
                                   id="single-quantity"
                                   type="number"
-                                  value={currentItem.quantity}
+                                  value={safeNumValue(currentItem.quantity)}
                                   onChange={(e) => handleCurrentItemQuantityChange(e.target.value)}
                                   placeholder="Number of cases"
                                 />
@@ -2215,7 +2235,7 @@ const SalesEntry = () => {
                                   id="single-amount"
                                   type="number"
                                   step="0.01"
-                                  value={currentItem.amount}
+                                  value={safeNumValue(currentItem.amount)}
                                   onChange={(e) => setCurrentItem({...currentItem, amount: e.target.value})}
                                   placeholder="Auto-calculated"
                                 />
@@ -2275,7 +2295,7 @@ const SalesEntry = () => {
                                   <Input
                                     id="item-quantity"
                                     type="number"
-                                    value={currentItem.quantity}
+                                    value={safeNumValue(currentItem.quantity)}
                                     onChange={(e) => handleCurrentItemQuantityChange(e.target.value)}
                                     placeholder="Number of cases"
                                   />
@@ -2287,7 +2307,7 @@ const SalesEntry = () => {
                                     id="item-price-per-case"
                                     type="number"
                                     step="0.01"
-                                    value={getPricePerCaseForCurrentItem()}
+                                    value={safeNumValue(getPricePerCaseForCurrentItem())}
                                     readOnly
                                     className="bg-gray-50"
                                     placeholder="Auto-calculated"
@@ -2300,7 +2320,7 @@ const SalesEntry = () => {
                                     id="item-amount"
                                     type="number"
                                     step="0.01"
-                                    value={currentItem.amount}
+                                    value={safeNumValue(currentItem.amount)}
                                     onChange={(e) => setCurrentItem({...currentItem, amount: e.target.value})}
                                     placeholder="Auto-calculated"
                                   />
@@ -2486,7 +2506,7 @@ const SalesEntry = () => {
                       id="payment-amount"
                       type="number"
                       step="0.01"
-                      value={paymentForm.amount}
+                      value={safeNumValue(paymentForm.amount)}
                       onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})}
                       placeholder="0.00"
                     />

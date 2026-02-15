@@ -2,6 +2,7 @@
  * Purchase Landing Page
  * For purchasing preforms, caps, shrink - Item, Quantity, Cost, Vendor, Description
  * Item dropdown is configurable in Application Configuration
+ * When Preforms is selected, SKU dropdown appears (from sku_configurations)
  */
 
 import { useState, useMemo, useCallback } from "react";
@@ -21,6 +22,7 @@ import * as XLSX from "xlsx";
 interface MaterialPurchase {
   id: string;
   item: string;
+  sku?: string | null;
   quantity: number;
   cost_per_unit: number;
   total_amount: number;
@@ -33,6 +35,7 @@ interface MaterialPurchase {
 const Purchase = () => {
   const [form, setForm] = useState({
     item: "",
+    sku: "",
     quantity: "",
     cost_per_unit: "",
     vendor: "",
@@ -46,6 +49,18 @@ const Purchase = () => {
   const { data: purchaseItems = [] } = useQuery({
     queryKey: ["purchase-items-config"],
     queryFn: () => getListConfig("purchase_items"),
+  });
+
+  const { data: availableSKUs = [] } = useQuery({
+    queryKey: ["sku-configurations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sku_configurations")
+        .select("sku")
+        .order("sku", { ascending: true });
+      if (error) throw error;
+      return (data || []).map((r) => r.sku).filter(Boolean);
+    },
   });
 
   const { data: purchases = [], isLoading } = useQuery({
@@ -68,6 +83,7 @@ const Purchase = () => {
       const total = qty * cost;
       const { error } = await supabase.from("material_purchases").insert({
         item: data.item,
+        sku: data.item === "Preforms" && data.sku?.trim() ? data.sku.trim() : null,
         quantity: qty,
         cost_per_unit: cost,
         total_amount: total,
@@ -81,6 +97,7 @@ const Purchase = () => {
       toast({ title: "Success", description: "Purchase recorded!" });
       setForm({
         item: "",
+        sku: "",
         quantity: "",
         cost_per_unit: "",
         vendor: "",
@@ -100,6 +117,10 @@ const Purchase = () => {
       toast({ title: "Error", description: "Item is required", variant: "destructive" });
       return;
     }
+    if (form.item === "Preforms" && !form.sku?.trim()) {
+      toast({ title: "Error", description: "SKU is required when Item is Preforms", variant: "destructive" });
+      return;
+    }
     const qty = parseFloat(form.quantity);
     const cost = parseFloat(form.cost_per_unit);
     if (isNaN(qty) || qty <= 0) {
@@ -117,6 +138,7 @@ const Purchase = () => {
     const exportData = purchases.map((p) => ({
       Date: new Date(p.purchase_date).toLocaleDateString(),
       Item: p.item,
+      SKU: p.sku || "",
       Quantity: p.quantity,
       "Cost per Unit (₹)": p.cost_per_unit,
       "Total Amount (₹)": p.total_amount,
@@ -148,7 +170,11 @@ const Purchase = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label htmlFor="item">Item *</Label>
-            <Select value={form.item} onValueChange={(v) => setForm({ ...form, item: v })} required>
+            <Select
+              value={form.item}
+              onValueChange={(v) => setForm({ ...form, item: v, sku: "" })}
+              required
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select item" />
               </SelectTrigger>
@@ -166,6 +192,33 @@ const Purchase = () => {
               </SelectContent>
             </Select>
           </div>
+
+          {form.item === "Preforms" && (
+            <div className="space-y-2">
+              <Label htmlFor="sku">SKU *</Label>
+              <Select
+                value={form.sku}
+                onValueChange={(v) => setForm({ ...form, sku: v })}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select SKU" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSKUs.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                  {availableSKUs.length === 0 && (
+                    <SelectItem value="_none" disabled>
+                      Add SKUs in Application Configuration
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="quantity">Quantity *</Label>
@@ -254,6 +307,7 @@ const Purchase = () => {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Item</TableHead>
+                <TableHead>SKU</TableHead>
                 <TableHead className="text-right">Quantity</TableHead>
                 <TableHead className="text-right">Cost/Unit (₹)</TableHead>
                 <TableHead className="text-right">Total (₹)</TableHead>
@@ -264,13 +318,13 @@ const Purchase = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : purchases.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No purchases recorded yet
                   </TableCell>
                 </TableRow>
@@ -279,6 +333,7 @@ const Purchase = () => {
                   <TableRow key={p.id}>
                     <TableCell>{new Date(p.purchase_date).toLocaleDateString()}</TableCell>
                     <TableCell>{p.item}</TableCell>
+                    <TableCell>{p.sku || "-"}</TableCell>
                     <TableCell className="text-right">{p.quantity}</TableCell>
                     <TableCell className="text-right">₹{p.cost_per_unit?.toLocaleString()}</TableCell>
                     <TableCell className="text-right font-medium">

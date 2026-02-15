@@ -87,18 +87,15 @@ const TransportExpenses = () => {
   const { data: expenses } = useQuery({
     queryKey: ["transport-expenses"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("transport_expenses")
-        .select(`
-          *,
-          customers (
-            id,
-            dealer_name,
-            area
-          )
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
       
+      if (error) {
+        console.error("Error fetching transport expenses:", error);
+        throw error;
+      }
       if (!data || data.length === 0) return [];
       
       // OPTIMIZED: Batch query instead of N+1 queries
@@ -196,7 +193,7 @@ const TransportExpenses = () => {
         .from("transport_expenses")
         .insert({
           expense_date: data.expense_date,
-          expense_group: data.expense_group || null,
+          expense_group: (data.expense_group && data.expense_group !== "_none") ? data.expense_group : null,
           amount: parseFloat(data.amount),
           description: data.description || "",
           client_id: data.client_id || null,
@@ -237,7 +234,7 @@ const TransportExpenses = () => {
         .from("transport_expenses")
         .update({
           expense_date: data.expense_date,
-          expense_group: data.expense_group || null,
+          expense_group: (data.expense_group && data.expense_group !== "_none") ? data.expense_group : null,
           amount: data.amount ? parseFloat(data.amount) : undefined,
           description: data.description || "",
           client_id: data.client_id || null,
@@ -310,9 +307,9 @@ const TransportExpenses = () => {
 
   const handleEditClick = (expense: TransportExpense) => {
     setEditingExpense(expense);
-    setEditForm({
+      setEditForm({
       expense_date: expense.expense_date,
-      expense_group: expense.expense_group || "",
+      expense_group: expense.expense_group || "_none",
       description: expense.description || "",
       amount: expense.amount?.toString() || "",
       client_id: expense.client_id || "",
@@ -374,10 +371,13 @@ const TransportExpenses = () => {
     return uniqueCustomers.sort((a, b) => a.dealer_name.localeCompare(b.dealer_name));
   };
 
-  // Get available areaes for a selected customer
+  // Get available areas for a selected customer (filter empty - SelectItem value cannot be "")
   const getAvailableAreas = (customerId: string) => {
     if (!customers) return [];
-    return customers.filter(c => c.id === customerId).map(c => c.area).filter(Boolean);
+    return customers
+      .filter(c => c.id === customerId)
+      .map(c => c.area)
+      .filter((a): a is string => Boolean(a) && a.trim() !== "");
   };
 
   // Expense group options: config first, then any from existing expenses
@@ -410,11 +410,22 @@ const TransportExpenses = () => {
     setColumnFilters(prev => ({ ...prev, [column]: "" }));
   }, []);
 
+  // Enrich expenses with dealer_name from customers (no DB join - lookup locally)
+  const enrichedExpenses = useMemo(() => {
+    if (!expenses || !customers) return expenses || [];
+    return expenses.map((expense) => {
+      const customer = expense.client_id
+        ? customers.find((c) => c.id === expense.client_id)
+        : null;
+      return { ...expense, dealer_name: customer?.dealer_name ?? null };
+    });
+  }, [expenses, customers]);
+
   // Filter and sort expenses (memoized for performance)
   const filteredAndSortedExpenses = useMemo(() => {
-    if (!expenses) return [];
+    if (!enrichedExpenses || enrichedExpenses.length === 0) return [];
     
-    return expenses.filter((expense) => {
+    return enrichedExpenses.filter((expense) => {
     const expenseGroup = expense.expense_group || '';
     const amount = expense.amount?.toString() || '';
     const date = new Date(expense.expense_date).toLocaleDateString();
@@ -492,7 +503,7 @@ const TransportExpenses = () => {
     if (valueA > valueB) return direction === 'asc' ? 1 : -1;
     return 0;
     });
-  }, [expenses, debouncedSearchTerm, columnFilters, columnSorts]);
+  }, [enrichedExpenses, debouncedSearchTerm, columnFilters, columnSorts]);
 
   const totalExpenses = useMemo(() => {
     return filteredAndSortedExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
@@ -632,7 +643,7 @@ const TransportExpenses = () => {
                 <SelectValue placeholder="Select expense group" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="_none">None</SelectItem>
                 {uniqueGroups.map((g) => (
                   <SelectItem key={g} value={g}>
                     {g}
@@ -931,12 +942,12 @@ const TransportExpenses = () => {
               
               <div className="space-y-2">
                 <Label htmlFor="edit-expense-group">Expense Group</Label>
-                <Select value={editForm.expense_group || ""} onValueChange={(value) => setEditForm({ ...editForm, expense_group: value })}>
+                <Select value={editForm.expense_group || "_none"} onValueChange={(value) => setEditForm({ ...editForm, expense_group: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select expense group" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="_none">None</SelectItem>
                     {uniqueGroups.map((g) => (
                       <SelectItem key={g} value={g}>
                         {g}
