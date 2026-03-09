@@ -14,11 +14,11 @@ jobs:
     steps:
       - name: Ping application Supabase activity endpoint
         env:
-          SUPABASE_ACTIVITY_URL: ${{ secrets.SUPABASE_ACTIVITY_URL }}
-          SUPABASE_ACTIVITY_TOKEN: ${{ secrets.SUPABASE_ACTIVITY_TOKEN }}
+          SUPABASE_ACTIVITY_URL: ${{ secrets.SUPABASE_ACTIVITY_URL || secrets.SUPABASE_ACTIVITY_SCHEDULER_URL }}
+          SUPABASE_ACTIVITY_TOKEN: ${{ secrets.SUPABASE_ACTIVITY_TOKEN || secrets.SUPABASE_ACTIVITY_CRON_SECRET }}
         run: |
           if [ -z "$SUPABASE_ACTIVITY_URL" ]; then
-            echo "Missing required secret: SUPABASE_ACTIVITY_URL"
+            echo "Missing required secret: SUPABASE_ACTIVITY_URL or SUPABASE_ACTIVITY_SCHEDULER_URL"
             exit 1
           fi
 

@@ -4,9 +4,9 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
-  const token = process.env.SUPABASE_ACTIVITY_TOKEN;
+  const token = process.env.SUPABASE_ACTIVITY_TOKEN || process.env.SUPABASE_ACTIVITY_CRON_SECRET;
   if (token) {
-    const provided = req.headers["x-ping-secret"] || req.query?.token;
+    const provided = req.headers["x-ping-secret"] || req.headers["x-cron-secret"] || req.query?.token;
     if (provided !== token) {
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
