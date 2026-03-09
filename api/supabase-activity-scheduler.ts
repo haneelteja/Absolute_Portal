@@ -4,9 +4,12 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
-  const token = process.env.SUPABASE_ACTIVITY_TOKEN || process.env.SUPABASE_ACTIVITY_CRON_SECRET;
+  const token = (process.env.SUPABASE_ACTIVITY_TOKEN || process.env.SUPABASE_ACTIVITY_CRON_SECRET || "").trim();
   if (token) {
-    const provided = req.headers["x-ping-secret"] || req.headers["x-cron-secret"] || req.query?.token;
+    const providedHeader = req.headers["x-ping-secret"] || req.headers["x-cron-secret"];
+    const providedRaw = Array.isArray(providedHeader) ? providedHeader[0] : providedHeader || req.query?.token;
+    const provided = typeof providedRaw === "string" ? providedRaw.trim() : "";
+
     if (provided !== token) {
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
