@@ -1,0 +1,40 @@
+name: Supabase Activity Scheduler
+
+on:
+  schedule:
+    # Run every hour to keep Supabase project active
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-supabase-activity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping application Supabase activity endpoint
+        env:
+          SUPABASE_ACTIVITY_URL: ${{ secrets.SUPABASE_ACTIVITY_URL }}
+          SUPABASE_ACTIVITY_TOKEN: ${{ secrets.SUPABASE_ACTIVITY_TOKEN }}
+        run: |
+          if [ -z "$SUPABASE_ACTIVITY_URL" ]; then
+            echo "Missing required secret: SUPABASE_ACTIVITY_URL"
+            exit 1
+          fi
+
+          echo "Pinging: $SUPABASE_ACTIVITY_URL"
+          if [ -n "$SUPABASE_ACTIVITY_TOKEN" ]; then
+            curl --fail --silent --show-error \
+              --max-time 30 \
+              --retry 3 \
+              --retry-delay 5 \
+              -H "x-ping-secret: $SUPABASE_ACTIVITY_TOKEN" \
+              "$SUPABASE_ACTIVITY_URL"
+          else
+            curl --fail --silent --show-error \
+              --max-time 30 \
+              --retry 3 \
+              --retry-delay 5 \
+              "$SUPABASE_ACTIVITY_URL"
+          fi
+          echo "Ping successful"
