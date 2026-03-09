@@ -2,7 +2,7 @@ import { useState, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getQueryConfig } from "@/lib/query-configs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -263,7 +263,6 @@ const Reports = memo(() => {
           <Card>
             <CardHeader>
               <CardTitle>Factory Transactions</CardTitle>
-              <CardDescription>Production costs and factory payments</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -310,7 +309,6 @@ const Reports = memo(() => {
           <Card>
             <CardHeader>
               <CardTitle>Dealer Transactions</CardTitle>
-              <CardDescription>Sales and payments from Aamodha dealers</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -363,9 +361,6 @@ const Reports = memo(() => {
           <Card>
             <CardHeader>
               <CardTitle>Outstanding Client Receivables</CardTitle>
-              <CardDescription>
-                Outstanding balances with internal team notes for follow-up
-              </CardDescription>
             </CardHeader>
             <CardContent>
               {receivablesLoading ? (
@@ -475,7 +470,6 @@ const Reports = memo(() => {
           <Card>
             <CardHeader>
               <CardTitle>Transport Expenses</CardTitle>
-              <CardDescription>All transport and delivery costs</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 text-center">
@@ -510,7 +504,6 @@ const Reports = memo(() => {
           <Card>
             <CardHeader>
               <CardTitle>Label Expenses</CardTitle>
-              <CardDescription>Label purchases and related expenses</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 text-center">

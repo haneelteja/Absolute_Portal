@@ -166,9 +166,24 @@ const OrderManagement: React.FC = () => {
         tentative_delivery_date: o.tentative_delivery_date,
         status: o.status ?? "pending",
       }));
+      const universalOrdersJson = baseOrdersJson.map((o) => ({
+        client: o.client,
+        client_name: o.client,
+        dealer_name: o.client,
+        area: o.area,
+        branch: o.area,
+        sku: o.sku,
+        number_of_cases: o.number_of_cases,
+        quantity: o.number_of_cases,
+        date: o.date,
+        tentative_delivery_date: o.tentative_delivery_date,
+        tentative_delivery_time: o.tentative_delivery_date,
+        status: o.status ?? "pending",
+      }));
 
       // Try RPC with the current payload first.
       const rpcPayloadVariants = [
+        universalOrdersJson,
         baseOrdersJson,
         // Compatibility payload for environments using dealer_name/branch/quantity/tentative_delivery_time.
         baseOrdersJson.map((o) => ({
@@ -195,7 +210,28 @@ const OrderManagement: React.FC = () => {
 
       // Fallback to direct insert for deployments where RPC is stale/missing or schema differs.
       const directInsertVariants = [
+        // New schema, minimal required columns
+        baseOrdersJson.map((o) => ({
+          client: o.client,
+          area: o.area,
+          sku: o.sku,
+          number_of_cases: o.number_of_cases,
+          tentative_delivery_date: o.tentative_delivery_date,
+        })),
+        // New schema, full payload
         baseOrdersJson,
+        // New schema variant with tentative_delivery_time
+        baseOrdersJson.map((o) => ({
+          client: o.client,
+          area: o.area,
+          sku: o.sku,
+          number_of_cases: o.number_of_cases,
+          date: o.date,
+          tentative_delivery_date: o.tentative_delivery_date,
+          tentative_delivery_time: o.tentative_delivery_date,
+          status: o.status ?? "pending",
+        })),
+        // Old schema variant: client + branch + quantity + tentative_delivery_time
         baseOrdersJson.map((o) => ({
           client: o.client,
           branch: o.area,
@@ -205,6 +241,27 @@ const OrderManagement: React.FC = () => {
           tentative_delivery_time: o.tentative_delivery_date,
           status: o.status ?? "pending",
         })),
+        // Old schema variant: client_name + branch + quantity + tentative_delivery_time
+        baseOrdersJson.map((o) => ({
+          client_name: o.client,
+          branch: o.area,
+          sku: o.sku,
+          quantity: o.number_of_cases,
+          date: o.date,
+          tentative_delivery_time: o.tentative_delivery_date,
+          status: o.status ?? "pending",
+        })),
+        // Renamed schema mixed variant: dealer_name + branch + quantity + tentative_delivery_time
+        baseOrdersJson.map((o) => ({
+          dealer_name: o.client,
+          branch: o.area,
+          sku: o.sku,
+          quantity: o.number_of_cases,
+          date: o.date,
+          tentative_delivery_time: o.tentative_delivery_date,
+          status: o.status ?? "pending",
+        })),
+        // Renamed schema mixed variant: dealer_name + area + quantity + tentative_delivery_date
         baseOrdersJson.map((o) => ({
           dealer_name: o.client,
           area: o.area,
@@ -229,8 +286,8 @@ const OrderManagement: React.FC = () => {
 
       throw new Error(
         lastError?.message
-          ? `Order creation failed: ${lastError.message}`
-          : "Order creation failed. Please run orders schema migrations and retry."
+          ? `Order creation failed: ${lastError.message}. Please run docs/migration/ADD_INSERT_ORDERS_RPC_ONLY.sql in Supabase SQL Editor and retry.`
+          : "Order creation failed. Please run docs/migration/ADD_INSERT_ORDERS_RPC_ONLY.sql in Supabase SQL Editor and retry."
       );
     },
     onSuccess: (_, variables) => {
