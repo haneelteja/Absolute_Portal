@@ -262,8 +262,8 @@ const Reports = memo(() => {
         <TabsContent value="factory" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Factory Transactions - Elma Industries</CardTitle>
-              <CardDescription>Production costs and payments to Elma Industries</CardDescription>
+              <CardTitle>Factory Transactions</CardTitle>
+              <CardDescription>Production costs and factory payments</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">

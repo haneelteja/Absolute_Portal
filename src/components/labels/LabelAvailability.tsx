@@ -8,9 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, Search, Filter } from "lucide-react";
 import * as XLSX from 'xlsx';
 
-interface ClientLabelSummary {
-  client_id: string;
-  dealer_name: string;
+interface SkuLabelSummary {
   area: string;
   sku: string;
   total_labels_purchased: number;
@@ -24,7 +22,7 @@ const LabelAvailability = () => {
   // State for filtering and sorting
   const [searchTerm, setSearchTerm] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("all");
-  const [sortField, setSortField] = React.useState<keyof ClientLabelSummary>("dealer_name");
+  const [sortField, setSortField] = React.useState<keyof SkuLabelSummary>("sku");
   const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">("asc");
 
   // Fetch all label purchases
@@ -109,145 +107,101 @@ const LabelAvailability = () => {
     },
   });
 
-  // Get available SKUs from customers table (client-specific SKUs)
+  // Get available SKUs from customers table
   const getAvailableSKUs = React.useCallback(() => {
     if (!customers) return [];
     
-    // Get all unique SKUs from customers table
     const seenSKUs = new Set<string>();
-    const uniqueSKUs: { sku: string; dealer_name: string; area: string }[] = [];
+    const uniqueSKUs: string[] = [];
     
     customers.forEach(customer => {
       if (customer.sku && customer.sku.trim() !== '') {
         const trimmedSKU = customer.sku.trim();
-        const skuKey = `${customer.dealer_name}_${customer.area}_${trimmedSKU}`;
-        
-        if (!seenSKUs.has(skuKey)) {
-          seenSKUs.add(skuKey);
-          uniqueSKUs.push({
-            sku: trimmedSKU,
-            dealer_name: customer.dealer_name,
-            area: customer.area || ''
-          });
+        if (!seenSKUs.has(trimmedSKU)) {
+          seenSKUs.add(trimmedSKU);
+          uniqueSKUs.push(trimmedSKU);
         }
       }
     });
     
-    return uniqueSKUs.sort((a, b) => a.sku.localeCompare(b.sku));
+    return uniqueSKUs.sort((a, b) => a.localeCompare(b));
   }, [customers]);
 
   const isLoading = isLoadingPurchases || isLoadingCustomers || isLoadingSales;
 
-  // Calculate client-SKU summaries from label purchases and sales (grouped by client-SKU combination)
-  const clientSummaries: ClientLabelSummary[] = React.useMemo(() => {
-    if (!labelPurchases || labelPurchases.length === 0) {
-      return [];
-    }
+  // Calculate SKU-only summaries (global across all dealers/areas)
+  const clientSummaries: SkuLabelSummary[] = React.useMemo(() => {
+    const summaryMap = new Map<string, SkuLabelSummary>();
+    const availableSKUs = new Set<string>(getAvailableSKUs());
 
-    const summaryMap = new Map<string, ClientLabelSummary>();
+    labelPurchases?.forEach((purchase) => {
+      if (!purchase?.sku) return;
+      const sku = String(purchase.sku).trim();
+      if (!sku) return;
+      availableSKUs.add(sku);
 
-    // Process label purchases - group by dealer_name and sku (ignoring area)
-    labelPurchases.forEach((purchase) => {
-      if (purchase.client_id && purchase.sku) {
-        const customer = customers?.find(c => c.id === purchase.client_id);
-        
-        if (customer) {
-          // Group by dealer_name and sku only (ignoring area)
-          const clientSkuKey = `${customer.dealer_name}_${purchase.sku}`;
-          const existing = summaryMap.get(clientSkuKey);
-
-          if (existing) {
-            // Update existing summary
-            existing.total_labels_purchased += purchase.quantity || 0;
-            existing.total_amount_spent += purchase.total_amount || 0;
-            
-            // Update last purchase date if this is more recent
-            if (new Date(purchase.purchase_date) > new Date(existing.last_purchase_date)) {
-              existing.last_purchase_date = purchase.purchase_date;
-            }
-          } else {
-            // Create new summary
-            summaryMap.set(clientSkuKey, {
-              client_id: purchase.client_id,
-              dealer_name: customer.dealer_name,
-              area: customer.area,
-              sku: purchase.sku,
-              total_labels_purchased: purchase.quantity || 0,
-              labels_used: 0, // Will be calculated below
-              labels_available: 0, // Will be calculated below
-              total_amount_spent: purchase.total_amount || 0,
-              last_purchase_date: purchase.purchase_date
-            });
-          }
+      const existing = summaryMap.get(sku);
+      if (existing) {
+        existing.total_labels_purchased += purchase.quantity || 0;
+        existing.total_amount_spent += purchase.total_amount || 0;
+        if (purchase.purchase_date && new Date(purchase.purchase_date) > new Date(existing.last_purchase_date)) {
+          existing.last_purchase_date = purchase.purchase_date;
         }
+      } else {
+        summaryMap.set(sku, {
+          area: "",
+          sku,
+          total_labels_purchased: purchase.quantity || 0,
+          labels_used: 0,
+          labels_available: 0,
+          total_amount_spent: purchase.total_amount || 0,
+          last_purchase_date: purchase.purchase_date || new Date().toISOString(),
+        });
       }
     });
 
-    // Calculate labels used from sales transactions
-    if (salesTransactions) {
-      const availableSKUs = getAvailableSKUs();
-      
-      salesTransactions.forEach((sale) => {
-        if (sale.customer_id && sale.sku) {
-          const customer = customers?.find(c => c.id === sale.customer_id);
-          if (customer) {
-            // Group by dealer_name and sku only (ignoring area)
-            const clientSkuKey = `${customer.dealer_name}_${sale.sku}`;
-            const existing = summaryMap.get(clientSkuKey);
-            
-            // Find the SKU configuration from customers table
-            const skuData = availableSKUs.find(sku => 
-              sku.sku === sale.sku && 
-              sku.dealer_name === customer.dealer_name
-            );
-            
-            // Get bottles per case from factory_pricing table
-            // Use the latest bottles_per_case for this SKU, default to 1 if not found
-            const bottlesPerCase = factoryPricing?.get(sale.sku) || 1;
-            
-            if (existing) {
-              // Update existing entry with labels used
-              const casesSold = sale.quantity || 0;
-              const labelsUsedThisSale = casesSold * bottlesPerCase;
-              
-              // Add labels used (cases * bottles per case)
-              existing.labels_used += labelsUsedThisSale;
-            } else {
-              // Create entry for sales without purchases
-              const casesSold = sale.quantity || 0;
-              const labelsUsed = casesSold * bottlesPerCase;
-              
-              summaryMap.set(clientSkuKey, {
-                client_id: sale.customer_id,
-                dealer_name: customer.dealer_name,
-                area: customer.area,
-                sku: sale.sku,
-                total_labels_purchased: 0,
-                labels_used: labelsUsed,
-                labels_available: -labelsUsed,
-                total_amount_spent: 0,
-                last_purchase_date: sale.transaction_date
-              });
-            }
-          }
-        }
-      });
-    }
+    salesTransactions?.forEach((sale) => {
+      if (!sale?.sku || sale.transaction_type !== "sale") return;
+      const sku = String(sale.sku).trim();
+      if (!sku || sku.toLowerCase() === "payment") return;
+      availableSKUs.add(sku);
 
-    // Calculate labels available
-    const summaries = Array.from(summaryMap.values()).map(summary => {
-      summary.labels_available = summary.total_labels_purchased - summary.labels_used;
-      return summary;
+      const bottlesPerCase = factoryPricing?.get(sku) || 1;
+      const labelsUsedThisSale = (sale.quantity || 0) * bottlesPerCase;
+      const existing = summaryMap.get(sku);
+      if (existing) {
+        existing.labels_used += labelsUsedThisSale;
+      } else {
+        summaryMap.set(sku, {
+          area: "",
+          sku,
+          total_labels_purchased: 0,
+          labels_used: labelsUsedThisSale,
+          labels_available: -labelsUsedThisSale,
+          total_amount_spent: 0,
+          last_purchase_date: sale.transaction_date || new Date().toISOString(),
+        });
+      }
     });
 
-    const sortedSummaries = summaries.sort((a, b) => {
-      // Sort by client name first, then by SKU
-      const clientCompare = a.dealer_name.localeCompare(b.dealer_name);
-      return clientCompare !== 0 ? clientCompare : a.sku.localeCompare(b.sku);
+    const summaries = Array.from(availableSKUs).map((sku) => {
+      const summary = summaryMap.get(sku) || {
+        area: "",
+        sku,
+        total_labels_purchased: 0,
+        labels_used: 0,
+        labels_available: 0,
+        total_amount_spent: 0,
+        last_purchase_date: new Date().toISOString(),
+      };
+      return {
+        ...summary,
+        labels_available: summary.total_labels_purchased - summary.labels_used,
+      };
     });
 
-    return sortedSummaries;
-  }, [labelPurchases, customers, salesTransactions, getAvailableSKUs, factoryPricing]);
+    return summaries.sort((a, b) => a.sku.localeCompare(b.sku));
+  }, [labelPurchases, salesTransactions, getAvailableSKUs, factoryPricing]);
 
   // Filter and sort the data
   const filteredAndSortedData = React.useMemo(() => {
@@ -289,8 +243,8 @@ const LabelAvailability = () => {
     return filtered;
   }, [clientSummaries, searchTerm, statusFilter, sortField, sortDirection]);
 
-  // Handle sort (dealer_name removed from table but still in data for grouping)
-  const handleSort = (field: keyof ClientLabelSummary) => {
+  // Handle sort
+  const handleSort = (field: keyof SkuLabelSummary) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -302,7 +256,6 @@ const LabelAvailability = () => {
   // Export to Excel
   const handleExport = () => {
     const exportData = filteredAndSortedData.map(item => ({
-      'Client': item.dealer_name,
       'SKU': item.sku,
       'Labels Purchased': item.total_labels_purchased,
       'Labels Used': item.labels_used,
@@ -324,7 +277,7 @@ const LabelAvailability = () => {
           <h3 className="text-lg font-semibold">Label Availability Summary</h3>
           {filteredAndSortedData.length > 0 && (
             <div className="text-sm text-muted-foreground">
-              Showing {filteredAndSortedData.length} of {clientSummaries.length} combinations
+              Showing {filteredAndSortedData.length} of {clientSummaries.length} SKUs
             </div>
           )}
         </div>
@@ -437,10 +390,7 @@ const LabelAvailability = () => {
             <TableBody>
               {filteredAndSortedData.length > 0 ? (
                 filteredAndSortedData.map((summary, index) => (
-                    <TableRow key={`${summary.dealer_name}_${summary.sku}_${index}`}>
-                      <TableCell className="font-medium">
-                        {summary.dealer_name}
-                      </TableCell>
+                    <TableRow key={`${summary.sku}_${index}`}>
                       <TableCell className="font-medium">
                         {summary.sku}
                       </TableCell>

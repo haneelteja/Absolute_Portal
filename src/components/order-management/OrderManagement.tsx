@@ -157,7 +157,7 @@ const OrderManagement: React.FC = () => {
   // Uses insert_orders RPC - run docs/migration/ADD_INSERT_ORDERS_RPC_ONLY.sql in Supabase SQL Editor once
   const createOrderMutation = useMutation({
     mutationFn: async (newOrders: any[]) => {
-      const ordersJson = newOrders.map((o) => ({
+      const baseOrdersJson = newOrders.map((o) => ({
         client: o.client,
         area: o.area,
         sku: o.sku,
@@ -166,16 +166,71 @@ const OrderManagement: React.FC = () => {
         tentative_delivery_date: o.tentative_delivery_date,
         status: o.status ?? "pending",
       }));
-      const { data: rpcData, error: rpcError } = await supabase.rpc("insert_orders", {
-        orders_json: ordersJson,
-      });
-      if (!rpcError && rpcData?.ids) {
-        return (rpcData.ids as string[]).map((id) => ({ id }));
+
+      // Try RPC with the current payload first.
+      const rpcPayloadVariants = [
+        baseOrdersJson,
+        // Compatibility payload for environments using dealer_name/branch/quantity/tentative_delivery_time.
+        baseOrdersJson.map((o) => ({
+          dealer_name: o.client,
+          branch: o.area,
+          sku: o.sku,
+          quantity: o.number_of_cases,
+          date: o.date,
+          tentative_delivery_time: o.tentative_delivery_date,
+          status: o.status ?? "pending",
+        })),
+      ];
+
+      let lastError: any = null;
+      for (const payload of rpcPayloadVariants) {
+        const { data: rpcData, error: rpcError } = await supabase.rpc("insert_orders", {
+          orders_json: payload,
+        });
+        if (!rpcError && rpcData?.ids) {
+          return (rpcData.ids as string[]).map((id) => ({ id }));
+        }
+        lastError = rpcError;
       }
+
+      // Fallback to direct insert for deployments where RPC is stale/missing or schema differs.
+      const directInsertVariants = [
+        baseOrdersJson,
+        baseOrdersJson.map((o) => ({
+          client: o.client,
+          branch: o.area,
+          sku: o.sku,
+          quantity: o.number_of_cases,
+          date: o.date,
+          tentative_delivery_time: o.tentative_delivery_date,
+          status: o.status ?? "pending",
+        })),
+        baseOrdersJson.map((o) => ({
+          dealer_name: o.client,
+          area: o.area,
+          sku: o.sku,
+          quantity: o.number_of_cases,
+          date: o.date,
+          tentative_delivery_date: o.tentative_delivery_date,
+          status: o.status ?? "pending",
+        })),
+      ];
+
+      for (const payload of directInsertVariants) {
+        const { data: insertedRows, error } = await supabase
+          .from("orders")
+          .insert(payload as any)
+          .select("id");
+        if (!error) {
+          return insertedRows || [];
+        }
+        lastError = error;
+      }
+
       throw new Error(
-        rpcError?.message
-          ? `Order creation failed: ${rpcError.message}. Run docs/migration/ADD_INSERT_ORDERS_RPC_ONLY.sql in Supabase SQL Editor.`
-          : "Order creation failed. Run docs/migration/ADD_INSERT_ORDERS_RPC_ONLY.sql in Supabase SQL Editor."
+        lastError?.message
+          ? `Order creation failed: ${lastError.message}`
+          : "Order creation failed. Please run orders schema migrations and retry."
       );
     },
     onSuccess: (_, variables) => {
@@ -969,20 +1024,20 @@ const OrderManagement: React.FC = () => {
                 </p>
               )}
               {skuRows.map((row, index) => (
-                <div key={index} className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-medium text-muted-foreground w-6">{index + 1}.</span>
+                <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                  <span className="text-xs font-medium text-muted-foreground col-span-1">{index + 1}.</span>
                   {singleSkuMode ? (
-                    <span className="flex-1 min-w-[120px] text-xs font-medium py-1.5 px-2 rounded border bg-muted/50">
+                    <span className="col-span-7 sm:col-span-6 md:col-span-5 text-xs font-medium py-1.5 px-2 rounded border bg-muted/50 truncate">
                       {row.sku || getAllAvailableSKUs()[0]}
                     </span>
                   ) : (
-                    <div className="flex-1 min-w-[120px]">
+                    <div className="col-span-7 sm:col-span-6 md:col-span-5 max-w-[240px]">
                       <Select
                         value={row.sku || ""}
                         onValueChange={(value) => updateSkuRow(index, "sku", value)}
                         disabled={!orderForm.client_id || !orderForm.area}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-8">
                           <SelectValue placeholder="Select SKU" />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
@@ -995,20 +1050,22 @@ const OrderManagement: React.FC = () => {
                       </Select>
                     </div>
                   )}
-                  <div className="w-16">
+                  <div className="col-span-3 sm:col-span-3 md:col-span-2">
+                    <Label className="text-[10px] text-muted-foreground">No. of cases</Label>
                     <Input
                       type="number"
                       min="1"
-                      className="h-8 text-sm"
+                      className="h-8 text-sm font-medium text-center"
                       value={row.number_of_cases}
                       onChange={(e) => updateSkuRow(index, "number_of_cases", e.target.value)}
-                      placeholder="Cases"
+                      placeholder="0"
                     />
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
+                    className="col-span-1"
                     onClick={() => removeSkuRow(index)}
                     disabled={skuRows.length === 1 || singleSkuMode}
                     title={singleSkuMode ? "Single SKU - cannot remove" : "Remove row"}
@@ -1020,8 +1077,8 @@ const OrderManagement: React.FC = () => {
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="col-span-12 sm:col-span-2 md:col-span-3 justify-self-start"
                       onClick={addSkuRow}
-                      className="shrink-0"
                       disabled={allSkusSelected}
                       title={allSkusSelected ? "All available SKUs for this dealer are already added" : "Add another SKU"}
                     >

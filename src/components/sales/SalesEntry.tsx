@@ -680,43 +680,48 @@ const SalesEntry = () => {
 
   // Function to handle SKU selection for current item
   const handleCurrentItemSKUChange = (sku: string) => {
-    setCurrentItem({...currentItem, sku, amount: "", price_per_case: ""});
-    
-    // Auto-calculate amount if quantity is already set
-    if (currentItem.quantity) {
-      const pricePerCase = getPricePerCaseForCurrentItem();
-      if (pricePerCase) {
-        const calculatedAmount = safeCalculateAmount(currentItem.quantity, pricePerCase);
-        setCurrentItem({...currentItem, sku, amount: calculatedAmount, price_per_case: pricePerCase});
-      }
-    }
+    const pricePerCase = getPricePerCaseForCurrentItem(sku);
+    setCurrentItem((prev) => {
+      const calculatedAmount = prev.quantity && pricePerCase
+        ? safeCalculateAmount(prev.quantity, pricePerCase)
+        : "";
+      return {
+        ...prev,
+        sku,
+        price_per_case: pricePerCase,
+        amount: calculatedAmount,
+      };
+    });
   };
 
   // Function to handle quantity change for current item
   const handleCurrentItemQuantityChange = (quantity: string) => {
-    setCurrentItem({...currentItem, quantity});
-    
-    // Auto-calculate amount if SKU is already set
-    if (currentItem.sku) {
-      const pricePerCase = getPricePerCaseForCurrentItem();
-      if (pricePerCase) {
-        const calculatedAmount = safeCalculateAmount(quantity, pricePerCase);
-        setCurrentItem({...currentItem, quantity, amount: calculatedAmount, price_per_case: pricePerCase});
-      }
-    }
+    const pricePerCase = getPricePerCaseForCurrentItem();
+    setCurrentItem((prev) => {
+      const calculatedAmount = prev.sku && pricePerCase
+        ? safeCalculateAmount(quantity, pricePerCase)
+        : "";
+      return {
+        ...prev,
+        quantity,
+        price_per_case: pricePerCase,
+        amount: calculatedAmount,
+      };
+    });
   };
 
   // Get price per case for current item
-  const getPricePerCaseForCurrentItem = () => {
-    if (!saleForm.customer_id || !saleForm.area || !currentItem.sku) return "";
+  const getPricePerCaseForCurrentItem = (skuOverride?: string) => {
+    const sku = skuOverride ?? currentItem.sku;
+    if (!saleForm.customer_id || !saleForm.area || !sku) return "";
     
     const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
     if (!selectedCustomer) return "";
     
     const customerPricing = customers?.find(c => 
       c.dealer_name === selectedCustomer.dealer_name && 
-      c.area === saleForm.area &&
-      c.sku === currentItem.sku
+      (c.area || "").trim().toLowerCase() === saleForm.area.trim().toLowerCase() &&
+      c.sku === sku
     );
     
     return customerPricing?.price_per_case?.toString() || "";
@@ -894,7 +899,7 @@ const SalesEntry = () => {
     // Find the specific customer-SKU combination for pricing
     const customerSKURecord = customers?.find(c => 
       c.dealer_name === selectedCustomer.dealer_name && 
-      c.area === selectedCustomer.area &&
+      c.area === saleForm.area &&
       c.sku === saleForm.sku
     );
 
@@ -1466,25 +1471,27 @@ const SalesEntry = () => {
   // Sale entry mutation
   const saleMutation = useMutation({
     mutationFn: async (data: SaleForm) => {
+      if (!data.customer_id || !data.area || !data.sku || !data.quantity || !data.amount) {
+        throw new Error("Missing required fields: dealer, area, SKU, quantity, or amount");
+      }
+
       // Create sale transaction for Aamodha
       const amountValue = parseFloat(data.amount);
+      const quantityValue = parseInt(data.quantity);
+      if (isNaN(amountValue) || amountValue <= 0) {
+        throw new Error("Amount must be a positive number");
+      }
+      if (isNaN(quantityValue) || quantityValue <= 0) {
+        throw new Error("Quantity must be a positive number");
+      }
       
-      const saleData: {
-        customer_id: string;
-        transaction_type: string;
-        amount: number;
-        total_amount: number;
-        quantity: number | null;
-        sku: string;
-        description?: string;
-        transaction_date?: string;
-      } = {
+      const saleData: Record<string, any> = {
         customer_id: data.customer_id,
         transaction_type: "sale",
         amount: amountValue,
         total_amount: amountValue, // Set total_amount equal to amount
-        quantity: data.quantity ? parseInt(data.quantity) : null,
-        sku: data.sku || null,
+        quantity: quantityValue,
+        sku: data.sku,
         description: data.description || null,
         transaction_date: data.transaction_date,
         area: data.area || null
@@ -1492,10 +1499,21 @@ const SalesEntry = () => {
       
       console.log('Inserting sales transaction:', saleData);
       
-      const { data: insertedTransactions, error: saleError } = await supabase
+      let { data: insertedTransactions, error: saleError } = await supabase
         .from("sales_transactions")
         .insert(saleData)
         .select();
+
+      // Backward compatibility: some environments may not yet have the `area` column.
+      if (saleError && (saleError.code === 'PGRST204' || saleError.message?.includes("area"))) {
+        const { area, ...saleDataWithoutArea } = saleData;
+        const retryResult = await supabase
+          .from("sales_transactions")
+          .insert(saleDataWithoutArea)
+          .select();
+        insertedTransactions = retryResult.data;
+        saleError = retryResult.error;
+      }
 
       if (saleError) {
         console.error("Sales transaction error:", saleError);

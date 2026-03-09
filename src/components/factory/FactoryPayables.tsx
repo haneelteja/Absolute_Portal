@@ -461,7 +461,7 @@ const FactoryPayables = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Payment to Elma Industries recorded!" });
+      toast({ title: "Success", description: "Factory payment recorded!" });
       setPaymentForm({
         amount: "",
         description: "",
@@ -627,13 +627,13 @@ const FactoryPayables = () => {
       {/* Tabs for Production and Payment Forms */}
       <Tabs defaultValue="payment" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="payment">Record Payment to Elma Industries</TabsTrigger>
+          <TabsTrigger value="payment">Record Factory Payment</TabsTrigger>
           <TabsTrigger value="production">Record Production Transaction</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payment">
           <div className="border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Record Payment to Elma Industries</h3>
+            <h3 className="text-lg font-semibold mb-4">Record Factory Payment</h3>
             <form onSubmit={handlePaymentSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
