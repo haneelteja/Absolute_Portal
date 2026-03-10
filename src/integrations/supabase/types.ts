@@ -507,6 +507,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      insert_sale_with_inventory_guard: {
+        Args: {
+          p_allow_partial?: boolean | null
+          p_amount: number
+          p_area?: string | null
+          p_customer_id: string
+          p_description?: string | null
+          p_requested_quantity: number
+          p_sku: string
+          p_transaction_date?: string
+        }
+        Returns: Json
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

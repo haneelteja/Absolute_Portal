@@ -34,6 +34,17 @@ import { useInvoiceGeneration, useInvoice, useInvoiceDownload } from "@/hooks/us
 import { isAutoInvoiceEnabled } from "@/services/invoiceConfigService";
 import ProductionInventory from "@/components/sales/ProductionInventory";
 
+type InventoryGuardSaleResult = {
+  sale: SalesTransaction;
+  requested_quantity: number;
+  sold_quantity: number;
+  available_before: number;
+  remaining_inventory: number;
+  backorder_quantity: number;
+  partial_fulfillment_allowed: boolean;
+  partial_fulfillment_applied: boolean;
+};
+
 // Invoice Actions Component
 const InvoiceActions = ({ 
   transaction, 
@@ -503,6 +514,48 @@ const SalesEntry = () => {
     return salesItems.reduce((total, item) => total + (parseFloat(item.amount) || 0), 0);
   };
 
+  const recordSaleWithInventoryGuard = async (input: {
+    customer_id: string;
+    area: string;
+    sku: string;
+    quantity: number;
+    amount: number;
+    description?: string | null;
+    transaction_date: string;
+  }): Promise<InventoryGuardSaleResult> => {
+    const { data, error } = await (supabase as any).rpc("insert_sale_with_inventory_guard", {
+      p_customer_id: input.customer_id,
+      p_area: input.area || null,
+      p_sku: input.sku,
+      p_requested_quantity: input.quantity,
+      p_amount: input.amount,
+      p_description: input.description || null,
+      p_transaction_date: input.transaction_date,
+      p_allow_partial: null,
+    });
+
+    if (error) {
+      throw new Error(error.message || "Failed to record sale with inventory validation");
+    }
+
+    const result = (data || {}) as Partial<InventoryGuardSaleResult>;
+    const sale = result.sale as SalesTransaction | undefined;
+    if (!sale?.id) {
+      throw new Error("Sale insert succeeded but no transaction details were returned");
+    }
+
+    return {
+      sale,
+      requested_quantity: Number(result.requested_quantity ?? input.quantity),
+      sold_quantity: Number(result.sold_quantity ?? sale.quantity ?? input.quantity),
+      available_before: Number(result.available_before ?? 0),
+      remaining_inventory: Number(result.remaining_inventory ?? 0),
+      backorder_quantity: Number(result.backorder_quantity ?? 0),
+      partial_fulfillment_allowed: Boolean(result.partial_fulfillment_allowed),
+      partial_fulfillment_applied: Boolean(result.partial_fulfillment_applied),
+    };
+  };
+
   // Function to handle multiple sales submission
   const handleMultipleSalesSubmit = async () => {
     if (!saleForm.customer_id || !saleForm.area || salesItems.length === 0) {
@@ -523,32 +576,31 @@ const SalesEntry = () => {
         .single();
 
       // Create multiple sales transactions and corresponding factory transactions
+      const inventoryResults: InventoryGuardSaleResult[] = [];
+      let totalRecordedAmount = 0;
       for (const item of salesItems) {
-        // Create sale transaction for Aamodha
-        const saleData: Record<string, any> = {
-          customer_id: saleForm.customer_id,
-          transaction_type: "sale",
-          amount: parseFloat(item.amount),
-          total_amount: parseFloat(item.amount), // Add total_amount field
-          quantity: parseInt(item.quantity),
-          sku: item.sku,
-          description: item.description,
-          transaction_date: saleForm.transaction_date,
-          area: saleForm.area || null,
-        };
-        
-        let { error: saleError } = await supabase.from("sales_transactions").insert(saleData);
-        // Backward compatibility for environments without sales_transactions.area
-        if (saleError && (saleError.code === 'PGRST204' || saleError.message?.includes("area"))) {
-          const { area, ...saleDataWithoutArea } = saleData;
-          const retryResult = await supabase.from("sales_transactions").insert(saleDataWithoutArea);
-          saleError = retryResult.error;
+        const requestedAmount = parseFloat(item.amount);
+        const requestedQuantity = parseInt(item.quantity, 10);
+        if (isNaN(requestedAmount) || requestedAmount <= 0) {
+          throw new Error(`Invalid amount for SKU ${item.sku}`);
+        }
+        if (isNaN(requestedQuantity) || requestedQuantity <= 0) {
+          throw new Error(`Invalid quantity for SKU ${item.sku}`);
         }
 
-        if (saleError) {
-          console.error("Multiple sales - Sales transaction error:", saleError);
-          throw saleError;
-        }
+        const inventoryResult = await recordSaleWithInventoryGuard({
+          customer_id: saleForm.customer_id,
+          area: saleForm.area,
+          sku: item.sku,
+          quantity: requestedQuantity,
+          amount: requestedAmount,
+          description: item.description,
+          transaction_date: saleForm.transaction_date,
+        });
+        inventoryResults.push(inventoryResult);
+
+        const insertedSale = inventoryResult.sale;
+        totalRecordedAmount += Number(insertedSale.amount || 0);
 
         // Get factory pricing for amount calculation
         const { data: factoryPricing, error: pricingError } = await supabase
@@ -563,11 +615,11 @@ const SalesEntry = () => {
         }
 
         const factoryCostPerCase = factoryPricing?.[0]?.cost_per_case || 0;
-        const quantity = parseInt(item.quantity);
+        const quantity = insertedSale.quantity || 0;
         const factoryAmount = quantity * factoryCostPerCase;
 
         // If no factory pricing found, use a default cost per case (e.g., 50% of customer amount)
-        const customerAmount = parseFloat(item.amount) || 0;
+        const customerAmount = Number(insertedSale.amount) || 0;
         const defaultCostPerCase = customerAmount / quantity * 0.5; // 50% of customer price
         const finalFactoryAmount = factoryCostPerCase > 0 ? factoryAmount : quantity * defaultCostPerCase;
 
@@ -625,11 +677,11 @@ const SalesEntry = () => {
         
         const transportData = {
           amount: 0,
-          description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
+          description: selectedCustomer ? `${selectedCustomer.dealer_name}-${saleForm.area || selectedCustomer.area} Transport` : 'Dealer-Area Transport',
           expense_date: saleForm.transaction_date,
           expense_group: "Client Sale Transport",
           client_id: saleForm.customer_id || null,
-          area: selectedCustomer?.area || null,
+          area: saleForm.area || selectedCustomer?.area || null,
         };
 
         const { error: transportError } = await supabase
@@ -650,9 +702,12 @@ const SalesEntry = () => {
         }
       }
 
+      const partials = inventoryResults.filter((r) => r.partial_fulfillment_applied);
       toast({
         title: "Success",
-        description: `Successfully recorded ${salesItems.length} sale${salesItems.length > 1 ? 's' : ''} with total amount ₹${calculateTotalAmount().toFixed(2)}`
+        description: partials.length > 0
+          ? `Recorded ${salesItems.length} sale${salesItems.length > 1 ? 's' : ''}. ${partials.length} item${partials.length > 1 ? 's were' : ' was'} partially fulfilled due to inventory limits. Total recorded amount Rs ${totalRecordedAmount.toFixed(2)}.`
+          : `Successfully recorded ${salesItems.length} sale${salesItems.length > 1 ? 's' : ''} with total amount Rs ${totalRecordedAmount.toFixed(2)}`
       });
 
       // Reset form
@@ -1530,52 +1585,17 @@ const SalesEntry = () => {
         throw new Error("Quantity must be a positive number");
       }
       
-      const saleData: Record<string, any> = {
+      const inventoryGuardResult = await recordSaleWithInventoryGuard({
         customer_id: data.customer_id,
-        transaction_type: "sale",
-        amount: amountValue,
-        total_amount: amountValue, // Set total_amount equal to amount
-        quantity: quantityValue,
+        area: data.area,
         sku: data.sku,
+        quantity: quantityValue,
+        amount: amountValue,
         description: data.description || null,
         transaction_date: data.transaction_date,
-        area: data.area || null
-      };
-      
-      console.log('Inserting sales transaction:', saleData);
-      
-      let { data: insertedTransactions, error: saleError } = await supabase
-        .from("sales_transactions")
-        .insert(saleData)
-        .select();
-
-      // Backward compatibility: some environments may not yet have the `area` column.
-      if (saleError && (saleError.code === 'PGRST204' || saleError.message?.includes("area"))) {
-        const { area, ...saleDataWithoutArea } = saleData;
-        const retryResult = await supabase
-          .from("sales_transactions")
-          .insert(saleDataWithoutArea)
-          .select();
-        insertedTransactions = retryResult.data;
-        saleError = retryResult.error;
-      }
-
-      if (saleError) {
-        console.error("Sales transaction error:", saleError);
-        console.error("Error details:", JSON.stringify(saleError, null, 2));
-        
-        // Handle schema cache error - column exists but cache is stale
-        if (saleError.code === 'PGRST204' || saleError.message?.includes('schema cache') || saleError.message?.includes('Could not find')) {
-          throw new Error("Database schema cache issue detected. The column exists but Supabase cache needs refresh. Please try again in a few moments or contact support.");
-        }
-        
-        throw saleError;
-      }
-
-      // Return the inserted transaction for auto-invoice generation
-      if (!insertedTransactions || insertedTransactions.length === 0) {
-        throw new Error("Failed to retrieve inserted transaction");
-      }
+      });
+      const insertedSale = inventoryGuardResult.sale;
+      const insertedTransactions = [insertedSale];
 
       // Get factory pricing for amount calculation
       const { data: factoryPricing, error: pricingError } = await supabase
@@ -1590,11 +1610,11 @@ const SalesEntry = () => {
       }
 
       const factoryCostPerCase = factoryPricing?.[0]?.cost_per_case || 0;
-      const quantity = data.quantity ? parseInt(data.quantity) : 0;
+      const quantity = insertedSale.quantity || 0;
       const factoryAmount = quantity * factoryCostPerCase;
 
       // If no factory pricing found, use a default cost per case (e.g., 50% of customer amount)
-      const customerAmount = parseFloat(data.amount) || 0;
+      const customerAmount = Number(insertedSale.amount) || 0;
       const defaultCostPerCase = customerAmount / quantity * 0.5; // 50% of customer price
       const finalFactoryAmount = factoryCostPerCase > 0 ? factoryAmount : quantity * defaultCostPerCase;
 
@@ -1695,11 +1715,21 @@ const SalesEntry = () => {
         logger.warn(`Transport side-effect failed for sale ${data.sku}: ${transportError.message}`);
       }
 
-      // Return the inserted transaction for auto-invoice generation
-      return insertedTransactions;
+      // Return the inserted transaction and inventory result for follow-up actions
+      return {
+        insertedTransactions,
+        inventoryGuardResult,
+      };
     },
-    onSuccess: async (insertedTransactions, variables) => {
-      toast({ title: "Success", description: "Sale recorded successfully!" });
+    onSuccess: async (result) => {
+      const { insertedTransactions, inventoryGuardResult } = result;
+      const usedPartial = inventoryGuardResult.partial_fulfillment_applied;
+      toast({
+        title: usedPartial ? "Partial Sale Recorded" : "Success",
+        description: usedPartial
+          ? `Recorded ${inventoryGuardResult.sold_quantity}/${inventoryGuardResult.requested_quantity} cases for ${inventoryGuardResult.sale.sku}. Backorder ${inventoryGuardResult.backorder_quantity} case${inventoryGuardResult.backorder_quantity === 1 ? "" : "s"}.`
+          : "Sale recorded successfully!",
+      });
       
       // Check if auto invoice generation is enabled
       const autoEnabled = await isAutoInvoiceEnabled();
@@ -2962,4 +2992,5 @@ const SalesEntry = () => {
 };
 
 export default SalesEntry;
+
 
