@@ -26,12 +26,15 @@ serve(async (req) => {
       throw new Error('SUPABASE_URL not configured');
     }
 
+    const incomingAuth = req.headers.get('Authorization') || '';
+    const incomingApiKey = req.headers.get('apikey') || '';
     const tokenResponse = await fetch(
       `${supabaseUrl}/functions/v1/google-drive-token`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY') || ''}`,
+          'Authorization': incomingAuth,
+          ...(incomingApiKey ? { 'apikey': incomingApiKey } : {}),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({}),

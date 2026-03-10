@@ -5,6 +5,7 @@
 
 import type { CloudStorageAdapter, FileUploadResult } from './storageAdapter';
 import { logger } from '@/lib/logger';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Google Drive Adapter Implementation
@@ -38,28 +39,12 @@ export class GoogleDriveAdapter implements CloudStorageAdapter {
     // Call Supabase Edge Function to get/refresh token
     // This keeps credentials secure on the server
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase URL and ANON_KEY must be configured');
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/google-drive-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({}),
+      const { data, error } = await supabase.functions.invoke('google-drive-token', {
+        body: {},
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(`Failed to get access token: ${errorData.error || response.statusText}`);
+      if (error) {
+        throw new Error(`Failed to get access token: ${error.message}`);
       }
-
-      const data = await response.json();
       this.accessToken = data.accessToken;
       return this.accessToken;
     } catch (error) {
@@ -114,33 +99,18 @@ export class GoogleDriveAdapter implements CloudStorageAdapter {
       }
 
       // Upload file using Supabase Edge Function for security
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase URL and ANON_KEY must be configured');
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/google-drive-upload`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({
+      const { data: result, error } = await supabase.functions.invoke('google-drive-upload', {
+        body: {
           fileName,
           folderId: folderId || null,
           fileData: base64Data,
           mimeType,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(`File upload failed: ${errorData.error || response.statusText}`);
+      if (error) {
+        throw new Error(`File upload failed: ${error.message}`);
       }
-
-      const result = await response.json();
 
       return {
         fileId: result.id,
