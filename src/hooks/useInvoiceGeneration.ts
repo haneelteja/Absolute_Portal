@@ -133,10 +133,18 @@ export function useInvoiceGeneration() {
       });
     },
     onError: (error: Error) => {
+      const msg = error?.message || '';
+      const isStorageAuthIssue =
+        msg.includes('Google Drive') ||
+        msg.includes('access token') ||
+        msg.includes('Unauthorized') ||
+        msg.includes('401');
       toast({
-        title: 'Error',
-        description: `Failed to generate invoice: ${error.message}`,
-        variant: 'destructive',
+        title: isStorageAuthIssue ? 'Storage Authorization Required' : 'Error',
+        description: isStorageAuthIssue
+          ? 'Invoice generation failed due Google Drive authorization. Reconfigure token in Edge Function secrets and try again.'
+          : `Failed to generate invoice: ${error.message}`,
+        variant: isStorageAuthIssue ? 'default' : 'destructive',
       });
     },
   });

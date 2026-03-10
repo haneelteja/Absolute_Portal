@@ -1742,10 +1742,17 @@ const SalesEntry = () => {
           } catch (error) {
             // Log error but don't block the success flow
             logger.error('Auto-invoice generation failed:', error);
+            const message = error instanceof Error ? error.message : String(error);
+            const isStorageAuthIssue =
+              message.includes('Google Drive') ||
+              message.includes('access token') ||
+              message.includes('Unauthorized') ||
+              message.includes('401');
             toast({
               title: "Invoice Generation Warning",
-              description: "Sale recorded successfully, but invoice generation failed. You can generate it manually.",
-              variant: "destructive"
+              description: isStorageAuthIssue
+                ? "Sale was recorded successfully. Invoice upload failed due Google Drive authorization. Please reconfigure Google Drive token and retry invoice generation."
+                : "Sale was recorded successfully, but invoice generation failed. You can generate it manually."
             });
           }
         }
