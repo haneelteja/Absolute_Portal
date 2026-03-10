@@ -138,6 +138,18 @@ const safeNumValue = (v: string | number | undefined | null): string => {
 const normalizeText = (value: string | null | undefined): string =>
   (value || "").trim().toLowerCase();
 
+const pickBestPriceRow = (
+  rows: Array<{ price_per_case: number | null; created_at?: string | null }>
+) => {
+  if (!rows.length) return null;
+  return [...rows].sort((a, b) => {
+    const aScore = a.price_per_case && a.price_per_case > 0 ? 1 : 0;
+    const bScore = b.price_per_case && b.price_per_case > 0 ? 1 : 0;
+    if (aScore !== bScore) return bScore - aScore;
+    return (b.created_at || "").localeCompare(a.created_at || "");
+  })[0];
+};
+
 const SalesEntry = () => {
   const { isMobileDevice } = useMobileDetection();
   const [activeTab, setActiveTab] = useState<string>("sale");
@@ -796,23 +808,21 @@ const SalesEntry = () => {
     const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
     if (!selectedCustomer) return "";
     
-    const pricingCandidates = (customers || []).filter(c =>
+    const dealerSkuCandidates = (customers || []).filter(c =>
       normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
-      (c.area || "").trim().toLowerCase() === saleForm.area.trim().toLowerCase() &&
       (c.sku || "").trim().toLowerCase() === sku.toLowerCase()
     );
 
-    if (!pricingCandidates.length) return "";
+    if (!dealerSkuCandidates.length) return "";
 
-    // Prefer non-zero price rows, then newest created_at.
-    const best = pricingCandidates.sort((a, b) => {
-      const aScore = (a.price_per_case && a.price_per_case > 0 ? 1 : 0);
-      const bScore = (b.price_per_case && b.price_per_case > 0 ? 1 : 0);
-      if (aScore !== bScore) return bScore - aScore;
-      return (b.created_at || "").localeCompare(a.created_at || "");
-    })[0];
+    const areaCandidates = dealerSkuCandidates.filter(
+      (c) => normalizeText(c.area) === normalizeText(saleForm.area)
+    );
 
-    return best?.price_per_case?.toString() || "";
+    // Prefer exact area matches; fallback to dealer+SKU if area data is inconsistent.
+    const best = pickBestPriceRow(areaCandidates.length ? areaCandidates : dealerSkuCandidates);
+
+    return best && best.price_per_case != null ? best.price_per_case.toString() : "";
   };
 
   // Function to handle customer selection in edit form
@@ -837,13 +847,17 @@ const SalesEntry = () => {
     const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
     if (!selectedCustomer) return [];
     
-    // Filter customers by the selected customer name and area to get available SKUs
-    const customerSKUs = customers?.filter(c => 
-      normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
-      normalizeText(c.area) === normalizeText(saleForm.area) &&
-      c.sku && 
-      c.sku.trim() !== ''
-    ) || [];
+    // Filter by dealer first, then prefer selected area. Fallback to dealer rows if area data is inconsistent.
+    const dealerRows = (customers || []).filter(
+      (c) =>
+        normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
+        c.sku &&
+        c.sku.trim() !== ""
+    );
+    const areaRows = dealerRows.filter(
+      (c) => normalizeText(c.area) === normalizeText(saleForm.area)
+    );
+    const customerSKUs = areaRows.length > 0 ? areaRows : dealerRows;
 
     // Deduplicate by SKU and keep the best row (prefer non-zero price, then newest created_at)
     const skuMap = new Map<string, {
