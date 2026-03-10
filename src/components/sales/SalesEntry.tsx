@@ -135,6 +135,9 @@ const safeNumValue = (v: string | number | undefined | null): string => {
   return isNaN(n) ? "" : String(v);
 };
 
+const normalizeText = (value: string | null | undefined): string =>
+  (value || "").trim().toLowerCase();
+
 const SalesEntry = () => {
   const { isMobileDevice } = useMobileDetection();
   const [activeTab, setActiveTab] = useState<string>("sale");
@@ -402,14 +405,24 @@ const SalesEntry = () => {
 
   // Function to handle customer selection and auto-populate SKU options
   const handleCustomerChange = (customerName: string) => {
-    const dealerCustomers = customers?.filter(c => c.dealer_name === customerName) || [];
+    const targetDealer = normalizeText(customerName);
+    const dealerCustomers = (customers || []).filter(
+      c => normalizeText(c.dealer_name) === targetDealer
+    );
     const selectedCustomer = dealerCustomers[0];
-    const areas = [...new Set(dealerCustomers.map(c => c.area).filter(Boolean))];
+    const areaMap = new Map<string, string>();
+    dealerCustomers.forEach((c) => {
+      const rawArea = (c.area || "").trim();
+      if (!rawArea) return;
+      const key = normalizeText(rawArea);
+      if (!areaMap.has(key)) areaMap.set(key, rawArea);
+    });
+    const areas = Array.from(areaMap.values());
     
     // If dealer has only one area, auto-select it (ensures correct customer_id for price fetch)
     const autoArea = areas.length === 1 ? areas[0] : "";
     const customerForArea = autoArea
-      ? dealerCustomers.find(c => c.area === autoArea)
+      ? dealerCustomers.find(c => normalizeText(c.area) === normalizeText(autoArea))
       : selectedCustomer;
     
     setSaleForm({
@@ -434,7 +447,8 @@ const SalesEntry = () => {
     const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
     if (selectedCustomer) {
       const matchingCustomer = customers?.find(c =>
-        c.dealer_name === selectedCustomer.dealer_name && c.area === area
+        normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
+        normalizeText(c.area) === normalizeText(area)
       );
       setSaleForm({
         ...saleForm,
@@ -783,7 +797,7 @@ const SalesEntry = () => {
     if (!selectedCustomer) return "";
     
     const pricingCandidates = (customers || []).filter(c =>
-      c.dealer_name === selectedCustomer.dealer_name &&
+      normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
       (c.area || "").trim().toLowerCase() === saleForm.area.trim().toLowerCase() &&
       (c.sku || "").trim().toLowerCase() === sku.toLowerCase()
     );
@@ -825,8 +839,8 @@ const SalesEntry = () => {
     
     // Filter customers by the selected customer name and area to get available SKUs
     const customerSKUs = customers?.filter(c => 
-      c.dealer_name === selectedCustomer.dealer_name && 
-      c.area === saleForm.area &&
+      normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
+      normalizeText(c.area) === normalizeText(saleForm.area) &&
       c.sku && 
       c.sku.trim() !== ''
     ) || [];
@@ -883,7 +897,11 @@ const SalesEntry = () => {
     const seenBranches = new Set<string>();
     
     customers?.forEach(customer => {
-      if (customer.dealer_name === selectedCustomer.dealer_name && customer.area && customer.area.trim() !== '') {
+      if (
+        normalizeText(customer.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
+        customer.area &&
+        customer.area.trim() !== ''
+      ) {
         const trimmedArea = customer.area.trim();
         const lowerCaseArea = trimmedArea.toLowerCase();
         
@@ -912,7 +930,11 @@ const SalesEntry = () => {
     const seenBranches = new Set<string>();
     
     customers?.forEach(customer => {
-      if (customer.dealer_name === selectedCustomer.dealer_name && customer.area && customer.area.trim() !== '') {
+      if (
+        normalizeText(customer.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
+        customer.area &&
+        customer.area.trim() !== ''
+      ) {
         const trimmedArea = customer.area.trim();
         const lowerCaseArea = trimmedArea.toLowerCase();
         
@@ -937,8 +959,8 @@ const SalesEntry = () => {
     if (!selectedCustomer) return "";
     
     const customer = customers?.find(c =>
-      c.dealer_name === selectedCustomer.dealer_name &&
-      c.area === saleForm.area
+      normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
+      normalizeText(c.area) === normalizeText(saleForm.area)
     );
     
     return customer?.price_per_case?.toString() || "";
@@ -952,8 +974,8 @@ const SalesEntry = () => {
     if (!selectedCustomer) return "";
     
     const customer = customers?.find(c =>
-      c.dealer_name === selectedCustomer.dealer_name &&
-      c.area === editForm.area
+      normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
+      normalizeText(c.area) === normalizeText(editForm.area)
     );
     
     return customer?.price_per_case?.toString() || "";
@@ -967,9 +989,9 @@ const SalesEntry = () => {
     
     if (selectedCustomer && saleForm.area) {
       const customerSKURecord = customers?.find(c => 
-        c.dealer_name === selectedCustomer.dealer_name && 
-        c.area === saleForm.area &&
-        c.sku === sku
+        normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
+        normalizeText(c.area) === normalizeText(saleForm.area) &&
+        normalizeText(c.sku) === normalizeText(sku)
       );
       pricePerCase = customerSKURecord?.price_per_case?.toString() || "";
     }
@@ -998,9 +1020,9 @@ const SalesEntry = () => {
 
     // Find the specific customer-SKU combination for pricing
     const customerSKURecord = customers?.find(c => 
-      c.dealer_name === selectedCustomer.dealer_name && 
-      c.area === saleForm.area &&
-      c.sku === saleForm.sku
+      normalizeText(c.dealer_name) === normalizeText(selectedCustomer.dealer_name) &&
+      normalizeText(c.area) === normalizeText(saleForm.area) &&
+      normalizeText(c.sku) === normalizeText(saleForm.sku)
     );
 
     let calculatedAmount = "";
@@ -1072,7 +1094,7 @@ const SalesEntry = () => {
     if (!customer) return [];
     
     return customers
-      .filter(c => c.dealer_name === customer.dealer_name)
+      .filter(c => normalizeText(c.dealer_name) === normalizeText(customer.dealer_name))
       .map(c => c.area)
       .filter((area, index, self) => self.indexOf(area) === index)
       .sort();
