@@ -525,7 +525,7 @@ const SalesEntry = () => {
       // Create multiple sales transactions and corresponding factory transactions
       for (const item of salesItems) {
         // Create sale transaction for Aamodha
-        const saleData = {
+        const saleData: Record<string, any> = {
           customer_id: saleForm.customer_id,
           transaction_type: "sale",
           amount: parseFloat(item.amount),
@@ -533,10 +533,17 @@ const SalesEntry = () => {
           quantity: parseInt(item.quantity),
           sku: item.sku,
           description: item.description,
-          transaction_date: saleForm.transaction_date
+          transaction_date: saleForm.transaction_date,
+          area: saleForm.area || null,
         };
         
-        const { error: saleError } = await supabase.from("sales_transactions").insert(saleData);
+        let { error: saleError } = await supabase.from("sales_transactions").insert(saleData);
+        // Backward compatibility for environments without sales_transactions.area
+        if (saleError && (saleError.code === 'PGRST204' || saleError.message?.includes("area"))) {
+          const { area, ...saleDataWithoutArea } = saleData;
+          const retryResult = await supabase.from("sales_transactions").insert(saleDataWithoutArea);
+          saleError = retryResult.error;
+        }
 
         if (saleError) {
           console.error("Multiple sales - Sales transaction error:", saleError);
@@ -607,7 +614,8 @@ const SalesEntry = () => {
             hint: factoryError.hint,
             code: factoryError.code
           });
-          throw new Error(`Factory production entry failed for multiple sales: ${factoryError.message}`);
+          // Do not block sales recording if side-effect insert fails.
+          logger.warn(`Factory production side-effect failed for SKU ${item.sku}: ${factoryError.message}`);
         }
 
         // Factory production entry created successfully for multiple sales
@@ -637,13 +645,14 @@ const SalesEntry = () => {
             hint: transportError.hint,
             code: transportError.code
           });
-          throw new Error(`Transport transaction creation failed: ${transportError.message}`);
+          // Do not block sales recording if side-effect insert fails.
+          logger.warn(`Transport side-effect failed for SKU ${item.sku}: ${transportError.message}`);
         }
       }
 
       toast({
         title: "Success",
-        description: `Successfully recorded ${salesItems.length} sale${salesItems.length > 1 ? 's' : ''} with total amount ₹${calculateTotalAmount().toFixed(2)} and corresponding factory transactions!`
+        description: `Successfully recorded ${salesItems.length} sale${salesItems.length > 1 ? 's' : ''} with total amount ₹${calculateTotalAmount().toFixed(2)}`
       });
 
       // Reset form
@@ -712,19 +721,29 @@ const SalesEntry = () => {
 
   // Get price per case for current item
   const getPricePerCaseForCurrentItem = (skuOverride?: string) => {
-    const sku = skuOverride ?? currentItem.sku;
+    const sku = (skuOverride ?? currentItem.sku)?.trim();
     if (!saleForm.customer_id || !saleForm.area || !sku) return "";
     
     const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
     if (!selectedCustomer) return "";
     
-    const customerPricing = customers?.find(c => 
-      c.dealer_name === selectedCustomer.dealer_name && 
+    const pricingCandidates = (customers || []).filter(c =>
+      c.dealer_name === selectedCustomer.dealer_name &&
       (c.area || "").trim().toLowerCase() === saleForm.area.trim().toLowerCase() &&
-      c.sku === sku
+      (c.sku || "").trim().toLowerCase() === sku.toLowerCase()
     );
-    
-    return customerPricing?.price_per_case?.toString() || "";
+
+    if (!pricingCandidates.length) return "";
+
+    // Prefer non-zero price rows, then newest created_at.
+    const best = pricingCandidates.sort((a, b) => {
+      const aScore = (a.price_per_case && a.price_per_case > 0 ? 1 : 0);
+      const bScore = (b.price_per_case && b.price_per_case > 0 ? 1 : 0);
+      if (aScore !== bScore) return bScore - aScore;
+      return (b.created_at || "").localeCompare(a.created_at || "");
+    })[0];
+
+    return best?.price_per_case?.toString() || "";
   };
 
   // Function to handle customer selection in edit form
@@ -756,19 +775,45 @@ const SalesEntry = () => {
       c.sku && 
       c.sku.trim() !== ''
     ) || [];
-    
-    // Return unique SKUs for this customer-area combination
-    const uniqueSKUs = customerSKUs.map(customer => ({
-      id: `sku-${customer.sku}`,
-      sku: customer.sku,
-      dealer_name: customer.dealer_name,
-      area: customer.area,
-      price_per_case: customer.price_per_case || 0
-    }));
-    
-    // Return filtered SKUs for the selected customer-area combination
-    
-    return uniqueSKUs;
+
+    // Deduplicate by SKU and keep the best row (prefer non-zero price, then newest created_at)
+    const skuMap = new Map<string, {
+      id: string;
+      sku: string;
+      dealer_name: string;
+      area: string;
+      price_per_case: number;
+      created_at: string;
+    }>();
+
+    customerSKUs.forEach((customer) => {
+      const sku = (customer.sku || "").trim();
+      if (!sku) return;
+      const key = sku.toLowerCase();
+      const candidate = {
+        id: `sku-${sku}`,
+        sku,
+        dealer_name: customer.dealer_name,
+        area: customer.area,
+        price_per_case: customer.price_per_case || 0,
+        created_at: customer.created_at || "",
+      };
+      const existing = skuMap.get(key);
+      if (!existing) {
+        skuMap.set(key, candidate);
+        return;
+      }
+      const existingScore = (existing.price_per_case > 0 ? 10 : 0) + (existing.created_at ? 1 : 0);
+      const candidateScore = (candidate.price_per_case > 0 ? 10 : 0) + (candidate.created_at ? 1 : 0);
+      if (
+        candidateScore > existingScore ||
+        (candidateScore === existingScore && candidate.created_at > existing.created_at)
+      ) {
+        skuMap.set(key, candidate);
+      }
+    });
+
+    return Array.from(skuMap.values()).sort((a, b) => a.sku.localeCompare(b.sku));
   }, [saleForm.customer_id, saleForm.area, customers]);
 
   // Get available areaes for selected customer
@@ -1615,7 +1660,8 @@ const SalesEntry = () => {
           hint: factoryError.hint,
           code: factoryError.code
         });
-        throw new Error(`Factory production entry failed: ${factoryError.message}`);
+        // Do not block the sale record if this side-effect fails.
+        logger.warn(`Factory production side-effect failed for sale ${data.sku}: ${factoryError.message}`);
       }
 
       // Factory production entry created successfully
@@ -1625,11 +1671,11 @@ const SalesEntry = () => {
       
       const transportData = {
         amount: 0,
-        description: selectedCustomer ? `${selectedCustomer.dealer_name}-${selectedCustomer.area} Transport` : 'Dealer-Area Transport',
+        description: selectedCustomer ? `${selectedCustomer.dealer_name}-${data.area || selectedCustomer.area} Transport` : 'Dealer-Area Transport',
         expense_date: data.transaction_date,
         expense_group: "Client Sale Transport",
         client_id: data.customer_id || null,
-        area: selectedCustomer?.area || null,
+        area: data.area || selectedCustomer?.area || null,
       };
 
       const { error: transportError } = await supabase
@@ -1645,7 +1691,8 @@ const SalesEntry = () => {
           hint: transportError.hint,
           code: transportError.code
         });
-        throw new Error(`Transport transaction creation failed: ${transportError.message}`);
+        // Do not block the sale record if this side-effect fails.
+        logger.warn(`Transport side-effect failed for sale ${data.sku}: ${transportError.message}`);
       }
 
       // Return the inserted transaction for auto-invoice generation
@@ -2908,3 +2955,4 @@ const SalesEntry = () => {
 };
 
 export default SalesEntry;
+
