@@ -161,7 +161,7 @@ const Index = () => {
             <SidebarTrigger className="mr-4" />
             <div>
               <h1 className="text-lg font-semibold text-foreground">
-                Sales Operations Portal - Aamodha Enterprises
+                Absolute water Industries Portal
               </h1>
             </div>
           </header>
