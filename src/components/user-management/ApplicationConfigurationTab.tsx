@@ -28,6 +28,7 @@ import { EditSkusAvailableDialog } from './EditSkusAvailableDialog';
 import { EditListConfigDialog } from './EditListConfigDialog';
 import { EditTentativeDeliveryDaysDialog } from './EditTentativeDeliveryDaysDialog';
 import { EditWhatsAppApiKeyDialog } from './EditWhatsAppApiKeyDialog';
+import { EditInvoiceNextNumberDialog } from './EditInvoiceNextNumberDialog';
 import { triggerManualBackup, getBackupConfig, type BackupConfig } from '@/services/backupService';
 import { Database, Play } from 'lucide-react';
 
@@ -45,6 +46,7 @@ const ApplicationConfigurationTab: React.FC = () => {
   const [isTentativeDeliveryDaysDialogOpen, setIsTentativeDeliveryDaysDialogOpen] = useState(false);
   const [isPurchaseItemsDialogOpen, setIsPurchaseItemsDialogOpen] = useState(false);
   const [isWhatsAppApiKeyDialogOpen, setIsWhatsAppApiKeyDialogOpen] = useState(false);
+  const [isInvoiceNextNumberDialogOpen, setIsInvoiceNextNumberDialogOpen] = useState(false);
   const [isRunningBackup, setIsRunningBackup] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -107,6 +109,7 @@ const ApplicationConfigurationTab: React.FC = () => {
       'backup_folder_path',
       'backup_schedule_time_ist',
       'backup_notification_email',
+      'invoice_next_number',
       'invoice_number_format',
     ];
 
@@ -148,6 +151,27 @@ const ApplicationConfigurationTab: React.FC = () => {
       } as InvoiceConfiguration & { isCustom?: boolean; customKey?: string });
     }
 
+    // Invoice next number row (show even if missing in DB)
+    const invoiceNextNumberConfig = configMap.get('invoice_next_number');
+    if (invoiceNextNumberConfig) {
+      result.push(invoiceNextNumberConfig);
+      seen.add('invoice_next_number');
+    } else {
+      result.push({
+        id: '',
+        config_key: 'invoice_next_number',
+        config_value: '1',
+        config_type: 'number',
+        description: 'Invoice number configuration.',
+        updated_by: null,
+        updated_at: '',
+        created_at: '',
+        isCustom: true,
+        customKey: 'invoice_next_number',
+      } as InvoiceConfiguration & { isCustom?: boolean; customKey?: string });
+      seen.add('invoice_next_number');
+    }
+
     // Row 3+: Ordered configs
     for (const key of order) {
       if (seen.has(key)) continue;
@@ -173,6 +197,15 @@ const ApplicationConfigurationTab: React.FC = () => {
   }, [configurations, searchQuery]);
 
   const filteredConfigurations = orderedDisplayConfigs;
+
+  const getConfigDescription = (config: InvoiceConfiguration & { isCustom?: boolean; customKey?: string }) => {
+    if (config.config_key === 'invoice_next_number') {
+      const nextValue = parseInt(String(config.config_value || '1'), 10);
+      const safeNext = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 1;
+      return `Invoice number configuration. Next invoice number to be generated: ${safeNext}`;
+    }
+    return config.description;
+  };
 
   // Handle edit button click
   const handleEdit = (config: InvoiceConfiguration) => {
@@ -348,7 +381,7 @@ const ApplicationConfigurationTab: React.FC = () => {
                       <TableCell className="text-center font-medium">
                         {index + 1}
                       </TableCell>
-                      <TableCell>{config.description}</TableCell>
+                      <TableCell>{getConfigDescription(config)}</TableCell>
                       <TableCell className="text-center align-middle">
                         {config.config_key === 'sku_configurations' ? (
                           <Button
@@ -459,6 +492,16 @@ const ApplicationConfigurationTab: React.FC = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => setIsWhatsAppApiKeyDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'invoice_next_number' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsInvoiceNextNumberDialogOpen(true)}
                             className="flex items-center gap-2"
                           >
                             <Edit className="h-4 w-4" />
@@ -629,6 +672,11 @@ const ApplicationConfigurationTab: React.FC = () => {
       <EditWhatsAppApiKeyDialog
         open={isWhatsAppApiKeyDialogOpen}
         onOpenChange={setIsWhatsAppApiKeyDialogOpen}
+      />
+
+      <EditInvoiceNextNumberDialog
+        open={isInvoiceNextNumberDialogOpen}
+        onOpenChange={setIsInvoiceNextNumberDialogOpen}
       />
     </div>
   );

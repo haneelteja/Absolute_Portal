@@ -225,3 +225,129 @@ export async function getTentativeDeliveryDays(): Promise<number> {
     return 5;
   }
 }
+
+const INVOICE_NEXT_NUMBER_KEY = 'invoice_next_number';
+
+function parsePositiveInt(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const n = parseInt(String(value).trim(), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Derive next invoice number from existing invoices (fallback path)
+ */
+async function deriveNextInvoiceNumberFromInvoices(): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('invoice_number')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error || !data || data.length === 0) return 1;
+
+    let maxFound = 0;
+    data.forEach((row) => {
+      const raw = (row.invoice_number || '').trim();
+      if (!raw) return;
+      const direct = parsePositiveInt(raw);
+      if (direct) {
+        maxFound = Math.max(maxFound, direct);
+        return;
+      }
+      const match = raw.match(/(\d+)(?!.*\d)/);
+      if (match?.[1]) {
+        const tail = parseInt(match[1], 10);
+        if (Number.isFinite(tail)) {
+          maxFound = Math.max(maxFound, tail);
+        }
+      }
+    });
+
+    return maxFound > 0 ? maxFound + 1 : 1;
+  } catch {
+    return 1;
+  }
+}
+
+/**
+ * Ensure invoice_next_number configuration exists and return row.
+ */
+async function ensureInvoiceNextNumberConfig(): Promise<{ id: string; config_value: string }> {
+  const { data, error } = await supabase
+    .from('invoice_configurations')
+    .select('id, config_value')
+    .eq('config_key', INVOICE_NEXT_NUMBER_KEY)
+    .maybeSingle();
+
+  if (!error && data?.id) {
+    return { id: data.id, config_value: data.config_value || '1' };
+  }
+
+  const derived = await deriveNextInvoiceNumberFromInvoices();
+  const { data: inserted, error: insertError } = await supabase
+    .from('invoice_configurations')
+    .insert({
+      config_key: INVOICE_NEXT_NUMBER_KEY,
+      config_value: String(derived),
+      config_type: 'number',
+      description: 'Invoice number configuration (next invoice number to be generated)',
+    })
+    .select('id, config_value')
+    .single();
+
+  if (insertError || !inserted) {
+    throw new Error(`Failed to initialize invoice number configuration: ${insertError?.message || 'Unknown error'}`);
+  }
+
+  return { id: inserted.id, config_value: inserted.config_value || String(derived) };
+}
+
+/**
+ * Get the next invoice number that will be generated.
+ */
+export async function getNextInvoiceNumberConfigValue(): Promise<number> {
+  const config = await ensureInvoiceNextNumberConfig();
+  return parsePositiveInt(config.config_value) || 1;
+}
+
+/**
+ * Set the next invoice number explicitly.
+ */
+export async function setNextInvoiceNumberConfigValue(nextNumber: number): Promise<void> {
+  if (!Number.isFinite(nextNumber) || nextNumber < 1) {
+    throw new Error('Next invoice number must be a positive integer');
+  }
+
+  const config = await ensureInvoiceNextNumberConfig();
+  const { error } = await supabase
+    .from('invoice_configurations')
+    .update({ config_value: String(Math.floor(nextNumber)) })
+    .eq('id', config.id);
+
+  if (error) {
+    throw new Error(`Failed to update next invoice number: ${error.message}`);
+  }
+}
+
+/**
+ * Consume and increment invoice_next_number.
+ * Returns invoice number string to be used for the new invoice.
+ */
+export async function reserveNextInvoiceNumber(): Promise<string> {
+  const config = await ensureInvoiceNextNumberConfig();
+  const current = parsePositiveInt(config.config_value) || 1;
+  const next = current + 1;
+
+  const { error } = await supabase
+    .from('invoice_configurations')
+    .update({ config_value: String(next) })
+    .eq('id', config.id);
+
+  if (error) {
+    throw new Error(`Failed to reserve next invoice number: ${error.message}`);
+  }
+
+  return String(current);
+}

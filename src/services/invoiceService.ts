@@ -6,6 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Invoice, SalesTransaction, Customer } from "@/types";
 import { logger } from "@/lib/logger";
+import { reserveNextInvoiceNumber } from "@/services/invoiceConfigService";
 
 export interface InvoiceGenerationResult {
   invoice: Invoice;
@@ -49,22 +50,11 @@ export async function generateInvoiceNumber(
   useMonth: boolean = true
 ): Promise<string> {
   try {
-    const { data, error } = await supabase.rpc('generate_invoice_number', {
-      p_prefix: prefix,
-      p_use_year: useYear,
-      p_use_month: useMonth
-    });
-
-    if (error) {
-      logger.error('Failed to generate invoice number:', error);
-      throw new Error(`Invoice number generation failed: ${error.message}`);
-    }
-
-    if (!data) {
-      throw new Error('Invoice number generation returned null');
-    }
-
-    return data as string;
+    // prefix/useYear/useMonth are retained in signature for backward compatibility.
+    void prefix;
+    void useYear;
+    void useMonth;
+    return await reserveNextInvoiceNumber();
   } catch (error) {
     logger.error('Error generating invoice number:', error);
     throw error;
