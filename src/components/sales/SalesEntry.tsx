@@ -769,8 +769,33 @@ const SalesEntry = () => {
   };
 
   // Function to handle SKU selection for current item
-  const handleCurrentItemSKUChange = (sku: string) => {
-    const pricePerCase = getPricePerCaseForCurrentItem(sku);
+  const fetchPricePerCaseFromDatabase = useCallback(async (sku: string): Promise<string> => {
+    const trimmedSku = (sku || "").trim();
+    if (!saleForm.customer_id || !saleForm.area || !trimmedSku) return "";
+
+    const selectedCustomer = customers?.find(c => c.id === saleForm.customer_id);
+    if (!selectedCustomer?.dealer_name) return "";
+
+    const { data, error } = await supabase
+      .from("customers")
+      .select("dealer_name, area, sku, price_per_case, created_at")
+      .eq("is_active", true)
+      .eq("dealer_name", selectedCustomer.dealer_name)
+      .ilike("area", saleForm.area)
+      .ilike("sku", trimmedSku)
+      .order("created_at", { ascending: false });
+
+    if (error || !data || data.length === 0) return "";
+
+    const best = pickBestPriceRow(data);
+    return best && best.price_per_case != null ? String(best.price_per_case) : "";
+  }, [customers, saleForm.customer_id, saleForm.area]);
+
+  const handleCurrentItemSKUChange = async (sku: string) => {
+    let pricePerCase = getPricePerCaseForCurrentItem(sku);
+    if (!pricePerCase) {
+      pricePerCase = await fetchPricePerCaseFromDatabase(sku);
+    }
     setCurrentItem((prev) => {
       const calculatedAmount = prev.quantity && pricePerCase
         ? safeCalculateAmount(prev.quantity, pricePerCase)
@@ -786,7 +811,7 @@ const SalesEntry = () => {
 
   // Function to handle quantity change for current item
   const handleCurrentItemQuantityChange = (quantity: string) => {
-    const pricePerCase = getPricePerCaseForCurrentItem();
+    const pricePerCase = getPricePerCaseForCurrentItem() || currentItem.price_per_case || "";
     setCurrentItem((prev) => {
       const calculatedAmount = prev.sku && pricePerCase
         ? safeCalculateAmount(quantity, pricePerCase)
@@ -2440,7 +2465,7 @@ const SalesEntry = () => {
                                     id="item-price-per-case"
                                     type="number"
                                     step="0.01"
-                                    value={safeNumValue(getPricePerCaseForCurrentItem())}
+                                    value={safeNumValue(currentItem.price_per_case || getPricePerCaseForCurrentItem())}
                                     readOnly
                                     className="bg-gray-50"
                                     placeholder="Auto-calculated"
