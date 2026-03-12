@@ -52,18 +52,7 @@ export const userFormSchema = z.object({
     .array(z.string().min(1, 'Dealer-area combination cannot be empty'))
     .min(0),
   role: roleSchema,
-}).refine(
-  (data) => {
-    if (data.role === 'client') {
-      return data.associated_dealer_areas.length > 0;
-    }
-    return true;
-  },
-  {
-    message: 'Client role requires at least one dealer-area combination',
-    path: ['associated_dealer_areas'],
-  }
-);
+});
 
 export type UserFormInput = z.infer<typeof userFormSchema>;
 

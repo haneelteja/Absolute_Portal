@@ -9,9 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Mail, User, Building2, MapPin, Trash2, Edit, Search, X, Shield } from "lucide-react";
+import { Plus, Mail, User, Building2, MapPin, Trash2, Edit, X, Shield } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as XLSX from 'xlsx';
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -52,7 +51,6 @@ const UserManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [dealerAreaSearch, setClientBranchSearch] = useState('');
 
   // Auto-save form data to prevent data loss
   const { loadData, clearSavedData } = useAutoSave({
@@ -145,16 +143,6 @@ const UserManagement = () => {
       .map(c => `${c.dealer_name} - ${c.area}`)
       .filter(Boolean);
     return [...new Set(combinations)].sort();
-  };
-
-  // Get filtered client-area combinations based on search
-  const getFilteredDealerAreas = () => {
-    const allCombinations = getUniqueDealerAreas();
-    if (!dealerAreaSearch.trim()) return allCombinations;
-    
-    return allCombinations.filter(combination => 
-      combination.toLowerCase().includes(dealerAreaSearch.toLowerCase())
-    );
   };
 
   // Generate temporary password
@@ -774,33 +762,6 @@ const UserManagement = () => {
     }
   };
 
-  const handleClientBranchToggle = (clientBranch: string) => {
-    setUserForm(prev => ({
-      ...prev,
-      associated_dealer_areas: prev.associated_dealer_areas.includes(clientBranch)
-        ? prev.associated_dealer_areas.filter(cb => cb !== clientBranch)
-        : [...prev.associated_dealer_areas, clientBranch]
-    }));
-  };
-
-  const handleSelectAllFiltered = () => {
-    const filteredCombinations = getFilteredDealerAreas();
-    const newSelections = [...new Set([...userForm.associated_dealer_areas, ...filteredCombinations])];
-    setUserForm(prev => ({
-      ...prev,
-      associated_dealer_areas: newSelections
-    }));
-  };
-
-  const handleDeselectAllFiltered = () => {
-    const filteredCombinations = getFilteredDealerAreas();
-    const newSelections = userForm.associated_dealer_areas.filter(cb => !filteredCombinations.includes(cb));
-    setUserForm(prev => ({
-      ...prev,
-      associated_dealer_areas: newSelections
-    }));
-  };
-
   const exportToExcel = () => {
     const filteredUsers = getSortedAndFilteredUsers();
     if (!filteredUsers.length) return;
@@ -1069,95 +1030,6 @@ const UserManagement = () => {
                 </div>
               </div>
             )}
-
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Label className="text-base font-medium">Dealer-Area Access *</Label>
-                  <span className="text-sm text-gray-500">
-                    {userForm.role === 'admin' || userForm.role === 'manager' 
-                      ? 'Admin/Manager users automatically get access to all clients and areas'
-                      : 'Select specific client-area combinations this user can access'
-                    }
-                  </span>
-                </div>
-                
-                {/* Search Input */}
-                <div className="mb-3 flex gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      type="text"
-                      placeholder="Search client-area combinations..."
-                      value={dealerAreaSearch}
-                      onChange={(e) => setClientBranchSearch(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  {dealerAreaSearch && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setClientBranchSearch('')}
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Clear
-                    </Button>
-                  )}
-                </div>
-
-                {/* Select All / Deselect All buttons */}
-                {getFilteredDealerAreas().length > 0 && (
-                  <div className="mb-3 flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSelectAllFiltered}
-                    >
-                      Select All Filtered
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDeselectAllFiltered}
-                    >
-                      Deselect All Filtered
-                    </Button>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto border rounded-md p-3">
-                  {getFilteredDealerAreas().length > 0 ? (
-                    getFilteredDealerAreas().map((clientBranch) => (
-                      <div key={clientBranch} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`client-area-${clientBranch}`}
-                          checked={userForm.associated_dealer_areas.includes(clientBranch)}
-                          onCheckedChange={() => handleClientBranchToggle(clientBranch)}
-                        />
-                        <Label htmlFor={`client-area-${clientBranch}`} className="text-sm">
-                          {clientBranch}
-                        </Label>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-2 text-center text-gray-500 py-4">
-                      {dealerAreaSearch ? 'No matching client-area combinations found' : 'No client-area combinations available'}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Show selected count */}
-                {userForm.associated_dealer_areas.length > 0 && (
-                  <div className="mt-2 text-sm text-blue-600">
-                    {userForm.associated_dealer_areas.length} client-area combination(s) selected
-                  </div>
-                )}
-              </div>
-            </div>
 
             <div className="flex space-x-2">
               <Button 
