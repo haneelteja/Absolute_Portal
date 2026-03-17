@@ -1,10 +1,10 @@
-import { 
-  BarChart3, 
-  DollarSign, 
-  Users, 
-  Factory, 
-  Truck, 
-  Tag, 
+import {
+  BarChart3,
+  DollarSign,
+  Users,
+  Factory,
+  Truck,
+  Tag,
   UserPlus,
   FileText,
   Cog,
@@ -14,7 +14,8 @@ import {
   Shield,
   Settings,
   MessageSquare,
-  Package
+  Package,
+  Wrench
 } from "lucide-react";
 
 import {
@@ -52,7 +53,8 @@ const menuItems: MenuItem[] = [
   { id: "transport", title: "Transport", icon: Truck },
   { id: "purchase", title: "Purchase", icon: Package },
   { id: "labels", title: "Labels", icon: Tag },
-  { id: "configurations", title: "Configurations", icon: Cog },
+  { id: "machine-maintenance", title: "Machine Maintenance", icon: Wrench },
+  { id: "configurations", title: "Dealer Management", icon: Cog },
   { id: "reports", title: "Reports", icon: FileText },
   { id: "user-management", title: "User Management", icon: Shield, roles: ['manager'] }, // Only visible to managers
   { id: "application-configuration", title: "Application Configuration", icon: Settings, roles: ['manager', 'admin'] }, // Only visible to managers and admins

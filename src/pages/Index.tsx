@@ -13,6 +13,7 @@ const Production = lazy(() => import("@/components/production/Production"));
 const TransportExpenses = lazy(() => import("@/components/transport/TransportExpenses"));
 const Purchase = lazy(() => import("@/components/purchase/Purchase"));
 const Labels = lazy(() => import("@/components/labels/Labels"));
+const MachineMaintenance = lazy(() => import("@/components/machine-maintenance/MachineMaintenance"));
 const ConfigurationManagement = lazy(() => import("@/components/configurations/ConfigurationManagement"));
 const Reports = lazy(() => import("@/components/reports/Reports"));
 const UserManagement = lazy(() => import("@/components/user-management/UserManagement"));
@@ -75,6 +76,12 @@ const Index = () => {
         return (
           <Suspense fallback={<RouteLoader />}>
             <Labels />
+          </Suspense>
+        );
+      case "machine-maintenance":
+        return (
+          <Suspense fallback={<RouteLoader />}>
+            <MachineMaintenance />
           </Suspense>
         );
       case "configurations":

@@ -29,6 +29,7 @@ import { EditListConfigDialog } from './EditListConfigDialog';
 import { EditTentativeDeliveryDaysDialog } from './EditTentativeDeliveryDaysDialog';
 import { EditWhatsAppApiKeyDialog } from './EditWhatsAppApiKeyDialog';
 import { EditInvoiceNextNumberDialog } from './EditInvoiceNextNumberDialog';
+import { EditTextConfigDialog } from './EditTextConfigDialog';
 import { triggerManualBackup, getBackupConfig, type BackupConfig } from '@/services/backupService';
 import { Database, Play } from 'lucide-react';
 
@@ -47,6 +48,10 @@ const ApplicationConfigurationTab: React.FC = () => {
   const [isPurchaseItemsDialogOpen, setIsPurchaseItemsDialogOpen] = useState(false);
   const [isWhatsAppApiKeyDialogOpen, setIsWhatsAppApiKeyDialogOpen] = useState(false);
   const [isInvoiceNextNumberDialogOpen, setIsInvoiceNextNumberDialogOpen] = useState(false);
+  const [isMachineEquipmentDialogOpen, setIsMachineEquipmentDialogOpen] = useState(false);
+  const [isMachineWhatsappNumberDialogOpen, setIsMachineWhatsappNumberDialogOpen] = useState(false);
+  const [isMachineRequestTemplateDialogOpen, setIsMachineRequestTemplateDialogOpen] = useState(false);
+  const [isMachineReceivedTemplateDialogOpen, setIsMachineReceivedTemplateDialogOpen] = useState(false);
   const [isRunningBackup, setIsRunningBackup] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -111,6 +116,9 @@ const ApplicationConfigurationTab: React.FC = () => {
       'backup_notification_email',
       'invoice_next_number',
       'invoice_number_format',
+      'machine_maintenance_whatsapp_number',
+      'machine_maintenance_request_template',
+      'machine_maintenance_received_template',
     ];
 
     const configMap = new Map(mainAndBackupConfigs.map((c) => [c.config_key, c]));
@@ -150,6 +158,21 @@ const ApplicationConfigurationTab: React.FC = () => {
         customKey: 'purchase_items',
       } as InvoiceConfiguration & { isCustom?: boolean; customKey?: string });
     }
+
+    // Row: Machine Equipment list
+    result.push({
+      id: '',
+      config_key: 'machine_equipment',
+      config_value: '[]',
+      config_type: 'json',
+      description: 'Equipment list for Machine Maintenance dropdown',
+      updated_by: null,
+      updated_at: '',
+      created_at: '',
+      isCustom: true,
+      customKey: 'machine_equipment',
+    } as InvoiceConfiguration & { isCustom?: boolean; customKey?: string });
+    seen.add('machine_equipment');
 
     // Invoice next number row (show even if missing in DB)
     const invoiceNextNumberConfig = configMap.get('invoice_next_number');
@@ -507,6 +530,46 @@ const ApplicationConfigurationTab: React.FC = () => {
                             <Edit className="h-4 w-4" />
                             Edit
                           </Button>
+                        ) : config.config_key === 'machine_equipment' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsMachineEquipmentDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'machine_maintenance_whatsapp_number' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsMachineWhatsappNumberDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'machine_maintenance_request_template' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsMachineRequestTemplateDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : config.config_key === 'machine_maintenance_received_template' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsMachineReceivedTemplateDialogOpen(true)}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
                         ) : null}
                       </TableCell>
                     </TableRow>
@@ -677,6 +740,48 @@ const ApplicationConfigurationTab: React.FC = () => {
       <EditInvoiceNextNumberDialog
         open={isInvoiceNextNumberDialogOpen}
         onOpenChange={setIsInvoiceNextNumberDialogOpen}
+      />
+
+      {/* Machine Maintenance — Equipment List */}
+      <EditListConfigDialog
+        open={isMachineEquipmentDialogOpen}
+        onOpenChange={setIsMachineEquipmentDialogOpen}
+        configKey="machine_equipment"
+        title="Machine Equipment List"
+        description="Add or remove equipment names for the Machine Maintenance dropdown."
+        placeholder="e.g. Filling Machine"
+      />
+
+      {/* Machine Maintenance — WhatsApp Number */}
+      <EditTextConfigDialog
+        open={isMachineWhatsappNumberDialogOpen}
+        onOpenChange={setIsMachineWhatsappNumberDialogOpen}
+        configKey="machine_maintenance_whatsapp_number"
+        title="Machine Maintenance WhatsApp Number"
+        description="WhatsApp number to notify on maintenance events (country code + number, e.g. 919876543210)."
+        placeholder="e.g. 919876543210"
+      />
+
+      {/* Machine Maintenance — Request Created Template */}
+      <EditTextConfigDialog
+        open={isMachineRequestTemplateDialogOpen}
+        onOpenChange={setIsMachineRequestTemplateDialogOpen}
+        configKey="machine_maintenance_request_template"
+        title="Request Created WhatsApp Template"
+        description="Message sent when a new maintenance request is created. Use {{equipment}}, {{part}}, {{quantity}}, {{date}} as placeholders."
+        placeholder="New maintenance request..."
+        multiline
+      />
+
+      {/* Machine Maintenance — Request Received Template */}
+      <EditTextConfigDialog
+        open={isMachineReceivedTemplateDialogOpen}
+        onOpenChange={setIsMachineReceivedTemplateDialogOpen}
+        configKey="machine_maintenance_received_template"
+        title="Request Received WhatsApp Template"
+        description="Message sent when a maintenance request is marked as received. Use {{equipment}}, {{part}}, {{quantity}}, {{amount}}, {{delivery_date}} as placeholders."
+        placeholder="Maintenance request received..."
+        multiline
       />
     </div>
   );
