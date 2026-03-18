@@ -740,7 +740,7 @@ const UserManagement = () => {
       } else {
         // Create new user
         console.log('Creating new user with role:', userForm.role);
-        await createUserMutation.mutateAsync(userForm);
+        await createUserMutation.mutateAsync({ ...userForm, role: 'client' });
         console.log('User created successfully');
       }
       
@@ -971,65 +971,7 @@ const UserManagement = () => {
                   autoComplete="email"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role *</Label>
-                <Select
-                  value={userForm.role || 'client'}
-                  onValueChange={(value: 'admin' | 'manager' | 'client') => {
-                    console.log('Role changed to:', value);
-                    setUserForm(prev => {
-                      const updated = { ...prev, role: value };
-                      console.log('Updated userForm with role:', updated);
-                      // Clear client-area selections when switching to admin/manager
-                      if (value === 'admin' || value === 'manager') {
-                        updated.associated_dealer_areas = [];
-                      }
-                      return updated;
-                    });
-                  }}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger 
-                    id="role-select" 
-                    aria-label="Select user role"
-                    className="w-full"
-                    disabled={isSubmitting}
-                  >
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin" key="admin">Admin</SelectItem>
-                    <SelectItem value="manager" key="manager">Manager</SelectItem>
-                    <SelectItem value="client" key="client">Client</SelectItem>
-                  </SelectContent>
-                </Select>
-                {userForm.role && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Selected role: <span className="font-semibold">{userForm.role}</span>
-                  </p>
-                )}
-              </div>
             </div>
-
-            {/* Admin/Manager Auto Access Message */}
-            {(userForm.role === 'admin' || userForm.role === 'manager') && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <Building2 className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-blue-900">
-                      Automatic Access Assignment
-                    </h4>
-                    <p className="text-sm text-blue-700 mt-1">
-                      {userForm.role === 'admin' ? 'Admin' : 'Manager'} users automatically get access to ALL clients and areas. 
-                      This access will be updated automatically when new clients are added to the system.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             <div className="flex space-x-2">
               <Button 
