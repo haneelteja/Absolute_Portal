@@ -121,6 +121,9 @@ export const EditListConfigDialog: React.FC<EditListConfigDialogProps> = ({
       if (configKey === 'purchase_items') {
         queryClient.invalidateQueries({ queryKey: ['purchase-items-config'] });
       }
+      if (configKey === 'machine_equipment') {
+        queryClient.invalidateQueries({ queryKey: ['machine-equipment-config'] });
+      }
       toast({ title: 'Success', description: 'Saved successfully.' });
       onOpenChange(false);
     },
