@@ -2,11 +2,13 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { logger } from '@/lib/logger';
+import { log } from '@/lib/logger';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  /** Name of the component or section being wrapped — improves log traceability */
+  componentName?: string;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
@@ -27,44 +29,38 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return {
-      hasError: true,
-      error,
-      errorInfo: null,
-    };
+    return { hasError: true, error, errorInfo: null };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.setState({
-      error,
-      errorInfo,
-    });
+    this.setState({ error, errorInfo });
 
-    // Log error
-    logger.error('Error Boundary caught an error:', error, errorInfo);
+    log.error(
+      error.message,
+      {
+        layer: 'Component',
+        component: this.props.componentName ?? 'ErrorBoundary',
+        fn: 'componentDidCatch',
+        componentStack: errorInfo.componentStack ?? undefined,
+      },
+      error
+    );
 
-    // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
   }
 
   handleRetry = () => {
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    });
+    this.setState({ hasError: false, error: null, errorInfo: null });
   };
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default error UI
       return (
         <div className="min-h-screen flex items-center justify-center p-4">
           <Card className="w-full max-w-md">
@@ -80,12 +76,12 @@ class ErrorBoundary extends Component<Props, State> {
             <CardContent className="space-y-4">
               {import.meta.env.DEV && this.state.error && (
                 <div className="rounded-md bg-red-50 p-3">
-                  <h4 className="text-sm font-medium text-red-800">Error Details:</h4>
+                  <h4 className="text-sm font-medium text-red-800">Error Details (dev only):</h4>
                   <p className="mt-1 text-sm text-red-700">{this.state.error.message}</p>
                   {this.state.errorInfo && (
                     <details className="mt-2">
                       <summary className="text-sm text-red-700 cursor-pointer">
-                        Stack Trace
+                        Component Stack
                       </summary>
                       <pre className="mt-2 text-xs text-red-600 overflow-auto">
                         {this.state.errorInfo.componentStack}

@@ -1,96 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/*
+ * Absolute Industries Portal — Design System
+ * Color palette: Aether Canvas (Material Design 3 / indigo-teal)
+ * All colors MUST be defined as HSL.
+ */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* ── Surfaces ─────────────────────────────────────── */
+    --background:   210 17% 98%;   /* #f8f9fa  surface-bright   */
+    --foreground:   195  8% 19%;   /* #2d3335  on-surface       */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card:           0  0% 100%;  /* #ffffff  surface-lowest   */
+    --card-foreground: 195 8% 19%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover:        0  0% 100%;
+    --popover-foreground: 195 8% 19%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* ── Brand / Primary (indigo-purple #58589a) ─────── */
+    --primary:      240 27% 47%;   /* #58589a */
+    --primary-foreground: 270 100% 99%; /* #fbf7ff on-primary */
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* ── Secondary (teal #426565) ────────────────────── */
+    --secondary:    180 21% 33%;   /* #426565 */
+    --secondary-foreground: 174 100% 94%; /* #e0ffff on-secondary */
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* ── Muted / Surface container ───────────────────── */
+    --muted:        204 14% 91%;   /* #ebeef0 surface-container */
+    --muted-foreground: 195 5% 37%; /* #5a6062 on-surface-variant */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* ── Accent / Surface-container-low ─────────────── */
+    --accent:       207 18% 95%;   /* #f1f4f5 surface-container-low */
+    --accent-foreground: 240 27% 47%; /* primary */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* ── Error / Destructive (#a8364b) ───────────────── */
+    --destructive:  350 51% 43%;   /* #a8364b */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* ── Chrome ──────────────────────────────────────── */
+    --border: 195 5% 69%;          /* #adb3b5 outline-variant  */
+    --input:  204 14% 91%;
+    --ring:   240 27% 47%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* ── Sidebar ─────────────────────────────────────── */
+    --sidebar-background:        207 18% 97%;  /* near surface-container-low */
+    --sidebar-foreground:        195  8% 19%;
+    --sidebar-primary:           240 27% 47%;
+    --sidebar-primary-foreground: 270 100% 99%;
+    --sidebar-accent:            207 18% 93%;
+    --sidebar-accent-foreground: 240 32% 29%;
+    --sidebar-border:            195 5% 85%;
+    --sidebar-ring:              240 90% 75%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background:   222  47%  5%;
+    --foreground:   210  40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card:         222  47%  5%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover:      222  47%  5%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary:      240  90% 84%;  /* primary-container as light accent */
+    --primary-foreground: 240 32% 17%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary:    217  33% 18%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted:        217  33% 18%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent:       217  33% 18%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive:  350  63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border:       217  33% 18%;
+    --input:        217  33% 18%;
+    --ring:         213  27% 84%;
+
+    --sidebar-background:  240  6% 10%;
+    --sidebar-foreground:  240  5% 96%;
+    --sidebar-primary:     224 76% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent:      240  4% 16%;
+    --sidebar-accent-foreground: 240  5% 96%;
+    --sidebar-border:      240  4% 16%;
+    --sidebar-ring:        217 91% 60%;
   }
 }
 
@@ -99,7 +105,46 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    font-family: 'Inter', sans-serif;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+/* ── Utility classes ─────────────────────────────────────────────────────── */
+
+@layer components {
+  /* Glassmorphism card — matches Aether Canvas design reference */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Glassmorphism panel (lighter tint for nav/header) */
+  .glass-panel {
+    background: rgba(248, 249, 250, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar while preserving scroll functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Gradient brand text — matches Aether Canvas logo treatment */
+  .brand-gradient {
+    @apply bg-gradient-to-br from-indigo-600 to-purple-400 bg-clip-text text-transparent;
   }
 }

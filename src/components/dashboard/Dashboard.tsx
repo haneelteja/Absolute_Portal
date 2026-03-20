@@ -410,146 +410,202 @@ const Dashboard = memo(() => {
     });
   }, [filteredAndSortedReceivables, toast]);
 
+  // Derived collection-rate values (computed once, used in card)
+  const collectionRate = (() => {
+    if (!receivables?.length || !metrics) return null;
+    const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
+    const rate = totalSales > 0
+      ? Math.round(((totalSales - (metrics.totalOutstanding || 0)) / totalSales) * 100)
+      : 0;
+    return { rate, good: rate >= 70 };
+  })();
+
+  const criticalCount = receivables?.filter((r) => r.outstanding > 100_000).length ?? 0;
+  const profitPositive = (profitData?.profit ?? 0) >= 0;
+
   return (
-    <div className="space-y-6 p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
-      {/* All Metrics Cards - 8 tiles in a grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="min-h-screen bg-surface-bright p-6 space-y-8">
+
+      {/* ── Page heading ─────────────────────────────────────────────── */}
+      <header>
+        <p className="text-[10px] font-bold text-primary tracking-widest uppercase mb-1">
+          Operations Overview
+        </p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">
+          Dashboard
+        </h1>
+        <p className="text-sm text-on-surface-variant mt-1">
+          Financial summary and receivables at a glance.
+        </p>
+      </header>
+
+      {/* ── KPI bento grid ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
         {/* Total Sales */}
-        <Card className="bg-green-50 border border-green-200 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-green-900 mb-1">Total Sales</h3>
-                <p className="text-2xl font-bold text-green-600">₹{profitData?.totalSales.toLocaleString() || 0}</p>
-              </div>
+        <div className="glass-card rounded-xl p-6 shadow-glass hover:-translate-y-0.5 hover:shadow-glass-lg transition-all duration-200 flex flex-col gap-4">
+          <div className="flex items-start justify-between">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-50 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              Sales
+            </span>
+          </div>
+          <div>
+            <p className="text-2xl font-bold tracking-tight text-on-surface">
+              ₹{(profitData?.totalSales ?? 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-1 font-medium">Total sales (90 days)</p>
+          </div>
+        </div>
 
         {/* Factory Costs */}
-        <Card className="bg-red-50 border border-red-200 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-red-900 mb-1">Factory Costs</h3>
-                <p className="text-2xl font-bold text-red-600">₹{profitData?.factoryPayables.toLocaleString() || 0}</p>
-              </div>
+        <div className="glass-card rounded-xl p-6 shadow-glass hover:-translate-y-0.5 hover:shadow-glass-lg transition-all duration-200 flex flex-col gap-4">
+          <div className="flex items-start justify-between">
+            <div className="w-11 h-11 rounded-2xl bg-red-50 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-red-400" />
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              Factory
+            </span>
+          </div>
+          <div>
+            <p className="text-2xl font-bold tracking-tight text-on-surface">
+              ₹{(profitData?.factoryPayables ?? 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-1 font-medium">Production costs</p>
+          </div>
+        </div>
 
         {/* Transport */}
-        <Card className="bg-orange-50 border border-orange-200 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-orange-900 mb-1">Transport</h3>
-                <p className="text-2xl font-bold text-orange-600">₹{profitData?.transportExpenses.toLocaleString() || 0}</p>
-              </div>
+        <div className="glass-card rounded-xl p-6 shadow-glass hover:-translate-y-0.5 hover:shadow-glass-lg transition-all duration-200 flex flex-col gap-4">
+          <div className="flex items-start justify-between">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 flex items-center justify-center">
+              <Eye className="h-5 w-5 text-amber-500" />
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              Transport
+            </span>
+          </div>
+          <div>
+            <p className="text-2xl font-bold tracking-tight text-on-surface">
+              ₹{(profitData?.transportExpenses ?? 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-1 font-medium">Logistics expenses</p>
+          </div>
+        </div>
 
         {/* Net Profit */}
-        <Card className={`border shadow-lg hover:shadow-xl transition-all duration-300 ${
-          (profitData?.profit || 0) >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'
-        }`}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className={`text-sm font-semibold mb-1 ${(profitData?.profit || 0) >= 0 ? 'text-blue-900' : 'text-red-900'}`}>
-                  Net Profit
-                </h3>
-                <p className={`text-2xl font-bold ${(profitData?.profit || 0) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                  ₹{profitData?.profit.toLocaleString() || 0}
-                </p>
-              </div>
+        <div className={`glass-card rounded-xl p-6 shadow-glass hover:-translate-y-0.5 hover:shadow-glass-lg transition-all duration-200 flex flex-col gap-4`}>
+          <div className="flex items-start justify-between">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${profitPositive ? "bg-indigo-50" : "bg-red-50"}`}>
+              <DollarSign className={`h-5 w-5 ${profitPositive ? "text-indigo-500" : "text-red-500"}`} />
             </div>
-          </CardContent>
-        </Card>
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+              profitPositive ? "text-indigo-600 bg-indigo-50" : "text-red-600 bg-red-50"
+            }`}>
+              Profit
+            </span>
+          </div>
+          <div>
+            <p className={`text-2xl font-bold tracking-tight ${profitPositive ? "text-indigo-600" : "text-red-600"}`}>
+              ₹{(profitData?.profit ?? 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-1 font-medium">Net margin</p>
+          </div>
+        </div>
 
         {/* Client Outstanding */}
-        <Card className="bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-rose-800 mb-1">Client Outstanding - Pending receivables</h3>
-                <p className="text-2xl font-bold text-rose-600">₹{metrics?.totalOutstanding?.toLocaleString() || 0}</p>
-              </div>
+        <div className="glass-card rounded-xl p-6 shadow-glass hover:-translate-y-0.5 hover:shadow-glass-lg transition-all duration-200 flex flex-col gap-4">
+          <div className="flex items-start justify-between">
+            <div className="w-11 h-11 rounded-2xl bg-rose-50 flex items-center justify-center">
+              <CreditCard className="h-5 w-5 text-rose-400" />
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              Receivables
+            </span>
+          </div>
+          <div>
+            <p className="text-2xl font-bold tracking-tight text-on-surface">
+              ₹{(metrics?.totalOutstanding ?? 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-1 font-medium">Pending from clients</p>
+          </div>
+        </div>
 
         {/* Factory Outstanding */}
-        <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-purple-800 mb-1">Elma Factory Outstanding</h3>
-                <p className="text-2xl font-bold text-purple-600">₹{metrics?.factoryOutstanding?.toLocaleString() || 0}</p>
-              </div>
+        <div className="glass-card rounded-xl p-6 shadow-glass hover:-translate-y-0.5 hover:shadow-glass-lg transition-all duration-200 flex flex-col gap-4">
+          <div className="flex items-start justify-between">
+            <div className="w-11 h-11 rounded-2xl bg-violet-50 flex items-center justify-center">
+              <Building2 className="h-5 w-5 text-violet-400" />
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              Factory
+            </span>
+          </div>
+          <div>
+            <p className="text-2xl font-bold tracking-tight text-on-surface">
+              ₹{(metrics?.factoryOutstanding ?? 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-1 font-medium">Elma factory payable</p>
+          </div>
+        </div>
 
         {/* Critical Alerts */}
-        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-amber-800 mb-1">Critical Alerts - Outstanding &gt; ₹1L</h3>
-                <p className="text-2xl font-bold text-amber-600">{receivables?.filter(r => r.outstanding > 100000).length || 0}</p>
-              </div>
+        <div className="glass-card rounded-xl p-6 shadow-glass hover:-translate-y-0.5 hover:shadow-glass-lg transition-all duration-200 flex flex-col gap-4">
+          <div className="flex items-start justify-between">
+            <div className="w-11 h-11 rounded-2xl bg-orange-50 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-orange-400" />
             </div>
-          </CardContent>
-        </Card>
+            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              Alerts
+            </span>
+          </div>
+          <div>
+            <p className="text-2xl font-bold tracking-tight text-on-surface">{criticalCount}</p>
+            <div className="flex items-center gap-1.5 mt-1">
+              {criticalCount > 0 ? (
+                <AlertTriangle className="h-3 w-3 text-orange-400" />
+              ) : (
+                <TrendingUp className="h-3 w-3 text-emerald-400" />
+              )}
+              <p className="text-xs text-on-surface-variant font-medium">
+                {criticalCount > 0 ? "Outstanding > ₹1 Lakh" : "No critical alerts"}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Collection Rate */}
-        <Card className={`border shadow-lg hover:shadow-xl transition-all duration-300 ${
-          (() => {
-            if (!receivables || receivables.length === 0 || !metrics) return 'bg-gradient-to-br from-sky-50 to-blue-50 border-sky-200';
-            const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
-            const totalOutstanding = metrics.totalOutstanding || 0;
-            const collectionRate = totalSales > 0 ? ((totalSales - totalOutstanding) / totalSales) * 100 : 0;
-            return collectionRate >= 70 ? 'bg-gradient-to-br from-sky-50 to-blue-50 border-sky-200' : 'bg-gradient-to-br from-rose-50 to-pink-50 border-rose-200';
-          })()
-        }`}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className={`text-sm font-semibold mb-1 ${
-                  (() => {
-                    if (!receivables || receivables.length === 0 || !metrics) return 'text-sky-800';
-                    const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
-                    const totalOutstanding = metrics.totalOutstanding || 0;
-                    const collectionRate = totalSales > 0 ? ((totalSales - totalOutstanding) / totalSales) * 100 : 0;
-                    return collectionRate >= 70 ? 'text-sky-800' : 'text-rose-800';
-                  })()
-                }`}>
-                  Collection Rate - Payment efficiency
-                </h3>
-                <p className={`text-2xl font-bold ${
-                  (() => {
-                    if (!receivables || receivables.length === 0 || !metrics) return 'text-sky-600';
-                    const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
-                    const totalOutstanding = metrics.totalOutstanding || 0;
-                    const collectionRate = totalSales > 0 ? ((totalSales - totalOutstanding) / totalSales) * 100 : 0;
-                    return collectionRate >= 70 ? 'text-sky-600' : 'text-rose-600';
-                  })()
-                }`}>
-                  {receivables && receivables.length > 0 && metrics ? 
-                    (() => {
-                      const totalSales = receivables.reduce((sum, r) => sum + (r.totalSales || 0), 0);
-                      const totalOutstanding = metrics.totalOutstanding || 0;
-                      return totalSales > 0 ? Math.round(((totalSales - totalOutstanding) / totalSales) * 100) : 0;
-                    })() : 0}%
-                </p>
-              </div>
+        <div className="glass-card rounded-xl p-6 shadow-glass hover:-translate-y-0.5 hover:shadow-glass-lg transition-all duration-200 flex flex-col gap-4">
+          <div className="flex items-start justify-between">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${
+              collectionRate?.good !== false ? "bg-sky-50" : "bg-rose-50"
+            }`}>
+              <Phone className={`h-5 w-5 ${collectionRate?.good !== false ? "text-sky-400" : "text-rose-400"}`} />
             </div>
-          </CardContent>
-        </Card>
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+              collectionRate?.good !== false
+                ? "text-sky-600 bg-sky-50"
+                : "text-rose-600 bg-rose-50"
+            }`}>
+              Collection
+            </span>
+          </div>
+          <div>
+            <p className={`text-2xl font-bold tracking-tight ${
+              collectionRate?.good !== false ? "text-sky-600" : "text-rose-600"
+            }`}>
+              {collectionRate?.rate ?? 0}%
+            </p>
+            <p className="text-xs text-on-surface-variant mt-1 font-medium">Payment efficiency</p>
+          </div>
+        </div>
+
       </div>
 
+      {/* ── Production inventory ──────────────────────────────────────── */}
       <ProductionInventory />
     </div>
   );
