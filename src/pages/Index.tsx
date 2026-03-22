@@ -103,7 +103,7 @@ const Index = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-surface-bright">
+      <div className="h-screen flex w-full bg-surface-bright overflow-hidden">
         <AppSidebar activeView={activeView} setActiveView={setActiveView} />
 
         <div className="flex-1 flex flex-col min-w-0">
@@ -135,7 +135,7 @@ const Index = () => {
           </header>
 
           {/* ── Page content ────────────────────────────────────────── */}
-          <main className="flex-1 overflow-x-hidden">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden">
             {renderContent()}
           </main>
         </div>

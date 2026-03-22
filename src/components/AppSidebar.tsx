@@ -16,7 +16,6 @@ import {
   MessageSquare,
   Package,
   Wrench,
-  HelpCircle,
   Droplets,
 } from "lucide-react";
 
@@ -138,12 +137,6 @@ export function AppSidebar({ activeView, setActiveView }: AppSidebarProps) {
 
       {/* ── Footer ────────────────────────────────────────────────── */}
       <SidebarFooter className="px-3 pb-4 space-y-1">
-        {/* Help link */}
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-400 hover:text-indigo-600 transition-colors group-data-[collapsible=icon]:justify-center">
-          <HelpCircle className="h-4 w-4 shrink-0" />
-          <span className="group-data-[collapsible=icon]:hidden">Help</span>
-        </button>
-
         {/* Divider */}
         <div className="mx-3 border-t border-slate-200/70 group-data-[collapsible=icon]:mx-0" />
 

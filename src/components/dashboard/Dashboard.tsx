@@ -424,7 +424,7 @@ const Dashboard = memo(() => {
   const profitPositive = (profitData?.profit ?? 0) >= 0;
 
   return (
-    <div className="min-h-screen bg-surface-bright p-6 space-y-8">
+    <div className="bg-surface-bright p-6 space-y-8">
 
       {/* ── Page heading ─────────────────────────────────────────────── */}
       <header>
