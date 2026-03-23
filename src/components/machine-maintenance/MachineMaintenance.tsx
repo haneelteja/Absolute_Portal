@@ -260,7 +260,7 @@ const MachineMaintenance: React.FC = () => {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Page header */}
       <div className="flex items-center gap-3">
         <Wrench className="h-6 w-6 text-blue-600" />

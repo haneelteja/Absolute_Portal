@@ -5,7 +5,7 @@ import LabelPayments from "./LabelPayments";
 
 const Labels = () => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Labels Management</h2>
         <p className="text-sm text-muted-foreground">

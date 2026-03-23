@@ -557,7 +557,7 @@ const TransportExpenses = () => {
   }, [filteredAndSortedExpenses, toast]);
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
+    <div className="space-y-6 p-6 w-full max-w-full overflow-x-hidden">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-blue-900">Total Transport Expenses</span>

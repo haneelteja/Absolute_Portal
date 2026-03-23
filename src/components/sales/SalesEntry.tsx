@@ -2237,7 +2237,7 @@ const SalesEntry = () => {
   }, [deleteMutation]); // Only recreate if deleteMutation changes
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-x-hidden min-w-0">
+    <div className="space-y-6 p-6 w-full max-w-full overflow-x-hidden min-w-0">
       {/* Production Inventory (Production − Sales) - top of Dealer Transactions */}
       <ProductionInventory />
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">

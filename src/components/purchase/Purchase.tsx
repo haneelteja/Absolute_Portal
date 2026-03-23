@@ -158,7 +158,7 @@ const Purchase = () => {
   );
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
+    <div className="space-y-6 p-6 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Purchase</h2>
         <p className="text-sm text-muted-foreground">

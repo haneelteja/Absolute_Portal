@@ -291,7 +291,7 @@ const Production = () => {
   }, [filteredAndSortedRecords, toast]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header with Record Production button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 className="text-xl font-semibold">Production</h2>
