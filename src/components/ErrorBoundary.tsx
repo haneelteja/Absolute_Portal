@@ -33,6 +33,17 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Stale chunk after a new deployment — reload once to fetch fresh assets
+    if (error.message?.includes('Failed to fetch dynamically imported module') ||
+        error.message?.includes('Importing a module script failed')) {
+      const reloadKey = 'chunk_reload_attempted';
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, '1');
+        window.location.reload();
+        return;
+      }
+    }
+
     this.setState({ error, errorInfo });
 
     log.error(

@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('user_management')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
       
       if (!userError && userData) {
         return userData as UserProfile;
@@ -84,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('user_management')
           .select('*')
           .eq('email', email)
-          .single();
+          .maybeSingle();
         
         if (!emailError && userDataByEmail) {
           return userDataByEmail as UserProfile;
