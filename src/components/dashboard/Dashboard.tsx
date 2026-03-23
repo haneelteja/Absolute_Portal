@@ -10,15 +10,18 @@ import { Input } from "@/components/ui/input";
 import { ColumnFilter } from "@/components/ui/column-filter";
 import { supabase } from "@/integrations/supabase/client";
 import { getQueryConfig } from "@/lib/query-configs";
-import { 
-  DollarSign, 
-  AlertTriangle, 
-  TrendingUp, 
-  Building2, 
+import {
+  DollarSign,
+  AlertTriangle,
+  TrendingUp,
+  Building2,
   CreditCard,
   Eye,
   Phone,
-  Download
+  Download,
+  Tag,
+  PackageCheck,
+  PackageX,
 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { useToast } from "@/hooks/use-toast";
@@ -423,6 +426,78 @@ const Dashboard = memo(() => {
   const criticalCount = receivables?.filter((r) => r.outstanding > 100_000).length ?? 0;
   const profitPositive = (profitData?.profit ?? 0) >= 0;
 
+  // ── Label inventory data (shared cache keys with LabelAvailability) ──────
+  const { data: labelPurchasesRaw } = useQuery({
+    queryKey: ["label-purchases-summary"],
+    ...getQueryConfig("label-purchases-summary"),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("label_purchases")
+        .select("sku, quantity, purchase_date")
+        .order("purchase_date", { ascending: false });
+      return data || [];
+    },
+  });
+
+  const { data: labelSalesRaw } = useQuery({
+    queryKey: ["sales-transactions-for-availability"],
+    ...getQueryConfig("sales-transactions-for-availability"),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sales_transactions")
+        .select("sku, quantity, transaction_type")
+        .not("sku", "is", null);
+      return data || [];
+    },
+  });
+
+  const { data: bottlesPerCaseMap } = useQuery({
+    queryKey: ["factory-pricing-for-availability"],
+    ...getQueryConfig("factory-pricing-for-availability"),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("factory_pricing")
+        .select("sku, bottles_per_case")
+        .order("pricing_date", { ascending: false });
+      const map = new Map<string, number>();
+      data?.forEach(item => {
+        if (item.sku && item.bottles_per_case && !map.has(item.sku))
+          map.set(item.sku, item.bottles_per_case);
+      });
+      return map;
+    },
+  });
+
+  const labelSummaries = useMemo(() => {
+    if (!labelPurchasesRaw && !labelSalesRaw) return [];
+    const map = new Map<string, { sku: string; purchased: number; used: number }>();
+
+    labelPurchasesRaw?.forEach(p => {
+      if (!p.sku) return;
+      const e = map.get(p.sku);
+      if (e) e.purchased += p.quantity || 0;
+      else map.set(p.sku, { sku: p.sku, purchased: p.quantity || 0, used: 0 });
+    });
+
+    labelSalesRaw?.forEach(s => {
+      if (!s.sku || s.transaction_type !== "sale") return;
+      const bpc = bottlesPerCaseMap?.get(s.sku) || 1;
+      const used = (s.quantity || 0) * bpc;
+      const e = map.get(s.sku);
+      if (e) e.used += used;
+      else map.set(s.sku, { sku: s.sku, purchased: 0, used });
+    });
+
+    return Array.from(map.values())
+      .map(item => ({
+        sku: item.sku,
+        total_labels_purchased: item.purchased,
+        labels_used: item.used,
+        labels_available: item.purchased - item.used,
+      }))
+      .sort((a, b) => a.sku.localeCompare(b.sku));
+  }, [labelPurchasesRaw, labelSalesRaw, bottlesPerCaseMap]);
+
   return (
     <div className="bg-surface-bright p-6 space-y-8">
 
@@ -607,6 +682,70 @@ const Dashboard = memo(() => {
 
       {/* ── Production inventory ──────────────────────────────────────── */}
       <ProductionInventory />
+
+      {/* ── Label inventory ───────────────────────────────────────────── */}
+      {labelSummaries.length > 0 && (
+        <section className="space-y-5">
+          <div>
+            <p className="text-[10px] font-bold text-primary tracking-widest uppercase mb-1">
+              Stock Overview
+            </p>
+            <h2 className="text-xl font-bold tracking-tight text-on-surface">
+              Label Inventory
+            </h2>
+            <p className="text-sm text-on-surface-variant mt-1">
+              Available labels by SKU
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {labelSummaries.map(item => {
+              const isAvailable = item.labels_available > 2500;
+              const isLow      = item.labels_available > 0 && item.labels_available <= 2500;
+              const isShortage = item.labels_available < 0;
+
+              const c = isAvailable
+                ? { iconBg: "bg-emerald-50", icon: "text-emerald-500", badge: "text-emerald-600 bg-emerald-50", label: "Available",    value: "text-emerald-600", Icon: PackageCheck }
+                : isLow
+                ? { iconBg: "bg-amber-50",   icon: "text-amber-500",   badge: "text-amber-600 bg-amber-50",   label: "Low Stock",    value: "text-amber-600",   Icon: Tag         }
+                : isShortage
+                ? { iconBg: "bg-red-50",     icon: "text-red-500",     badge: "text-red-600 bg-red-50",       label: "Shortage",     value: "text-red-600",     Icon: PackageX    }
+                : { iconBg: "bg-slate-100",  icon: "text-slate-400",   badge: "text-slate-600 bg-slate-100",  label: "Out of Stock", value: "text-slate-600",   Icon: PackageX    };
+
+              return (
+                <div
+                  key={item.sku}
+                  className="glass-card rounded-xl p-6 shadow-glass hover:-translate-y-0.5 hover:shadow-glass-lg transition-all duration-200 flex flex-col gap-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className={`w-11 h-11 rounded-2xl ${c.iconBg} flex items-center justify-center`}>
+                      <c.Icon className={`h-5 w-5 ${c.icon}`} />
+                    </div>
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${c.badge}`}>
+                      {c.label}
+                    </span>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
+                      {item.sku}
+                    </p>
+                    <p className={`text-2xl font-bold tracking-tight ${c.value}`}>
+                      {item.labels_available.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-on-surface-variant mt-1.5 font-medium">
+                      <span className="text-indigo-500 font-semibold">{item.total_labels_purchased.toLocaleString()}</span>
+                      {" purchased · "}
+                      <span className="text-slate-500">{item.labels_used.toLocaleString()}</span>
+                      {" used"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 });
