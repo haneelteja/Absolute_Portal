@@ -302,8 +302,8 @@ serve(async (req) => {
       user_id: authData.user.id,
       username: username,
       email: email,
-      associated_clients: safeClients,
-      associated_branches: safeBranches,
+      associated_dealers: safeClients,
+      associated_areas: safeBranches,
       role: role, // Explicitly set role from request
       status: 'active',
       created_by: createdBy || null
@@ -312,8 +312,8 @@ serve(async (req) => {
     console.log('Insert data:', { 
       ...insertData, 
       created_by: createdBy || 'null',
-      associated_clients_count: insertData.associated_clients.length,
-      associated_branches_count: insertData.associated_branches.length
+      associated_dealers_count: insertData.associated_dealers.length,
+      associated_areas_count: insertData.associated_areas.length
     })
     
     const { data: userRecord, error: userError } = await supabase
